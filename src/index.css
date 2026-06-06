@@ -13,6 +13,7 @@ body {
   color: #E2E8F0;
   line-height: 1.15;
   transition: background-color 0.25s ease, color 0.25s ease;
+  touch-action: manipulation;
 }
 
 /* Completed Row highlights */

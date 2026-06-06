@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mena Inc. Advanced Database & Inventory System v2</title>
     
     <!-- 📦 PROGRESSIVE WEB APP (PWA) ENHANCEMENTS FOR SYSTEM ACCESSIBILITY -->
@@ -60,6 +60,18 @@
           console.warn("Safe fetch interceptor initialization bypassed:", err);
         }
       })();
+
+      // Disable pinch-to-zoom and multi-touch scaling gestures
+      document.addEventListener('touchstart', function(event) {
+        if (event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      // Disable iOS gesture zoom
+      document.addEventListener('gesturestart', function(event) {
+        event.preventDefault();
+      });
 
       // Register the service worker to support mobile offline caching and install triggers
       if ('serviceWorker' in navigator) {
