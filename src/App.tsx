@@ -752,7 +752,7 @@ export default function App() {
           <div className="text-center mb-8">
             <div className="relative inline-block mb-3">
               <img 
-                src="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" 
+                src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
                 alt="Mena Logo" 
                 className="w-16 h-16 object-contain bg-[#181818] border border-[#262626] p-1 mx-auto"
                 referrerPolicy="no-referrer"
@@ -852,23 +852,25 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans select-none antialiased" style={{ lineSpacing: "1.15" }}>
 
-      {/* Telegram-style Connection Status indicator bar */}
-      {!isOnline && (
-        <div className="bg-[#C53030] text-white text-center py-1 px-3 text-xs font-mono font-bold flex items-center justify-center gap-2 animate-pulse sticky top-0 z-50 shadow-md">
-          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-          <span>CONNECTING TO DIRECT DIGITAL LEDGER... (WORKING OFFLINE)</span>
-        </div>
-      )}
+      {/* Sticky Top Navigation Container */}
+      <div className="sticky top-[env(safe-area-inset-top)] z-40">
+        {/* Telegram-style Connection Status indicator bar */}
+        {!isOnline && (
+          <div className="bg-[#C53030] text-white text-center py-1 px-3 text-xs font-mono font-bold flex items-center justify-center gap-2 animate-pulse shadow-md">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            <span>CONNECTING TO DIRECT DIGITAL LEDGER... (WORKING OFFLINE)</span>
+          </div>
+        )}
 
-      {/* Top Executive Header */}
-      <header className="bg-[#121212] border-b border-[#262626] sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        {/* Top Executive Header */}
+        <header className="bg-[#121212] border-b border-[#262626]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
 
-            {/* Branding Logo - Utilizing the Premium Custom Logo */}
-            <div className="flex items-center gap-3">
-              <img 
-                src="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" 
+              {/* Branding Logo - Utilizing the Premium Custom Logo */}
+              <div className="flex items-center gap-3">
+                <img 
+                  src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
                 alt="Mena Logo" 
                 className="w-10 h-10 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-none"
                 referrerPolicy="no-referrer"
@@ -1151,6 +1153,7 @@ export default function App() {
            )}
          </AnimatePresence>
        </header>
+     </div>
 
       {/* Main Core Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
