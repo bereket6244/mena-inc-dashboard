@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -83,258 +83,75 @@ export default function CustomerTab({
     const btn = document.getElementById('export-pdf-direct-btn');
     const originalText = btn ? btn.innerHTML : '';
     if (btn) {
-      btn.innerHTML = '⚡ Generating Vector PDF...';
+      btn.innerHTML = '⚡ Generating PDF...';
       btn.setAttribute('disabled', 'true');
     }
 
     try {
-      const clientNameFilename = isStandaloneProformaMode 
-        ? standaloneClientName 
-        : (proformaItemsToRender[0] as any)?.clientName || 'Draft';
+      const container = document.getElementById('proforma-print-container');
+      if (!container) {
+        throw new Error('Proforma container element not found.');
+      }
 
+      // Save original styles to restore later
+      const originalMaxHeight = container.style.maxHeight;
+      const originalOverflow = container.style.overflow;
+      const originalHeight = container.style.height;
+      const originalWidth = container.style.width;
+
+      // Temporarily set styling to show the entire layout and keep it consistent on mobile
+      container.style.maxHeight = 'none';
+      container.style.overflow = 'visible';
+      container.style.height = 'auto';
+      container.style.width = '800px';
+
+      // Render the container to a canvas with high scale for high resolution print quality
+      const canvas = await html2canvas(container, {
+        scale: 2.5, // High resolution scale for clear vector text output
+        useCORS: true,
+        allowTaint: false, // Prevent tainted canvas errors
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      // Restore original styles immediately after capture
+      container.style.maxHeight = originalMaxHeight;
+      container.style.overflow = originalOverflow;
+      container.style.height = originalHeight;
+      container.style.width = originalWidth;
+
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
       const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
         format: 'a4'
       });
 
-      // Colors matching the company theme
-      const primaryColor = [238, 49, 123]; // Mena Pink #ee317b
-      const darkColor = [20, 20, 20];      // Bold dark #141414
-      const lightAccent = [252, 248, 250];  // Very light pink backdrop
-      const lineGray = [220, 220, 222];
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-      // Subtle Outer page border for document geometry appeal
-      pdf.setDrawColor(lineGray[0], lineGray[1], lineGray[2]);
-      pdf.setLineWidth(0.3);
-      pdf.rect(10, 10, 190, 277);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
 
-      // --- 1. HEADER BRANDING ---
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(22);
-      pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.text("MENA PAPER MFG", 15, 24);
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.setTextColor(60, 60, 60);
-      pdf.text("MENA PAPER CONVERSION & BOARD PACKAGING INDUSTRIES PLC", 15, 29);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(110, 110, 110);
-      pdf.text("VAT Reg No: 849204012 | TIN: 0048291032 | Addis Ababa, Ethiopia", 15, 33);
-      pdf.text("Factory: Akaki Kality | Tel: +251 900 123456 | Mail: info@menapaper.com", 15, 37);
-
-      // Horizontal pink accent separator line
-      pdf.setLineWidth(0.6);
-      pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.line(15, 41, 195, 41);
-
-      // --- 2. Title & Date info ribbon ---
-      pdf.setFillColor(lightAccent[0], lightAccent[1], lightAccent[2]);
-      pdf.rect(15, 46, 180, 15, "F");
-      
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(13);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("PROFORMA INVOICE / PRICE QUOTATION", 22, 55);
-
-      // Vertical pink marker block
-      pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.rect(15, 46, 2.5, 15, "F");
-
-      // Print date on right side of ribbon
-      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(120, 120, 120);
-      pdf.text(`Date Issued: ${today}`, 142, 55);
-
-      // --- 3. RECIPIENT & SENDER META INFO METRICS ---
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("CLIENT / CONSIGNEE METRICS:", 15, 71);
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      const recipientName = isStandaloneProformaMode 
-        ? standaloneClientName || 'Valued Corporate Client'
-        : (proformaItemsToRender[0] as any)?.clientName || 'Valued Corporate Client';
-      const recipientPhone = isStandaloneProformaMode 
-        ? standaloneClientPhone || 'N/A'
-        : (proformaItemsToRender[0] as any)?.phone || 'N/A';
-      pdf.text(recipientName, 15, 77);
-      
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text(`Phone Contact: ${recipientPhone}`, 15, 82);
-      pdf.text(`Recipient ID: CLN-2026-${(proformaItemsToRender[0]?.id || 'DRAFT').slice(0, 6).toUpperCase()}`, 15, 87);
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("QUOTATION METADATA:", 120, 71);
-      
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text(`Quotation No: MN-PRF-2026-` + Math.floor(1000 + Math.random() * 9000), 120, 77);
-      pdf.text(`Valid Period: 30 Calendar Days`, 120, 82);
-      pdf.text(`FOB Point: Addis Ababa Factory`, 120, 87);
-
-      // --- 4. DATA TABLE FOR ORDER SELECTIONS ---
-      let y = 97;
-      pdf.setFillColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.rect(15, y, 180, 8.5, "F");
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text("S.N.", 18, y + 5.5);
-      pdf.text("PRODUCT / MATERIAL DESCRIPTION", 30, y + 5.5);
-      pdf.text("QTY", 120, y + 5.5, { align: "right" });
-      pdf.text("UNIT PRICE (ETB)", 153, y + 5.5, { align: "right" });
-      pdf.text("TOTAL PRICE (ETB)", 190, y + 5.5, { align: "right" });
-
-      // Table Rows
-      pdf.setTextColor(60, 60, 60);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
-      
-      let subtotal = 0;
-      proformaItemsToRender.forEach((item, idx) => {
-        y += 8.5;
-        // Alternating background zebra effect
-        if (idx % 2 === 0) {
-          pdf.setFillColor(252, 252, 254);
-          pdf.rect(15, y, 180, 8.5, "F");
-        }
-        
-        pdf.setDrawColor(240, 240, 242);
-        pdf.setLineWidth(0.2);
-        pdf.line(15, y + 8.5, 195, y + 8.5);
-
-        const rowTotal = item.quantity * item.unitPrice;
-        subtotal += rowTotal;
-
-        // Write row contents with vector layouts
-        pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-        pdf.text((idx + 1).toString(), 18, y + 6);
-        pdf.text(item.productType, 30, y + 6);
-        pdf.text(item.quantity.toLocaleString(), 120, y + 6, { align: "right" });
-        pdf.text(item.unitPrice.toFixed(2), 153, y + 6, { align: "right" });
-        pdf.text(rowTotal.toFixed(2), 190, y + 6, { align: "right" });
-      });
-
-      // Handle blank case
-      if (proformaItemsToRender.length === 0) {
-        y += 8.5;
-        pdf.setFillColor(255, 241, 242);
-        pdf.rect(15, y, 180, 10, "F");
-        pdf.setFont("helvetica", "italic");
-        pdf.setTextColor(244, 63, 94);
-        pdf.text("No active item lines drafted inside invoice compiler.", 20, y + 6.5);
-        y += 1.5;
+      // Handle multi-page if the proforma extends beyond one A4 page
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
-      // Calculations
-      const vatRate = 0.15;
-      const vatAmount = proformaIncludeVat ? subtotal * vatRate : 0;
-      const grandTotal = subtotal + vatAmount;
-      const advanceCollected = proformaItemsToRender.reduce((acc, c) => acc + c.advancePayment, 0);
-      const balanceRemaining = grandTotal - advanceCollected;
-
-      // Draw bottom-split calculation table
-      y += 18;
-      
-      // LEFT SIDE: Terms of Sale
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("LEGAL CONDITIONS & BUSINESS TERMS:", 15, y);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(110, 110, 110);
-      pdf.text("1. Mode of payments: Approved Bank Bank transfers (T/T) or Bank Deposits.", 15, y + 5);
-      pdf.text("2. Production and converting: Commences instantly upon receiving deposit.", 15, y + 9.5);
-      pdf.text("3. Validity: Offered conversion rate is locked strictly for 30 calendar days.", 15, y + 14);
-      pdf.text("4. Dispatch: All products are fetched directly from our Addis Ababa factory.", 15, y + 18.5);
-
-      // RIGHT SIDE: Ledger math
-      const sumX = 118;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("QUOTATION SUMMARY:", sumX, y);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text("Material Subtotal:", sumX, y + 5);
-      pdf.text(subtotal.toFixed(2) + " ETB", 190, y + 5, { align: "right" });
-
-      pdf.text(`Value Added Tax (VAT 15%):`, sumX, y + 9.5);
-      pdf.text(vatAmount.toFixed(2) + " ETB", 190, y + 9.5, { align: "right" });
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("Grand Invoice Total:", sumX, y + 15);
-      pdf.text(grandTotal.toFixed(2) + " ETB", 190, y + 15, { align: "right" });
-
-      // Separate line
-      pdf.setDrawColor(200, 200, 202);
-      pdf.setLineWidth(0.2);
-      pdf.line(sumX, y + 18, 195, y + 18);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text("Advance Payment Paid:", sumX, y + 23);
-      pdf.text("-" + advanceCollected.toFixed(2) + " ETB", 190, y + 23, { align: "right" });
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
-      pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.text("Remaining Balance:", sumX, y + 29);
-      pdf.text(balanceRemaining.toFixed(2) + " ETB", 190, y + 29, { align: "right" });
-
-      // --- 5. STAMP, APPROVALS, SIGNATURES ---
-      const footerY = 236;
-      pdf.setLineWidth(0.35);
-      pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.line(15, footerY, 195, footerY);
-
-      // Signatures labels
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      pdf.text("AUTHORIZED REPRESENTATIVE APPROVAL", 15, footerY + 8);
-      
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-      pdf.setTextColor(130, 130, 130);
-      pdf.text("Authorized Signature & Seal Date: _______________________", 15, footerY + 16);
-      pdf.text("Customer Approval Signature:        _______________________", 15, footerY + 23);
-
-      // System Stamp Frame
-      pdf.rect(138, footerY + 4, 52, 25);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      pdf.text("MENA PAPER MFG PLC", 164, footerY + 11, { align: "center" });
-      pdf.setTextColor(150, 150, 150);
-      pdf.setFontSize(7.5);
-      pdf.text("[ ACCORDED LEDGER SEALS ]", 164, footerY + 16, { align: "center" });
-      pdf.text("Addis Ababa, Ethiopia", 164, footerY + 21, { align: "center" });
+      const clientNameFilename = isStandaloneProformaMode 
+        ? standaloneClientName 
+        : (proformaItemsToRender[0] as any)?.clientName || 'Draft';
 
       pdf.save(`Mena_Inc_Proforma_${clientNameFilename.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
     } catch (err: any) {
-      console.error('Vector PDF export crashed:', err);
+      console.error('PDF export crashed:', err);
       alert(`Export Error: ${err?.message || String(err)}`);
       throw err;
     } finally {
@@ -351,6 +168,18 @@ export default function CustomerTab({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formStep, setFormStep] = useState<1 | 2 | 3>(1);
+
+  // Lock body scroll when customer form or proforma modal is open
+  useEffect(() => {
+    if (isFormOpen || showProformaModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFormOpen, showProformaModal]);
 
   // Form Fields State
   const [clientType, setClientType] = useState<Customer['clientType']>('Individual');
@@ -1536,13 +1365,13 @@ export default function CustomerTab({
       {/* DYNAMIC BACKDROP DRAWER/MODAL WIZARD */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs select-none overscroll-contain">
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#121212] w-full max-w-xl h-full border-l border-[#262626] shadow-2xl overflow-y-auto flex flex-col justify-between"
+              className="bg-[#121212] w-full max-w-xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
             >
               
               {/* Header */}
@@ -1600,7 +1429,7 @@ export default function CustomerTab({
               )}
 
               {/* Step Forms */}
-              <form onSubmit={handleFormSubmit} className="flex-1 px-6 py-5 overflow-y-auto space-y-6">
+              <form onSubmit={handleFormSubmit} className="flex-1 px-6 py-5 overflow-y-auto space-y-6 overscroll-contain">
                 
                 {formStep === 1 && (
                   <div className="space-y-4">
@@ -2386,8 +2215,8 @@ export default function CustomerTab({
 
       <AnimatePresence>
         {showProformaModal && (
-          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs">
-            <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-none my-8 max-h-[90vh]">
+          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs overscroll-contain">
+            <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-none my-8 max-h-[90vh] overscroll-contain">
               
               {/* Controller Bar */}
               <div className="flex flex-col gap-3 border-b pb-3 border-[#262626] font-mono text-xs print-hidden-stamp-toggle">
@@ -2572,7 +2401,7 @@ export default function CustomerTab({
               </div>
               
               {/* Printable Area - Rendered using White-Paper Theme */}
-              <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-none flex-1 font-sans" id="proforma-print-container">
+              <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-none flex-1 font-sans overscroll-contain" id="proforma-print-container">
                 <style dangerouslySetInnerHTML={{__html: `
                   #proforma-print-container,
                   #proforma-print-container * {

@@ -1345,7 +1345,7 @@ export default function App() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-6 right-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-sm w-full font-mono text-xs select-none"
+            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full font-mono text-xs select-none overscroll-contain"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -1754,7 +1754,7 @@ ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;`}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-mono text-xs select-none"
+            className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between sm:justify-start gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-mono text-xs select-none max-w-[calc(100vw-2rem)] sm:max-w-xs w-full sm:w-auto overscroll-contain"
           >
             <div className="relative flex items-center justify-center">
               <svg className="animate-spin h-4 w-4 text-[#ee317b]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

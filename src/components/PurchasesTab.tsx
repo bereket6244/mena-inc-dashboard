@@ -58,6 +58,21 @@ export default function PurchasesTab({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
 
+  // New item from search suggestion flow state
+  const [addingNewItemFromSearch, setAddingNewItemFromSearch] = useState<string | null>(null);
+
+  // Lock body scroll when purchases form is open
+  useEffect(() => {
+    if (isFormOpen || addingNewItemFromSearch !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFormOpen, addingNewItemFromSearch]);
+
   // Purchase Form inputs
   const [purchasedBy, setPurchasedBy] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
@@ -108,7 +123,6 @@ export default function PurchasesTab({
   const [isMobileCategoriesCollapsed, setIsMobileCategoriesCollapsed] = useState(true);
 
   // New item from search suggestion flow state
-  const [addingNewItemFromSearch, setAddingNewItemFromSearch] = useState<string | null>(null);
   const [newItemTargetCategory, setNewItemTargetCategory] = useState<string>('');
   const [isNewCategoryModeInModal, setIsNewCategoryModeInModal] = useState(false);
   const [modalNewCategoryName, setModalNewCategoryName] = useState('');
@@ -1263,42 +1277,41 @@ export default function PurchasesTab({
       {/* Drawer / Right Sliding Form Modal for Add (Batch Enabled) / Edit Purchase */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end select-none">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end select-none overscroll-contain">
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#121212] w-full max-w-2xl h-full border-l border-[#262626] shadow-2xl overflow-y-auto flex flex-col justify-between"
+              className="bg-[#121212] w-full max-w-2xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
             >
               
               {/* Header */}
-              <div>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
-                  <div>
-                    <h4 className="font-mono font-bold text-white text-sm flex items-center gap-1.5 uppercase">
-                      <Sparkles className="w-4 h-4 text-[#ee317b]" />
-                      {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
-                    </h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
-                      {editingPurchase ? 'Modify ledger row details.' : 'Add multiple products or services below, review the batch summary, and commit everything.'}
-                    </p>
-                  </div>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818] flex-shrink-0">
+                <div>
+                  <h4 className="font-mono font-bold text-white text-sm flex items-center gap-1.5 uppercase">
+                    <Sparkles className="w-4 h-4 text-[#ee317b]" />
+                    {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
+                  </h4>
+                  <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                    {editingPurchase ? 'Modify ledger row details.' : 'Add multiple products or services below, review the batch summary, and commit everything.'}
+                  </p>
                 </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-none cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                {/* Form Inputs Container */}
-                <div className="p-6 space-y-5">
-                  
-                  {/* BATCH CORE DETAILS (Date, Charger bank, Operator, logger) */}
-                  <div className="bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-none">
+              {/* Form Inputs Container */}
+               <div className="flex-1 p-6 space-y-5 overflow-y-auto overscroll-contain">
+                
+                {/* BATCH CORE DETAILS (Date, Charger bank, Operator, logger) */}
+                <div className="bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-none">
                     <span className="text-[10px] font-mono font-extrabold text-[#71b536] uppercase tracking-widest block border-b border-stone-250 dark:border-[#222222] pb-1.5">
                       Step 1: Batch Configuration Details
                     </span>
@@ -1647,10 +1660,9 @@ export default function PurchasesTab({
                   )}
 
                 </div>
-              </div>
 
               {/* Bottom confirmation tools */}
-              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-end gap-3 select-none">
+              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-end gap-3 select-none flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
