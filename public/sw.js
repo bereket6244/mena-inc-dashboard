@@ -32,29 +32,24 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Let browser requests for files from other domains (e.g. firestore/google-docs) pass through directly.
+  // Let browser requests for files from other domains (e.g. Supabase API) pass through directly.
   if (!e.request.url.startsWith(self.location.origin)) {
     return;
   }
   
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
+    fetch(e.request).then((networkResponse) => {
+      // Cache dynamic local assets on-the-fly to support offline functionality
+      if (networkResponse.status === 200 && e.request.method === 'GET') {
+        const cacheCopy = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(e.request, cacheCopy);
+        });
       }
-      return fetch(e.request).then((networkResponse) => {
-        // Cache dynamic local assets on-the-fly to prevent broken layouts
-        if (networkResponse.status === 200 && e.request.method === 'GET') {
-          const cacheCopy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, cacheCopy);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Fallback or silently fail for API calls etc.
-        return null;
-      });
+      return networkResponse;
+    }).catch(() => {
+      // Fall back to cached local files if the network request fails (offline)
+      return caches.match(e.request);
     })
   );
 });
