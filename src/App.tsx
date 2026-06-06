@@ -558,12 +558,17 @@ export default function App() {
 
   const handleUpdateCategories = async (newCategories: ExpenseCategory[]) => {
     setIsBuffering(true);
+    // Find deleted categories by comparing state with newCategories list
+    const deletedCats = categories.filter(oldCat => !newCategories.some(newCat => newCat.id === oldCat.id));
+    
     setCategories(newCategories);
     localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCategories));
     try {
-      const { saveExpenseCategoryDoc } = await import('./lib/dbService');
-      const promises = newCategories.map(cat => saveExpenseCategoryDoc(cat).catch(() => {}));
-      await Promise.allSettled(promises);
+      const { saveExpenseCategoryDoc, deleteExpenseCategoryDoc } = await import('./lib/dbService');
+      const savePromises = newCategories.map(cat => saveExpenseCategoryDoc(cat).catch(() => {}));
+      const deletePromises = deletedCats.map(cat => deleteExpenseCategoryDoc(cat.id).catch(() => {}));
+      
+      await Promise.allSettled([...savePromises, ...deletePromises]);
     } catch (_) {} finally {
       setTimeout(() => setIsBuffering(false), 400);
     }

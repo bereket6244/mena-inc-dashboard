@@ -231,3 +231,17 @@ export async function saveExpenseCategoryDoc(cat: ExpenseCategory): Promise<void
     }
   }
 }
+
+export async function deleteExpenseCategoryDoc(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('expense_categories')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase deleteExpenseCategoryDoc failed:", err);
+    }
+  }
+}
