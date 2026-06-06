@@ -806,6 +806,17 @@ export default function App() {
             </button>
           </form>
 
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={triggerPwaInstall}
+              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-mono py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Web App
+            </button>
+          </div>
+
           <div className="mt-8 border-t border-[#232323] pt-5">
             <span className="block text-[9px] uppercase tracking-wider font-mono text-[#71b536] mb-2 font-bold">Standard Demorun Credentials:</span>
             <div className="bg-[#181818] p-3 rounded-none text-[11px] font-mono text-gray-400 space-y-1 bg-opacity-40">
@@ -902,46 +913,10 @@ export default function App() {
                 </button>
               )}
 
-              {/* Live Relational Database Node Connection */}
-              <button
-                type="button"
-                onClick={() => setShowDbConfigModal(true)}
-                className={`flex items-center gap-1.5 text-[10px] font-mono px-2.5 py-1.5 rounded-none border cursor-pointer active:scale-95 transition-all outline-none ${
-                  liveDbLinked && !dbValidationError
-                    ? 'bg-[#112918] text-[#71b536] border-[#71b536]/30 hover:border-[#71b536]' 
-                    : 'bg-[#1E1215] text-[#ee317b] border-[#ee317b]/20 hover:border-[#ee317b]'
-                }`}
-                title="View Supabase Relational Database SQL Script"
-              >
-                <Wifi className={`w-3.5 h-3.5 ${(liveDbLinked && !dbValidationError) ? 'animate-pulse' : ''}`} />
-                <span className="hidden lg:inline">{(liveDbLinked && !dbValidationError) ? 'CLOUDSYNC ACTIVE' : 'DATABASE ERROR / LOCAL'}</span>
-              </button>
-
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-mono bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-none">
                 <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
                 <span>UTC: {timeStr || '08:12'}</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setShowResetOverlay('demo')}
-                className="text-xs text-[#ee317b] hover:bg-[#ee317b] hover:text-white border border-[#ee317b]/30 font-medium px-3 py-1.5 rounded-none flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Restore default database data"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Seed Defaults</span>
-              </button>
-
-              {/* PWA Direct Mobile App Installation Trigger */}
-              <button
-                type="button"
-                onClick={triggerPwaInstall}
-                className="text-xs text-[#71b536] hover:bg-[#71b536] hover:text-black border border-[#71b536]/30 font-medium px-3 py-1.5 rounded-none flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Download this ledger as an Android or iOS Mobile App"
-              >
-                <Download className="w-3.5 h-3.5 text-[#71b536]" />
-                <span>Download App</span>
-              </button>
 
               <button
                 type="button"
@@ -1357,6 +1332,42 @@ export default function App() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* System Admin Settings (Seed Defaults & Database Override) */}
+                <div className="border-t border-[#262626] pt-5 space-y-3 font-mono">
+                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Administrative Controls</span>
+                  <div className="flex flex-wrap gap-2.5">
+                    {/* Database Config Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowStaffModal(false);
+                        setShowDbConfigModal(true);
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-mono px-3 py-2 rounded-none border cursor-pointer transition-all outline-none ${
+                        liveDbLinked && !dbValidationError
+                          ? 'bg-[#112918] text-[#71b536] border-[#71b536]/30 hover:border-[#71b536]' 
+                          : 'bg-[#1E1215] text-[#ee317b] border-[#ee317b]/20 hover:border-[#ee317b]'
+                      }`}
+                    >
+                      <Wifi className={`w-3.5 h-3.5 ${(liveDbLinked && !dbValidationError) ? 'animate-pulse' : ''}`} />
+                      <span>Configure Relational Database Link</span>
+                    </button>
+
+                    {/* Seed Defaults Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowStaffModal(false);
+                        setShowResetOverlay('demo');
+                      }}
+                      className="text-xs text-[#ee317b] hover:bg-[#ee317b] hover:text-white border border-[#ee317b]/30 font-medium px-3 py-2 rounded-none flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Seed Demo Defaults</span>
+                    </button>
                   </div>
                 </div>
 

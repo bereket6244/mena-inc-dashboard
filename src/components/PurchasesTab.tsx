@@ -62,7 +62,7 @@ export default function PurchasesTab({
   const [purchasedBy, setPurchasedBy] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
   const [itemOrServiceInput, setItemOrServiceInput] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(0);
   const [unitPrice, setUnitPrice] = useState(0);
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [paymentMethodId, setPaymentMethodId] = useState('');
@@ -157,7 +157,7 @@ export default function PurchasesTab({
     setPurchasedBy(currentUser?.name || '');
     setExpenseCategory(categories[0]?.name || '');
     setItemOrServiceInput('');
-    setQuantity(1);
+    setQuantity(0);
     setUnitPrice(0);
     setHasVat(false);
     setHasWithholding(false);
@@ -292,7 +292,7 @@ export default function PurchasesTab({
 
     // Reset item level form inputs for next catalog item
     setItemOrServiceInput('');
-    setQuantity(1);
+    setQuantity(0);
     setUnitPrice(0);
     setHasVat(false);
     setHasWithholding(false);
@@ -1450,10 +1450,10 @@ export default function PurchasesTab({
                         <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5">Quantity</label>
                         <input
                           type="number"
-                          min="1"
+                          min="0"
                           required
                           value={quantity || ''}
-                          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+                          onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
                           className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] font-mono"
                         />
                       </div>

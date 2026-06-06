@@ -359,15 +359,15 @@ export default function CustomerTab({
   const [acquisitionSource, setAcquisitionSource] = useState<Customer['acquisitionSource']>('Repeat');
    const [orderTakenBy, setOrderTakenBy] = useState<Customer['orderTakenBy']>(currentUser?.name || 'Bereket');
   const [productType, setProductType] = useState(PRODUCT_TYPES[0]);
-  const [quantity, setQuantity] = useState<number>(100);
-  const [unitPrice, setUnitPrice] = useState<number>(85);
-  const [advancePayment, setAdvancePayment] = useState<number>(5000);
+  const [quantity, setQuantity] = useState<number>(0);
+  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [advancePayment, setAdvancePayment] = useState<number>(0);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('b1');
 
   // Math expression string inputs for the numerical editing fields
-  const [qtyInput, setQtyInput] = useState<string>('100');
-  const [priceInput, setPriceInput] = useState<string>('85');
-  const [advanceInput, setAdvanceInput] = useState<string>('5000');
+  const [qtyInput, setQtyInput] = useState<string>('0');
+  const [priceInput, setPriceInput] = useState<string>('0');
+  const [advanceInput, setAdvanceInput] = useState<string>('0');
 
   // Dynamic Acquisition Channels State
   const [acquisitionChannels, setAcquisitionChannels] = useState<string[]>(() => {
@@ -388,7 +388,7 @@ export default function CustomerTab({
   const [bankRemainingId, setBankRemainingId] = useState<string>('');
   const [incompletionReason, setIncompletionReason] = useState<string>('');
   const [isVatAdded, setIsVatAdded] = useState<boolean>(false);
-  const [baseUnitPriceInput, setBaseUnitPriceInput] = useState<string>('85');
+  const [baseUnitPriceInput, setBaseUnitPriceInput] = useState<string>('0');
 
   // Non-blocking custom delete tracking ID
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
@@ -424,12 +424,12 @@ export default function CustomerTab({
     setAcquisitionSource('Repeat');
     setOrderTakenBy(currentUser?.name || 'Bereket');
     setProductType(PRODUCT_TYPES[0]);
-    setQuantity(100);
-    setUnitPrice(85);
-    setAdvancePayment(5000);
-    setQtyInput('100');
-    setPriceInput('85');
-    setAdvanceInput('5000');
+    setQuantity(0);
+    setUnitPrice(0);
+    setAdvancePayment(0);
+    setQtyInput('0');
+    setPriceInput('0');
+    setAdvanceInput('0');
     setPaymentMethodId('b1');
     setPaperType1(paperStocks[0]?.name || 'Big flower');
     setAmount1('0');
@@ -450,7 +450,7 @@ export default function CustomerTab({
     setBankRemainingId('');
     setIncompletionReason('');
     setIsVatAdded(false);
-    setBaseUnitPriceInput('85');
+    setBaseUnitPriceInput('0');
     
     setFormError('');
     setIsFormOpen(true);
