@@ -974,7 +974,7 @@ export default function App() {
                animate={{ height: 'auto', opacity: 1 }}
                exit={{ height: 0, opacity: 0 }}
                transition={{ duration: 0.2, ease: 'easeInOut' }}
-               className="md:hidden border-t border-[#262626] bg-[#121212]/95 backdrop-blur-md overflow-hidden"
+               className="absolute left-0 right-0 top-16 md:hidden border-b border-[#262626] bg-[#121212]/95 backdrop-blur-md overflow-hidden shadow-2xl z-50"
              >
                <div className="px-4 py-4 space-y-4 font-mono">
                  
