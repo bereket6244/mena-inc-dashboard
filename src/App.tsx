@@ -659,6 +659,80 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Keep a ref containing the latest state of all collections to avoid resetting the polling interval on changes
+  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories });
+  
+  useEffect(() => {
+    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories };
+  }, [paperStocks, customers, bankAccounts, purchases, categories]);
+
+  // Background database polling to fetch updates when online and linked
+  useEffect(() => {
+    if (!liveDbLinked || !isOnline) return;
+
+    const intervalId = setInterval(async () => {
+      // Skip sync if the browser tab is in the background
+      if (document.hidden) return;
+
+      try {
+        const { 
+          fetchAllPaperStocks, 
+          fetchAllCustomers, 
+          fetchAllBankAccounts,
+          fetchAllPurchases,
+          fetchAllExpenseCategories
+        } = await import('./lib/dbService');
+
+        const current = collectionsRef.current;
+
+        // Fetch all tables concurrently in parallel
+        const [newS, newC, newB, newP, newCat] = await Promise.all([
+          fetchAllPaperStocks(current.paperStocks),
+          fetchAllCustomers(current.customers),
+          fetchAllBankAccounts(current.bankAccounts),
+          fetchAllPurchases(current.purchases),
+          fetchAllExpenseCategories(current.categories)
+        ]);
+
+        const isDifferent = (a: any[], b: any[]) => JSON.stringify(a) !== JSON.stringify(b);
+
+        // Update states only if new data was fetched and differs from current state
+        if (isDifferent(newS, current.paperStocks)) {
+          setPaperStocks(newS);
+          localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(newS));
+        }
+        if (isDifferent(newC, current.customers)) {
+          // Apply repaired mappings to customers
+          const repairedC = newC.map(cust => {
+            const repaired = { ...cust };
+            if (!repaired.advancePaymentDate) {
+              repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
+            }
+            return repaired;
+          });
+          setCustomers(repairedC);
+          localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(repairedC));
+        }
+        if (isDifferent(newB, current.bankAccounts)) {
+          setBankAccounts(newB);
+          localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(newB));
+        }
+        if (isDifferent(newP, current.purchases)) {
+          setPurchases(newP);
+          localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(newP));
+        }
+        if (isDifferent(newCat, current.categories)) {
+          setCategories(newCat);
+          localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCat));
+        }
+      } catch (err) {
+        console.warn("Background database synchronization failed:", err);
+      }
+    }, 10000); // Sync check every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [liveDbLinked, isOnline]);
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-4 selection:bg-[#ee317b]/30 font-sans">
