@@ -2471,9 +2471,6 @@ export default function CustomerTab({
                         mena<span className="text-[#ee317b] font-sans">.</span>inc
                       </h1>
                       <p className="text-[10px] uppercase font-mono tracking-widest text-[#71b536] font-bold text-left">Mena Inc Trading PLC</p>
-                      <p className="text-[9px] text-gray-500 font-sans mt-0.5 max-w-[280px] leading-relaxed text-left">
-                        Authorized paper conversion, notebook manufacturing, proforma calculations & custom packaging ledger solutions.
-                      </p>
                     </div>
                   </div>
 
@@ -2567,9 +2564,9 @@ export default function CustomerTab({
                   {/* Terms and Conditions Block */}
                   <div className="border border-gray-300 bg-gray-50/50 p-4 font-mono text-[9px] text-gray-600 flex-1 rounded-none leading-relaxed text-left">
                     <p className="font-bold text-gray-800 uppercase tracking-wider mb-1.5 text-[9.5px]">Terms &amp; General Conditions</p>
-                    <p className="mb-1">1. <strong>Delivery Term:</strong> Within 12-15 working days from order receipt validation.</p>
-                    <p className="mb-1">2. <strong>Payment Term:</strong> Requires at least 30% advance deposit ledger record, balance due prior to packaging release.</p>
-                    <p className="mb-1">3. <strong>Validity:</strong> This proforma remains valid and conversion rates locked for 30 calendar days from the dates above.</p>
+                    <p className="mb-1">1. <strong>Delivery Term:</strong> Within 7 to 10 days from order receipt validation.</p>
+                    <p className="mb-1">2. <strong>Payment Term:</strong> Requires at least 50% deposit ledger record, balance due prior to packaging release.</p>
+                    <p className="mb-1">3. <strong>Validity:</strong> This proforma remains valid and conversion rates locked for 10 days from the dates above.</p>
                     <p className="text-[8.5px] text-gray-400 mt-2 lowercase">processed in real-time by digital workbook agent, securely archived.</p>
                   </div>
 
