@@ -20,7 +20,8 @@ import {
   Moon,
   Download,
   Smartphone,
-  Share2
+  Share2,
+  Menu
 } from 'lucide-react';
 import { 
   Customer, 
@@ -42,11 +43,11 @@ import PerformanceTab from './components/PerformanceTab';
 import CustomerTab from './components/CustomerTab';
 import PurchasesTab from './components/PurchasesTab';
 
-const LOCAL_STORAGE_STOCKS_KEY = 'mena_inc_stocks_v2';
-const LOCAL_STORAGE_CUSTOMERS_KEY = 'mena_inc_customers_v2';
-const LOCAL_STORAGE_BANKS_KEY = 'mena_inc_bank_accounts_v3';
-const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v1';
-const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v1';
+const LOCAL_STORAGE_STOCKS_KEY = 'mena_inc_stocks_v3';
+const LOCAL_STORAGE_CUSTOMERS_KEY = 'mena_inc_customers_v3';
+const LOCAL_STORAGE_BANKS_KEY = 'mena_inc_bank_accounts_v4';
+const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
+const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
 
 export default function App() {
   // Theme state
@@ -76,6 +77,7 @@ export default function App() {
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [showResetOverlay, setShowResetOverlay] = useState<false | 'demo' | 'stocks'>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
   const [employees, setEmployees] = useState<EmployeeUser[]>([]);
@@ -882,80 +884,274 @@ export default function App() {
               </div>
             </div>
 
-             {/* Utility Status, Clock & Reset */}
-            <div className="flex items-center gap-2 sm:gap-4 select-none flex-wrap py-2">
-              
-              {/* Logged in User Tag */}
-              <div className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2.5 py-1 text-xs">
-                {currentUser.role === 'admin' ? (
-                  <Shield className="w-3.5 h-3.5 text-[#ee317b]" />
-                ) : (
-                  <User className="w-3.5 h-3.5 text-[#71b536]" />
-                )}
-                <span className="text-gray-200 font-mono tracking-wide font-medium">{currentUser.name}</span>
-                <span className={`text-[8px] uppercase tracking-wider px-1 border font-bold font-mono py-0.5 ml-1 hidden xs:inline ${
-                  currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
-                }`}>
-                  {currentUser.role}
-                </span>
-              </div>
+              {/* Utility Status, Clock & Reset */}
+             <div className="hidden md:flex items-center gap-2 sm:gap-4 select-none flex-wrap py-2">
+               
+               {/* Logged in User Tag */}
+               <div className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2.5 py-1 text-xs">
+                 {currentUser.role === 'admin' ? (
+                   <Shield className="w-3.5 h-3.5 text-[#ee317b]" />
+                 ) : (
+                   <User className="w-3.5 h-3.5 text-[#71b536]" />
+                 )}
+                 <span className="text-gray-200 font-mono tracking-wide font-medium">{currentUser.name}</span>
+                 <span className={`text-[8px] uppercase tracking-wider px-1 border font-bold font-mono py-0.5 ml-1 hidden xs:inline ${
+                   currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
+                 }`}>
+                   {currentUser.role}
+                 </span>
+               </div>
 
-              {/* Staff Settings Trigger for Admins */}
-              {currentUser.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={() => setShowStaffModal(true)}
-                  className="bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-300 px-2.5 py-1.5 rounded-none font-mono flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Manage Employee passkeys and register workers"
-                >
-                  <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
-                  <span className="hidden md:inline">Staff Settings</span>
-                </button>
-              )}
+               {/* Staff Settings Trigger for Admins */}
+               {currentUser.role === 'admin' && (
+                 <button
+                   type="button"
+                   onClick={() => setShowStaffModal(true)}
+                   className="bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-300 px-2.5 py-1.5 rounded-none font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                   title="Manage Employee passkeys and register workers"
+                 >
+                   <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
+                   <span className="hidden md:inline">Staff Settings</span>
+                 </button>
+               )}
 
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-mono bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-none">
-                <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
-                <span>UTC: {timeStr || '08:12'}</span>
-              </div>
+               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-mono bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-none">
+                 <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
+                 <span>UTC: {timeStr || '08:12'}</span>
+               </div>
 
-              <button
-                type="button"
-                onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                className="text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer flex items-center gap-1.5"
-                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-              >
-                {theme === 'dark' ? (
-                  <>
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden md:inline">Light</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-3.5 h-3.5 text-sky-450" />
-                    <span className="hidden md:inline">Dark</span>
-                  </>
-                )}
-              </button>
+               <button
+                 type="button"
+                 onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                 className="text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer flex items-center gap-1.5"
+                 title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+               >
+                 {theme === 'dark' ? (
+                   <>
+                     <Sun className="w-3.5 h-3.5 text-amber-400" />
+                     <span className="hidden md:inline">Light</span>
+                   </>
+                 ) : (
+                   <>
+                     <Moon className="w-3.5 h-3.5 text-sky-450" />
+                     <span className="hidden md:inline">Dark</span>
+                   </>
+                 )}
+               </button>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-xs text-gray-400 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer"
-                title="Log Out Operator"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
+               <button
+                 type="button"
+                 onClick={handleLogout}
+                 className="text-xs text-gray-400 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer"
+                 title="Log Out Operator"
+               >
+                 <LogOut className="w-3.5 h-3.5" />
+               </button>
+             </div>
 
-          </div>
-        </div>
-      </header>
+             {/* Mobile hamburger icon trigger button */}
+             <button
+               type="button"
+               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+               className="md:hidden p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-none focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
+               aria-label="Toggle Navigation Menu"
+             >
+               {isMobileMenuOpen ? (
+                 <X className="w-5 h-5 text-[#ee317b]" />
+               ) : (
+                 <Menu className="w-5 h-5 text-white" />
+               )}
+             </button>
+
+           </div>
+         </div>
+
+         {/* Mobile Dropdown Menu Drawer */}
+         <AnimatePresence>
+           {isMobileMenuOpen && (
+             <motion.div
+               initial={{ height: 0, opacity: 0 }}
+               animate={{ height: 'auto', opacity: 1 }}
+               exit={{ height: 0, opacity: 0 }}
+               transition={{ duration: 0.2, ease: 'easeInOut' }}
+               className="md:hidden border-t border-[#262626] bg-[#121212]/95 backdrop-blur-md overflow-hidden"
+             >
+               <div className="px-4 py-4 space-y-4 font-mono">
+                 
+                 {/* Logged in User Tag */}
+                 <div className="flex items-center justify-between bg-[#181818] border border-[#262626] px-3 py-2 text-xs">
+                   <div className="flex items-center gap-1.5">
+                     {currentUser.role === 'admin' ? (
+                       <Shield className="w-3.5 h-3.5 text-[#ee317b]" />
+                     ) : (
+                       <User className="w-3.5 h-3.5 text-[#71b536]" />
+                     )}
+                     <span className="text-gray-200 tracking-wide font-medium">{currentUser.name}</span>
+                   </div>
+                   <span className={`text-[8px] uppercase tracking-wider px-1.5 border font-bold py-0.5 ${
+                     currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
+                   }`}>
+                     {currentUser.role}
+                   </span>
+                 </div>
+
+                 {/* Clock / Time Info */}
+                 <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-[#181818] border border-[#262626] px-3 py-2">
+                   <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
+                   <span>UTC: {timeStr || '08:12'}</span>
+                 </div>
+
+                 {/* Vertical Tab Navigation */}
+                 <div className="space-y-1.5">
+                   <span className="block text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-1">Navigation</span>
+                   
+                   {/* Tab 1: Customer Management */}
+                   <button
+                     onClick={() => {
+                       setActiveTab('customers');
+                       setIsMobileMenuOpen(false);
+                     }}
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                       activeTab === 'customers'
+                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
+                         : 'bg-[#181818] text-gray-400 hover:text-white'
+                     }`}
+                   >
+                     <div className="flex items-center gap-2">
+                       <Users className="w-4 h-4" />
+                       <span>Customer Management</span>
+                     </div>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'customers' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                       {customers.length}
+                     </span>
+                   </button>
+
+                   {/* Tab 2: Inventory Dashboard */}
+                   <button
+                     onClick={() => {
+                       setActiveTab('inventory');
+                       setIsMobileMenuOpen(false);
+                     }}
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                       activeTab === 'inventory'
+                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
+                         : 'bg-[#181818] text-gray-400 hover:text-white'
+                     }`}
+                   >
+                     <div className="flex items-center gap-2">
+                       <Package className="w-4 h-4" />
+                       <span>Inventory Dashboard</span>
+                     </div>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'inventory' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                       {paperStocks.length}
+                     </span>
+                   </button>
+
+                   {/* Tab 3: Purchases Ledger */}
+                   <button
+                     onClick={() => {
+                       setActiveTab('purchases');
+                       setIsMobileMenuOpen(false);
+                     }}
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                       activeTab === 'purchases'
+                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
+                         : 'bg-[#181818] text-gray-400 hover:text-white'
+                     }`}
+                   >
+                     <div className="flex items-center gap-2">
+                       <Database className="w-4 h-4" />
+                       <span>Purchases &amp; Expenses</span>
+                     </div>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'purchases' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                       {purchases.length}
+                     </span>
+                   </button>
+
+                   {/* Tab 4: Performance Summary */}
+                   <button
+                     onClick={() => {
+                       setActiveTab('performance');
+                       setIsMobileMenuOpen(false);
+                     }}
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                       activeTab === 'performance'
+                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
+                         : 'bg-[#181818] text-gray-400 hover:text-white'
+                     }`}
+                   >
+                     <div className="flex items-center gap-2">
+                       <TrendingUp className="w-4 h-4" />
+                       <span>Performance Summary</span>
+                     </div>
+                   </button>
+                 </div>
+
+                 {/* System Actions */}
+                 <div className="space-y-2 pt-2 border-t border-[#222222]">
+                   <span className="block text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-1">Actions</span>
+                   
+                   <div className="grid grid-cols-2 gap-2">
+                     {/* Theme Toggle */}
+                     <button
+                       type="button"
+                       onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                       className="w-full text-left text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] border border-[#262626] px-3 py-2 rounded-none transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                     >
+                       {theme === 'dark' ? (
+                         <>
+                           <Sun className="w-3.5 h-3.5 text-amber-400" />
+                           <span>Light Mode</span>
+                         </>
+                       ) : (
+                         <>
+                           <Moon className="w-3.5 h-3.5 text-sky-400" />
+                           <span>Dark Mode</span>
+                         </>
+                       )}
+                     </button>
+
+                     {/* Logout */}
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setIsMobileMenuOpen(false);
+                         handleLogout();
+                       }}
+                       className="w-full text-left text-xs text-gray-350 hover:text-rose-400 bg-[#181818] border border-[#262626] px-3 py-2 rounded-none transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                     >
+                       <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                       <span>Log Out</span>
+                     </button>
+                   </div>
+
+                   {/* Staff Settings for Admins */}
+                   {currentUser.role === 'admin' && (
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setIsMobileMenuOpen(false);
+                         setShowStaffModal(true);
+                       }}
+                       className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-none font-mono flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2"
+                     >
+                       <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
+                       <span>Manage Staff Settings</span>
+                     </button>
+                   )}
+                 </div>
+
+               </div>
+             </motion.div>
+           )}
+         </AnimatePresence>
+       </header>
 
       {/* Main Core Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         {/* Navigation Tabs - Switched Order and made scrollable on Mobile for extreme responsiveness */}
-        <div className="border-b border-[#262626]">
+        <div className="border-b border-[#262626] hidden md:block">
           <nav className="flex overflow-x-auto whitespace-nowrap scrollbar-none-x space-x-4 md:space-x-6 -mb-px" aria-label="Tabs Selector">
 
             {/* Tab 1: Customer Management (Now First!) */}

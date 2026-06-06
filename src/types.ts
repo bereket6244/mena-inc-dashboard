@@ -49,21 +49,21 @@ export interface Customer {
 }
 
 export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
-  { id: 'b1', name: 'Commercial Bank of Ethiopia (CBE)', accountNumber: '1000123456789', initialBalance: 12500 },
-  { id: 'b2', name: 'Telebirr', accountNumber: '251911223344', initialBalance: 4500 },
-  { id: 'b3', name: 'Cash', initialBalance: 1500 },
+  { id: 'b1', name: 'Commercial Bank of Ethiopia (CBE)', accountNumber: '1000123456789', initialBalance: 0 },
+  { id: 'b2', name: 'Telebirr', accountNumber: '251911223344', initialBalance: 0 },
+  { id: 'b3', name: 'Cash', initialBalance: 0 },
   { id: 'b4', name: 'Awash Bank', accountNumber: '01320123456700', initialBalance: 0 }
 ];
 
 export const DEFAULT_PAPER_STOCKS: PaperStock[] = [
-  { id: 'p1', name: 'Big flower', initialStock: 1200 },
-  { id: 'p2', name: 'Small flower', initialStock: 800 },
-  { id: 'p3', name: 'White wave', initialStock: 500 },
-  { id: 'p4', name: 'Gold', initialStock: 1000 },
-  { id: 'p5', name: 'Silver', initialStock: 600 },
-  { id: 'p6', name: 'Kraft Matte', initialStock: 400 },
-  { id: 'p7', name: 'Entrance Paper', initialStock: 2500 },
-  { id: 'p8', name: 'Ajabi Paper', initialStock: 1800 }
+  { id: 'p1', name: 'Big flower', initialStock: 0 },
+  { id: 'p2', name: 'Small flower', initialStock: 0 },
+  { id: 'p3', name: 'White wave', initialStock: 0 },
+  { id: 'p4', name: 'Gold', initialStock: 0 },
+  { id: 'p5', name: 'Silver', initialStock: 0 },
+  { id: 'p6', name: 'Kraft Matte', initialStock: 0 },
+  { id: 'p7', name: 'Entrance Paper', initialStock: 0 },
+  { id: 'p8', name: 'Ajabi Paper', initialStock: 0 }
 ];
 
 export const CLIENT_TYPES = ['Individual', 'Organization'] as const;
@@ -96,152 +96,7 @@ export const DEFAULT_USERS: EmployeeUser[] = [
   { id: 'u4', name: 'Yordanos', username: 'yordanos', password: '1234', role: 'employee' }
 ];
 
-export const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'c1',
-    clientType: 'Individual',
-    clientName: 'Almaz Tekle',
-    phone: '+251911223344',
-    acquisitionSource: 'TikTok',
-    orderTakenBy: 'Bereket',
-    productType: 'Pocket Card',
-    quantity: 150,
-    unitPrice: 85,
-    advancePayment: 6000,
-    paymentMethodId: 'b1',
-    paperType1: 'Big flower',
-    amount1: 75 / 150, // 0.5 sheets per card (75 sheets total)
-    paperType2: 'Gold',
-    amount2: 50 / 150, // ~0.33 sheets per card (50 sheets total)
-    paperType3: 'None',
-    amount3: 0,
-    entrancePaper: 'Entrance Paper',
-    amount16: 128, // 128 pieces total / 16 = 8 sheets
-    ajabiPaper: 'None',
-    amount9: 0,
-    deliveryDate: '2026-06-12'
-  },
-  {
-    id: 'c2',
-    clientType: 'Organization',
-    clientName: 'Sheraton Addis Event Dep',
-    phone: '+251115171717',
-    acquisitionSource: 'Repeat',
-    orderTakenBy: 'Yeabsra',
-    productType: 'Velvet Card',
-    quantity: 300,
-    unitPrice: 120,
-    advancePayment: 20000,
-    paymentMethodId: 'b1',
-    paperType1: 'Gold',
-    amount1: 150 / 300, // 0.5 sheets per card (150 sheets total)
-    paperType2: 'Silver',
-    amount2: 150 / 300, // 0.5 sheets per card (150 sheets total)
-    paperType3: 'White wave',
-    amount3: 100 / 300, // ~0.33 sheets per card (100 sheets total)
-    entrancePaper: 'None',
-    amount16: 0,
-    ajabiPaper: 'Ajabi Paper',
-    amount9: 180, // 180 pieces total / 9 = 20 sheets
-    deliveryDate: '2026-06-20'
-  },
-  {
-    id: 'c3',
-    clientType: 'Individual',
-    clientName: 'Yonas Kassa',
-    phone: '+251912556677',
-    acquisitionSource: 'Instagram',
-    orderTakenBy: 'Yordanos',
-    productType: 'Sliding Card',
-    quantity: 200,
-    unitPrice: 95,
-    advancePayment: 10000,
-    paymentMethodId: 'b2',
-    paperType1: 'Small flower',
-    amount1: 100 / 200, // 0.5 sheets per card (100 sheets total)
-    paperType2: 'White wave',
-    amount2: 50 / 200, // 0.25 sheets per card (50 sheets total)
-    paperType3: 'None',
-    amount3: 0,
-    entrancePaper: 'Entrance Paper',
-    amount16: 64, // 64 pieces / 16 = 4 sheets
-    ajabiPaper: 'None',
-    amount9: 0,
-    deliveryDate: '2026-06-15'
-  },
-  {
-    id: 'c4',
-    clientType: 'Individual',
-    clientName: 'Lidya Girma',
-    phone: '+251920334455',
-    acquisitionSource: 'Telegram',
-    orderTakenBy: 'Bereket',
-    productType: 'Acrylic Card',
-    quantity: 100,
-    unitPrice: 150,
-    advancePayment: 15000, // Fully Paid (X = 100*150 = 15000, I = 15000, V = 0)
-    paymentMethodId: 'b2',
-    paperType1: 'Kraft Matte',
-    amount1: 80 / 100, // 0.8 sheets per card (80 sheets total)
-    paperType2: 'Gold',
-    amount2: 40 / 100, // 0.4 sheets per card (40 sheets total)
-    paperType3: 'None',
-    amount3: 0,
-    entrancePaper: 'None',
-    amount16: 0,
-    ajabiPaper: 'Ajabi Paper',
-    amount9: 90, // 90 pieces / 9 = 10 sheets
-    deliveryDate: '2026-06-10'
-  },
-  {
-    id: 'c5',
-    clientType: 'Organization',
-    clientName: 'Abyssinia Corporate Solutions',
-    phone: '+251116631122',
-    acquisitionSource: 'Word of Mouth',
-    orderTakenBy: 'Yordanos',
-    productType: 'Trifold Invitation',
-    quantity: 500,
-    unitPrice: 75,
-    advancePayment: 15000, // Total = 37500, Advance = 15000, Remaining = 22500
-    paymentMethodId: 'b1',
-    paperType1: 'White wave',
-    amount1: 250 / 500, // 0.5 sheets per card (250 sheets total)
-    paperType2: 'Silver',
-    amount2: 120 / 500, // 0.24 sheets per card (120 sheets total)
-    paperType3: 'Big flower',
-    amount3: 50 / 500, // 0.1 sheets per card (50 sheets total)
-    entrancePaper: 'Entrance Paper',
-    amount16: 256, // 16 sheets
-    ajabiPaper: 'Ajabi Paper',
-    amount9: 270, // 30 sheets
-    deliveryDate: '2026-06-25'
-  },
-  {
-    id: 'c6',
-    clientType: 'Individual',
-    clientName: 'Selamawit Kebede',
-    phone: '+251911445566',
-    acquisitionSource: 'TikTok',
-    orderTakenBy: 'Yeabsra',
-    productType: 'Pocket Card',
-    quantity: 120,
-    unitPrice: 85,
-    advancePayment: 10200, // Fully Paid (120*85 = 10200)
-    paymentMethodId: 'b3',
-    paperType1: 'Small flower',
-    amount1: 60 / 120, // 0.5 sheets per card (60 sheets total)
-    paperType2: 'None',
-    amount2: 0,
-    paperType3: 'None',
-    amount3: 0,
-    entrancePaper: 'None',
-    amount16: 0,
-    ajabiPaper: 'None',
-    amount9: 0,
-    deliveryDate: '2026-06-08'
-  }
-];
+export const INITIAL_CUSTOMERS: Customer[] = [];
 
 export interface Purchase {
   id: string;
@@ -326,32 +181,5 @@ export const INITIAL_EXPENSE_CATEGORIES: ExpenseCategory[] = [
   }
 ];
 
-export const INITIAL_PURCHASES: Purchase[] = [
-  {
-    id: 'pur1',
-    purchasedBy: 'Yeabsra',
-    itemOrService: 'Gold foil sheets',
-    quantity: 10,
-    unitPrice: 150,
-    purchaseDate: '2026-06-01',
-    paymentMethodId: 'b1',
-    totalPrice: 1500,
-    notesOrDescription: 'Sourced premium quality gold foil sheets for organizing Velvet Cards',
-    recordedBy: 'Bereket',
-    expenseCategory: 'Raw Paper Stocks'
-  },
-  {
-    id: 'pur2',
-    purchasedBy: 'Bereket',
-    itemOrService: 'Toner cartridges',
-    quantity: 2,
-    unitPrice: 1200,
-    purchaseDate: '2026-06-04',
-    paymentMethodId: 'b2',
-    totalPrice: 2400,
-    notesOrDescription: 'CMYK laser toner cartridges for high precision proofing prints',
-    recordedBy: 'Bereket',
-    expenseCategory: 'Consumption Supplies'
-  }
-];
+export const INITIAL_PURCHASES: Purchase[] = [];
 
