@@ -178,6 +178,7 @@ export default function App() {
   const [newStaffPass, setNewStaffPass] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<'admin' | 'employee'>('employee');
   const [staffError, setStaffError] = useState('');
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
 
   const handleCreateStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,24 +186,93 @@ export default function App() {
       setStaffError('Please fill out all registration inputs.');
       return;
     }
-    if (employees.some(emp => emp.username.toLowerCase() === newStaffUser.trim().toLowerCase())) {
-      setStaffError('Username already exists on record.');
-      return;
+
+    if (editingEmployee) {
+      // Check if username is changing and already exists for another user
+      if (
+        newStaffUser.trim().toLowerCase() !== editingEmployee.username.toLowerCase() &&
+        employees.some(emp => emp.username.toLowerCase() === newStaffUser.trim().toLowerCase())
+      ) {
+        setStaffError('Username already exists on record.');
+        return;
+      }
+
+      // Update existing employee
+      const updatedEmployees = employees.map(emp => {
+        if (emp.id === editingEmployee.id) {
+          return {
+            ...emp,
+            name: newStaffName.trim(),
+            username: newStaffUser.trim().toLowerCase(),
+            password: newStaffPass,
+            role: newStaffRole
+          };
+        }
+        return emp;
+      });
+
+      setEmployees(updatedEmployees);
+      localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updatedEmployees));
+
+      // If we edited the currently logged-in user, update their session state!
+      if (currentUser && currentUser.id === editingEmployee.id) {
+        const updatedCurrentUser = {
+          ...currentUser,
+          name: newStaffName.trim(),
+          username: newStaffUser.trim().toLowerCase(),
+          password: newStaffPass,
+          role: newStaffRole
+        };
+        setCurrentUser(updatedCurrentUser);
+        localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedCurrentUser));
+      }
+
+      setEditingEmployee(null);
+      setNewStaffName('');
+      setNewStaffUser('');
+      setNewStaffPass('');
+      setNewStaffRole('employee');
+      setStaffError('');
+      alert('Staff personnel credentials updated successfully!');
+    } else {
+      // Create new employee
+      if (employees.some(emp => emp.username.toLowerCase() === newStaffUser.trim().toLowerCase())) {
+        setStaffError('Username already exists on record.');
+        return;
+      }
+      const newWorker: EmployeeUser = {
+        id: 'emp-' + Math.random().toString(36).substring(2, 9),
+        username: newStaffUser.trim().toLowerCase(),
+        password: newStaffPass,
+        name: newStaffName.trim(),
+        role: newStaffRole
+      };
+      handleAddNewEmployee(newWorker);
+      setNewStaffName('');
+      setNewStaffUser('');
+      setNewStaffPass('');
+      setNewStaffRole('employee');
+      setStaffError('');
+      alert(`Successfully registered staff member "${newWorker.name}" as ${newWorker.role}!`);
     }
-    const newWorker: EmployeeUser = {
-      id: 'emp-' + Math.random().toString(36).substring(2, 9),
-      username: newStaffUser.trim().toLowerCase(),
-      password: newStaffPass,
-      name: newStaffName.trim(),
-      role: newStaffRole
-    };
-    handleAddNewEmployee(newWorker);
+  };
+
+  const handleStartEditEmployee = (emp: EmployeeUser) => {
+    setEditingEmployee(emp);
+    setNewStaffName(emp.name);
+    setNewStaffUser(emp.username);
+    setNewStaffPass(emp.password || '');
+    setNewStaffRole(emp.role);
+    setStaffError('');
+  };
+
+  const handleCancelEditEmployee = () => {
+    setEditingEmployee(null);
     setNewStaffName('');
     setNewStaffUser('');
     setNewStaffPass('');
     setNewStaffRole('employee');
     setStaffError('');
-    alert(`Successfully registered staff member "${newWorker.name}" as ${newWorker.role}!`);
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -1420,7 +1490,15 @@ export default function App() {
                   <h3 className="text-sm font-bold font-mono tracking-wider uppercase text-white">Staff passkey &amp; Access Controls</h3>
                 </div>
                 <button
-                  onClick={() => { setShowStaffModal(false); setStaffError(''); }}
+                  onClick={() => { 
+                    setShowStaffModal(false); 
+                    setStaffError(''); 
+                    setEditingEmployee(null);
+                    setNewStaffName('');
+                    setNewStaffUser('');
+                    setNewStaffPass('');
+                    setNewStaffRole('employee');
+                  }}
                   className="text-gray-400 hover:text-white cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5 flex-shrink-0" />
@@ -1430,9 +1508,11 @@ export default function App() {
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto max-h-[80vh] space-y-6">
                 
-                {/* Add dynamic worker form */}
+                {/* Add/Edit dynamic worker form */}
                 <form onSubmit={handleCreateStaffSubmit} className="bg-[#181818] border border-[#262626] p-4 space-y-4 font-mono">
-                  <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">Add Staff Personnel / Operator</span>
+                  <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">
+                    {editingEmployee ? `Edit Staff Personnel: ${editingEmployee.name}` : 'Add Staff Personnel / Operator'}
+                  </span>
                   
                   {staffError && (
                     <div className="bg-[#31111E] border border-[#ee317b]/15 p-2.5 text-xs text-[#F87171] border-l border-[#ee317b]">
@@ -1490,12 +1570,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-2">
+                  <div className="flex justify-end gap-2 pt-2">
+                    {editingEmployee && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditEmployee}
+                        className="bg-[#262626] hover:bg-stone-850 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-none font-mono transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    )}
                     <button
                       type="submit"
                       className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-none font-mono transition-colors cursor-pointer"
                     >
-                      Authorize Operator
+                      {editingEmployee ? 'Save Changes' : 'Authorize Operator'}
                     </button>
                   </div>
                 </form>
@@ -1519,6 +1608,16 @@ export default function App() {
                           }`}>
                             {emp.role}
                           </span>
+                          {currentUser && currentUser.role === 'admin' && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditEmployee(emp)}
+                              className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#71b536] rounded-none cursor-pointer text-[9px] font-bold font-mono transition-colors"
+                              title="Edit worker credentials & role"
+                            >
+                              EDIT
+                            </button>
+                          )}
                           {currentUser && currentUser.role === 'admin' && currentUser.username !== emp.username && (
                             <button
                               type="button"
