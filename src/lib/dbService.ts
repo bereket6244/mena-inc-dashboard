@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
-import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory } from '../types';
+import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser } from '../types';
 
 // ============================================
 // 1. PAPER STOCKS OPERATIONS
@@ -245,3 +245,53 @@ export async function deleteExpenseCategoryDoc(id: string): Promise<void> {
     }
   }
 }
+
+// ============================================
+// 6. EMPLOYEES OPERATIONS
+// ============================================
+
+export async function fetchAllEmployees(localFallback: EmployeeUser[]): Promise<EmployeeUser[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*');
+
+      if (error) throw error;
+
+      return (data || []) as EmployeeUser[];
+    } catch (err: any) {
+      console.error("Supabase fetchAllEmployees failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveEmployeeDoc(emp: EmployeeUser): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .upsert(emp);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase saveEmployeeDoc failed:", err);
+    }
+  }
+}
+
+export async function deleteEmployeeDoc(username: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('username', username);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase deleteEmployeeDoc failed:", err);
+    }
+  }
+}
+

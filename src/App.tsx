@@ -198,15 +198,17 @@ export default function App() {
       }
 
       // Update existing employee
+      const updatedEmp: EmployeeUser = {
+        id: editingEmployee.id,
+        name: newStaffName.trim(),
+        username: newStaffUser.trim().toLowerCase(),
+        password: newStaffPass,
+        role: newStaffRole
+      };
+
       const updatedEmployees = employees.map(emp => {
         if (emp.id === editingEmployee.id) {
-          return {
-            ...emp,
-            name: newStaffName.trim(),
-            username: newStaffUser.trim().toLowerCase(),
-            password: newStaffPass,
-            role: newStaffRole
-          };
+          return updatedEmp;
         }
         return emp;
       });
@@ -214,15 +216,14 @@ export default function App() {
       setEmployees(updatedEmployees);
       localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updatedEmployees));
 
+      // Sync updated employee to live database
+      import('./lib/dbService').then(({ saveEmployeeDoc }) => {
+        saveEmployeeDoc(updatedEmp).catch(() => {});
+      }).catch(() => {});
+
       // If we edited the currently logged-in user, update their session state!
       if (currentUser && currentUser.id === editingEmployee.id) {
-        const updatedCurrentUser = {
-          ...currentUser,
-          name: newStaffName.trim(),
-          username: newStaffUser.trim().toLowerCase(),
-          password: newStaffPass,
-          role: newStaffRole
-        };
+        const updatedCurrentUser = updatedEmp;
         setCurrentUser(updatedCurrentUser);
         localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedCurrentUser));
       }
@@ -360,7 +361,9 @@ export default function App() {
           fetchAllCustomers, 
           fetchAllBankAccounts,
           fetchAllPurchases,
-          fetchAllExpenseCategories
+          fetchAllExpenseCategories,
+          fetchAllEmployees,
+          saveEmployeeDoc
         } = await import('./lib/dbService');
         
         const finalS = await fetchAllPaperStocks(initialS);
@@ -400,12 +403,33 @@ export default function App() {
         const finalB = await fetchAllBankAccounts(initialB);
         const finalP = await fetchAllPurchases(initialP);
         const finalCat = await fetchAllExpenseCategories(initialCat);
+        const finalEmployees = await fetchAllEmployees(initialEmployees);
+
+        if (finalEmployees.length === 0) {
+          // Empty remote table, seed with initialEmployees
+          for (const emp of initialEmployees) {
+            await saveEmployeeDoc(emp);
+          }
+          finalEmployees.push(...initialEmployees);
+        }
         
         setPaperStocks(finalS);
         setCustomers(finalC);
         setBankAccounts(finalB);
         setPurchases(finalP);
         setCategories(finalCat);
+        setEmployees(finalEmployees);
+
+        if (currentUser) {
+          const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
+          if (!matchedUser) {
+            setCurrentUser(null);
+            localStorage.removeItem('mena_inc_current_user_v3');
+          } else {
+            setCurrentUser(matchedUser);
+            localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(matchedUser));
+          }
+        }
         
         const { supabaseValidationError } = await import('./lib/supabase');
         setDbValidationError(supabaseValidationError);
@@ -415,6 +439,7 @@ export default function App() {
         localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(finalB));
         localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(finalP));
         localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(finalCat));
+        localStorage.setItem('mena_inc_employees_v3', JSON.stringify(finalEmployees));
       } catch (err) {
         // Fallback
       } finally {
@@ -540,6 +565,11 @@ export default function App() {
     const updated = employees.filter(emp => emp.username !== username);
     setEmployees(updated);
     localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updated));
+
+    // Sync deletion to live database
+    import('./lib/dbService').then(({ deleteEmployeeDoc }) => {
+      deleteEmployeeDoc(username).catch(() => {});
+    }).catch(() => {});
   };
 
   // Mutators for Bank/Payment Accounts with Local and Cloud Storage integrations
@@ -717,6 +747,11 @@ export default function App() {
     const updated = [...employees, newEmp];
     setEmployees(updated);
     localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updated));
+
+    // Sync new employee to live database
+    import('./lib/dbService').then(({ saveEmployeeDoc }) => {
+      saveEmployeeDoc(newEmp).catch(() => {});
+    }).catch(() => {});
   };
 
   const handleLogout = () => {
@@ -737,11 +772,11 @@ export default function App() {
   }, []);
 
   // Keep a ref containing the latest state of all collections to avoid resetting the polling interval on changes
-  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories });
+  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories, employees });
   
   useEffect(() => {
-    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories };
-  }, [paperStocks, customers, bankAccounts, purchases, categories]);
+    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories, employees };
+  }, [paperStocks, customers, bankAccounts, purchases, categories, employees]);
 
   // Background database polling to fetch updates when online and linked
   useEffect(() => {
@@ -757,18 +792,20 @@ export default function App() {
           fetchAllCustomers, 
           fetchAllBankAccounts,
           fetchAllPurchases,
-          fetchAllExpenseCategories
+          fetchAllExpenseCategories,
+          fetchAllEmployees
         } = await import('./lib/dbService');
 
         const current = collectionsRef.current;
 
         // Fetch all tables concurrently in parallel
-        const [newS, newC, newB, newP, newCat] = await Promise.all([
+        const [newS, newC, newB, newP, newCat, newE] = await Promise.all([
           fetchAllPaperStocks(current.paperStocks),
           fetchAllCustomers(current.customers),
           fetchAllBankAccounts(current.bankAccounts),
           fetchAllPurchases(current.purchases),
-          fetchAllExpenseCategories(current.categories)
+          fetchAllExpenseCategories(current.categories),
+          fetchAllEmployees(current.employees)
         ]);
 
         const isDifferent = (a: any[], b: any[]) => JSON.stringify(a) !== JSON.stringify(b);
@@ -802,13 +839,30 @@ export default function App() {
           setCategories(newCat);
           localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCat));
         }
+        if (isDifferent(newE, current.employees)) {
+          setEmployees(newE);
+          localStorage.setItem('mena_inc_employees_v3', JSON.stringify(newE));
+
+          // If the currently logged-in user was updated/deleted in the database
+          if (currentUser) {
+            const matched = newE.find(e => e.username === currentUser.username);
+            if (!matched) {
+              setCurrentUser(null);
+              localStorage.removeItem('mena_inc_current_user_v3');
+              setStaffError('Your active operator account was deleted by another administrator.');
+            } else if (matched.role !== currentUser.role || matched.password !== currentUser.password || matched.name !== currentUser.name) {
+              setCurrentUser(matched);
+              localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(matched));
+            }
+          }
+        }
       } catch (err) {
         console.warn("Background database synchronization failed:", err);
       }
     }, 10000); // Sync check every 10 seconds
 
     return () => clearInterval(intervalId);
-  }, [liveDbLinked, isOnline]);
+  }, [liveDbLinked, isOnline, currentUser]);
 
   if (!currentUser) {
     return (
@@ -1832,7 +1886,17 @@ ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;`}
+ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.employees (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  username text UNIQUE NOT NULL,
+  password text NOT NULL,
+  role text NOT NULL CHECK (role IN ('admin', 'employee'))
+);
+
+ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`}
                     </pre>
                   </div>
                 </div>

@@ -74,3 +74,14 @@ ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.employees (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  username text UNIQUE NOT NULL,
+  password text NOT NULL,
+  role text NOT NULL CHECK (role IN ('admin', 'employee'))
+);
+
+ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
+
