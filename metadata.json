@@ -1,0 +1,6 @@
+{
+  "name": "Mena Database & Inventory System v2",
+  "description": "Premium workflow platform for Mena Inc. that integrates customer order logs directly with a dynamic stock room ledger, automated inventory formulas, real-time metrics, employee leaderboards, and marketing channel queries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

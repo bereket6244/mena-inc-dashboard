@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mena Inc. Advanced Database & Inventory System v2</title>
+    
+    <!-- 📦 PROGRESSIVE WEB APP (PWA) ENHANCEMENTS FOR SYSTEM ACCESSIBILITY -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0A0A0A" />
+    <link rel="shortcut icon" type="image/png" href="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" />
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" />
+
+    <!-- iOS Native Integration Features -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mena CRM" />
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" />
+    <link rel="apple-touch-startup-image" href="https://lh3.googleusercontent.com/d/1bpYlthdXFMnenMktbIvvyRghAooaBh8r" />
+
+    <script>
+      // Global safety script to defend against read-only/getter-only fetch crashes in sandbox environments
+      (function() {
+        try {
+          // Pre-emptively satisfy formdata-polyfill verification so it skips setup
+          if (typeof window !== 'undefined' && typeof window.FormData !== 'undefined') {
+            if (!window.FormData.prototype.keys) {
+              window.FormData.prototype.keys = function() { return []; };
+            }
+          }
+          
+          // Patch fetch in window to safely accept setter assignments
+          const originalFetch = window.fetch;
+          let currentFetch = originalFetch;
+          try {
+            Object.defineProperty(window, 'fetch', {
+              get() { return currentFetch; },
+              set(v) { 
+                console.log("Safe fetch interceptor: Redirected custom fetch assignment.");
+                currentFetch = v; 
+              },
+              configurable: true,
+              enumerable: true
+            });
+          } catch(e) {
+            // If window.fetch is sealed/unconfigurable, define it on globalThis as an fallback
+            if (typeof globalThis !== 'undefined') {
+              let currentGlobalFetch = globalThis.fetch || originalFetch;
+              try {
+                Object.defineProperty(globalThis, 'fetch', {
+                  get() { return currentGlobalFetch; },
+                  set(v) { currentGlobalFetch = v; },
+                  configurable: true,
+                  enumerable: true
+                });
+              } catch(inner) {}
+            }
+          }
+        } catch(err) {
+          console.warn("Safe fetch interceptor initialization bypassed:", err);
+        }
+      })();
+
+      // Register the service worker to support mobile offline caching and install triggers
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Mena Ledger PWA service worker registered:', reg.scope))
+            .catch(err => console.error('PWA service worker registration failed:', err));
+        });
+      }
+    </script>
+    
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

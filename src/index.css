@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Base Body Styles */
+body {
+  font-family: var(--font-sans);
+  background-color: #0A0A0A;
+  color: #E2E8F0;
+  line-height: 1.15;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Completed Row highlights */
+.completed-order-row {
+  background-color: rgba(17, 41, 24, 0.45) !important;
+  color: #34D399 !important;
+}
+.completed-order-row td {
+  color: #a7f3d0 !important;
+}
+
+/* Incomplete/Reason-given Row highlights */
+.incomplete-order-row {
+  background-color: rgba(46, 24, 29, 0.75) !important;
+  color: #F87171 !important;
+}
+.incomplete-order-row td {
+  color: #FCA5A5 !important;
+}
+
+/* Light Mode general overrides */
+.light-theme {
+  background-color: #F3F4F6 !important;
+  color: #1F2937 !important;
+}
+
+:root:has(.light-theme) body,
+body.light-theme {
+  background-color: #F3F4F6 !important;
+  color: #1F2937 !important;
+}
+
+.light-theme .bg-\[\#0A0A0A\] {
+  background-color: #F3F4F6 !important;
+}
+.light-theme .bg-\[\#121212\] {
+  background-color: #FFFFFF !important;
+}
+.light-theme .bg-\[\#181818\] {
+  background-color: #F9FAFB !important;
+}
+.light-theme .bg-\[\#1C1C1C\] {
+  background-color: #E5E7EB !important;
+}
+.light-theme .bg-\[\#161616\]\/70 {
+  background-color: #F3F4F6 !important;
+}
+.light-theme .bg-\[\#161616\]\/45 {
+  background-color: #F9FAFB !important;
+}
+.light-theme .bg-\[\#161616\] {
+  background-color: #F3F4F6 !important;
+}
+.light-theme .bg-\[\#101010\] {
+  background-color: #E5E7EB !important;
+}
+.light-theme .bg-\[\#141414\] {
+  background-color: #F9FAFB !important;
+}
+.light-theme .bg-\[\#151515\] {
+  background-color: #FFFFFF !important;
+}
+.light-theme .bg-\[\#1a1215\]\/30 {
+  background-color: #FFF5F7 !important;
+}
+.light-theme .bg-\[\#1f2d1e\] {
+  background-color: #E6F4EA !important;
+}
+.light-theme .bg-\[\#1a1a1a\] {
+  background-color: #F3F4F6 !important;
+}
+.light-theme .border-\[\#232323\],
+.light-theme .border-\[\#222222\],
+.light-theme .border-\[\#2d2d2d\],
+.light-theme .border-\[\#202020\] {
+  border-color: #D1D5DB !important;
+}
+.light-theme .text-stone-250 {
+  color: #1F2937 !important;
+}
+.light-theme .bg-transparent {
+  background-color: transparent !important;
+}
+
+/* White and light text colors overrides */
+.light-theme .text-white {
+  color: #111827 !important;
+}
+.light-theme .text-gray-200 {
+  color: #1F2937 !important;
+}
+.light-theme .text-[#E2E8F0] {
+  color: #1F2937 !important;
+}
+.light-theme .text-gray-350 {
+  color: #374151 !important;
+}
+.light-theme .text-gray-300 {
+  color: #374151 !important;
+}
+.light-theme .text-gray-400 {
+  color: #4B5563 !important;
+}
+.light-theme .text-gray-500 {
+  color: #6B7280 !important;
+}
+.light-theme .text-stone-300 {
+  color: #374151 !important;
+}
+.light-theme .text-stone-450 {
+  color: #4B5563 !important;
+}
+.light-theme .text-stone-400 {
+  color: #4B5563 !important;
+}
+
+/* Borders variables */
+.light-theme .border-\[\#262626\],
+.light-theme .border-b-\[\#262626\],
+.light-theme .border-r-\[\#262626\],
+.light-theme .border-t-\[\#262626\] {
+  border-color: #E5E7EB !important;
+}
+
+/* Rows and table hovering */
+.light-theme .hover\:bg-\[\#1a1a1a\]:hover,
+.light-theme .hover\:bg-\[\#1f1f1f\]:hover,
+.light-theme tr:hover {
+  background-color: #F3F4F6 !important;
+}
+
+/* Input fields and selects */
+.light-theme input,
+.light-theme select {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+  border-color: #D1D5DB !important;
+}
+.light-theme input:disabled,
+.light-theme select:disabled,
+.light-theme textarea:disabled {
+  background-color: #E5E7EB !important;
+  color: #374151 !important;
+  border-color: #9CA3AF !important;
+  opacity: 1 !important;
+}
+.light-theme input::placeholder {
+  color: #9CA3AF !important;
+}
+
+/* High contrast tables */
+.light-theme thead tr {
+  background-color: #E5E7EB !important;
+}
+.light-theme thead th {
+  color: #1F2937 !important;
+}
+.light-theme tbody td {
+  border-color: #E5E7EB !important;
+}
+
+/* Completed row color high contrast for Light Theme */
+.light-theme .completed-order-row {
+  background-color: #E6F4EA !important;
+  color: #137333 !important;
+}
+.light-theme .completed-order-row td {
+  color: #137333 !important;
+}
+.light-theme .completed-order-row span,
+.light-theme .completed-order-row select,
+.light-theme .completed-order-row input {
+  color: #137333 !important;
+  border-color: #A7F3D0 !important;
+}
+
+.light-theme .incomplete-order-row {
+  background-color: #FCE8E6 !important;
+  color: #C5221F !important;
+}
+.light-theme .incomplete-order-row td {
+  color: #C5221F !important;
+}
+.light-theme .incomplete-order-row span,
+.light-theme .incomplete-order-row select,
+.light-theme .incomplete-order-row input {
+  color: #C5221F !important;
+  border-color: #F87171 !important;
+}
+
+/* Custom Scrollbars for Sharp Design */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ee317b;
+}
+
+/* Sharp focus outlines and helper utilities */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #ee317b !important;
+  box-shadow: 0 0 0 1px #ee317b;
+}
+
+/* Scrollbar Hider Utility for Mobile Horizontal Scrolling items */
+.scrollbar-none-x::-webkit-scrollbar {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+.scrollbar-none-x {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Make calendar picker icons clearly visible on dark background */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Revert inverted icons if we are in light theme mode */
+.light-theme input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0) !important;
+}
+
+/* Caret/Text Insertion Cursor Alignment */
+input, textarea {
+  caret-color: #FFFFFF !important;
+}
+.light-theme input, .light-theme textarea {
+  caret-color: #000000 !important;
+}
+
+/* Low stock alerts are green */
+.low-stock-row {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-left: 2px solid #10B981 !important;
+}
+.low-stock-row td {
+  color: #c6f6d5 !important;
+}
+.light-theme .low-stock-row {
+  background-color: #E6F4EA !important;
+  border-left: 2px solid #137333 !important;
+}
+.light-theme .low-stock-row td {
+  color: #137333 !important;
+}
+
+/* Out of stock alerts are red */
+.out-of-stock-row {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  border-left: 2px solid #EF4444 !important;
+}
+.out-of-stock-row td {
+  color: #fed7d7 !important;
+}
+.light-theme .out-of-stock-row {
+  background-color: #FCE8E6 !important;
+  border-left: 2px solid #C5221F !important;
+}
+.light-theme .out-of-stock-row td {
+  color: #C5221F !important;
+}
+
+/* Override utility dark buttons in light-theme to prevent them being same color */
+.light-theme .bg-\[\#262626\],
+.light-theme .bg-zinc-800,
+.light-theme .bg-zinc-700 {
+  background-color: #E5E7EB !important;
+  border-color: #D1D5DB !important;
+  color: #1F2937 !important;
+}
+.light-theme .bg-\[\#262626\] span,
+.light-theme .bg-\[\#262626\] svg,
+.light-theme .bg-zinc-800 span,
+.light-theme .bg-zinc-800 svg {
+  color: #1F2937 !important;
+}
+.light-theme .hover\:bg-\[\#323232\]:hover,
+.light-theme .hover\:bg-zinc-700:hover,
+.light-theme .hover\:bg-zinc-600:hover {
+  background-color: #D1D5DB !important;
+}
+.light-theme .disabled\:bg-transparent:disabled {
+  background-color: transparent !important;
+}
+
+/* Custom Option Visibility, Selection & Caret-color Fixes */
+select option,
+option {
+  background-color: #181818 !important;
+  color: #FFFFFF !important;
+}
+
+.light-theme select option,
+.light-theme option {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+}
+
+.light-theme select {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+}
+
+/* Force specific elements to remain white in light mode */
+.keep-text-white {
+  color: #ffffff !important;
+}
+
