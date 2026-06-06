@@ -35,6 +35,64 @@ import {
 } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
+// Helper functions to translate OKLCH color strings to standard RGB/RGBA colors for html2canvas compatibility
+function oklchToRgb(lStr: string, cStr: string, hStr: string, alphaStr?: string): string {
+  let L = lStr.endsWith('%') ? parseFloat(lStr) / 100 : parseFloat(lStr);
+  let C = cStr.endsWith('%') ? parseFloat(cStr) / 100 : parseFloat(cStr);
+  let H = parseFloat(hStr);
+  if (hStr.endsWith('rad')) {
+    H = H * (180 / Math.PI);
+  } else if (hStr.endsWith('turn')) {
+    H = H * 360;
+  }
+  let hRad = H * (Math.PI / 180);
+
+  let lab_a = C * Math.cos(hRad);
+  let lab_b = C * Math.sin(hRad);
+
+  let l_lms = L + 0.3963377774 * lab_a + 0.2158037573 * lab_b;
+  let m_lms = L - 0.1055613458 * lab_a - 0.0638541728 * lab_b;
+  let s_lms = L - 0.0894841775 * lab_a - 1.2914855480 * lab_b;
+
+  let l3 = l_lms * l_lms * l_lms;
+  let m3 = m_lms * m_lms * m_lms;
+  let s3 = s_lms * s_lms * s_lms;
+
+  let r_lin = +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+  let g_lin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+  let b_lin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+
+  const toSRGB = (c: number) => {
+    if (c <= 0.0031308) return 12.92 * c;
+    return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  };
+
+  let r = Math.max(0, Math.min(255, Math.round(toSRGB(r_lin) * 255)));
+  let g = Math.max(0, Math.min(255, Math.round(toSRGB(g_lin) * 255)));
+  let b = Math.max(0, Math.min(255, Math.round(toSRGB(b_lin) * 255)));
+
+  if (alphaStr) {
+    let alpha = alphaStr.endsWith('%') ? parseFloat(alphaStr) / 100 : parseFloat(alphaStr);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function convertOklchStringToRgb(str: string): string {
+  return str.replace(/oklch\(([^)]+)\)/g, (match, content) => {
+    try {
+      const parts = content.trim().split(/[\s/]+/).filter(Boolean);
+      if (parts.length >= 3) {
+        return oklchToRgb(parts[0], parts[1], parts[2], parts[3]);
+      }
+    } catch (e) {
+      console.warn("Failed to parse oklch content:", content, e);
+    }
+    return match;
+  });
+}
+
+
 interface CustomerTabProps {
   customers: Customer[];
   paperStocks: PaperStock[];
@@ -87,7 +145,35 @@ export default function CustomerTab({
       btn.setAttribute('disabled', 'true');
     }
 
+    const originalGetComputedStyle = window.getComputedStyle;
+
     try {
+      // Temporarily patch window.getComputedStyle to translate OKLCH colors to RGB for html2canvas support
+      window.getComputedStyle = function(el, pseudoElt) {
+        const style = originalGetComputedStyle(el, pseudoElt);
+        return new Proxy(style, {
+          get(target, prop, receiver) {
+            if (prop === 'getPropertyValue') {
+              return function(propertyName: string) {
+                const val = target.getPropertyValue(propertyName);
+                if (typeof val === 'string' && val.includes('oklch')) {
+                  return convertOklchStringToRgb(val);
+                }
+                return val;
+              };
+            }
+            const val = Reflect.get(target, prop, receiver);
+            if (typeof val === 'string' && val.includes('oklch')) {
+              return convertOklchStringToRgb(val);
+            }
+            if (typeof val === 'function') {
+              return val.bind(target);
+            }
+            return val;
+          }
+        });
+      };
+
       const container = document.getElementById('proforma-print-container');
       if (!container) {
         throw new Error('Proforma container element not found.');
@@ -155,6 +241,7 @@ export default function CustomerTab({
       alert(`Export Error: ${err?.message || String(err)}`);
       throw err;
     } finally {
+      window.getComputedStyle = originalGetComputedStyle;
       if (btn) {
         btn.innerHTML = originalText;
         btn.removeAttribute('disabled');
