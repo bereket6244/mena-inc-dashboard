@@ -1787,18 +1787,14 @@ export default function CustomerTab({
                       <div>
                         <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1 flex items-center gap-1" htmlFor="field-client-agent">
                           Taken By <span className="text-[#F87171]">*</span>
-                          {!isAdmin && <Lock className="w-3 h-3 text-[#ee317b]" />}
+                          <Lock className="w-3 h-3 text-[#ee317b]" />
                         </label>
                         <select
                           id="field-client-agent"
-                          disabled={!isAdmin}
+                          disabled={true}
                           value={orderTakenBy}
                           onChange={(e) => setOrderTakenBy(e.target.value as Customer['orderTakenBy'])}
-                          className={`w-full px-3 py-2 text-sm border font-mono rounded-none outline-none ${
-                            !isAdmin 
-                              ? 'bg-[#181818]/60 border-[#222222] text-zinc-500 cursor-not-allowed' 
-                              : 'bg-[#181818] border-[#262626] text-white focus:border-[#ee317b] cursor-pointer'
-                          }`}
+                          className="w-full px-3 py-2 text-sm border font-mono rounded-none outline-none bg-[#181818]/60 border-[#222222] text-zinc-500 cursor-not-allowed"
                         >
                           {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
                             <option key={a} value={a}>{a}</option>
