@@ -123,7 +123,7 @@ export default function CustomerTab({
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
-  const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: number; unitPrice: number; advancePayment: number; }>>([]);
+  const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: number | ''; unitPrice: number | ''; advancePayment: number | ''; }>>([]);
 
   // Proforma VAT State variables inside modal scope integration
   const [proformaIncludeVat, setProformaIncludeVat] = useState(true);
@@ -1095,9 +1095,9 @@ export default function CustomerTab({
                   {
                     id: 'temp-1',
                     productType: '',
-                    quantity: 0,
-                    unitPrice: 0,
-                    advancePayment: 0
+                    quantity: '',
+                    unitPrice: '',
+                    advancePayment: ''
                   }
                 ]);
                 setShowProformaModal(true);
@@ -2778,10 +2778,10 @@ export default function CustomerTab({
                             ...prev,
                             {
                               id: `temp-${Date.now()}`,
-                              productType: 'Double Ring Notebook (50 gsm)',
-                              quantity: 1000,
-                              unitPrice: 85.00,
-                              advancePayment: 0
+                              productType: '',
+                              quantity: '',
+                              unitPrice: '',
+                              advancePayment: ''
                             }
                           ]);
                         }}
@@ -2820,7 +2820,7 @@ export default function CustomerTab({
                                 placeholder="Qty"
                                 value={item.quantity}
                                 onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
+                                  const val = e.target.value === '' ? '' : Number(e.target.value);
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
                                 }}
                                 className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
@@ -2833,7 +2833,7 @@ export default function CustomerTab({
                                 placeholder="Price"
                                 value={item.unitPrice}
                                 onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
+                                  const val = e.target.value === '' ? '' : Number(e.target.value);
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
                                 }}
                                 className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
@@ -2846,7 +2846,7 @@ export default function CustomerTab({
                                 placeholder="Paid"
                                 value={item.advancePayment}
                                 onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
+                                  const val = e.target.value === '' ? '' : Number(e.target.value);
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
                                 }}
                                 className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
