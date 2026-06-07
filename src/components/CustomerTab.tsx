@@ -26,7 +26,6 @@ import {
 import { 
   Customer, 
   PaperStock, 
-  CLIENT_TYPES, 
   ACQUISITION_SOURCES, 
   AGENTS, 
   EmployeeUser,
@@ -87,8 +86,11 @@ interface CustomerTabProps {
   paperStocks: PaperStock[];
   bankAccounts: BankAccount[];
   productTypes: ProductType[];
+  clientTypes: { id: string; name: string }[];
   onAddProductType: (prod: ProductType) => Promise<void> | void;
-  onDeleteProductType: (idOrIds: string | string[]) => Promise<void> | void;
+  onDeleteProductType: (ids: string[]) => Promise<void> | void;
+  onAddClientType: (type: { id: string; name: string }) => void;
+  onDeleteClientType: (ids: string[]) => void;
   onAddCustomer: (customer: Customer) => void;
   onUpdateCustomer: (customer: Customer) => void;
   onDeleteCustomer: (id: string) => void;
@@ -102,8 +104,11 @@ export default function CustomerTab({
   paperStocks, 
   bankAccounts,
   productTypes,
+  clientTypes,
   onAddProductType,
   onDeleteProductType,
+  onAddClientType,
+  onDeleteClientType,
   onAddCustomer, 
   onUpdateCustomer, 
   onDeleteCustomer,
@@ -466,7 +471,7 @@ export default function CustomerTab({
   }, [proformaBankId, bankAccounts]);
 
   // Form Fields State
-  const [clientType, setClientType] = useState<Customer['clientType']>('Individual');
+  const [clientType, setClientType] = useState<string>('Individual');
   const [clientName, setClientName] = useState('');
   const [phone, setPhone] = useState('');
   const [acquisitionSource, setAcquisitionSource] = useState<Customer['acquisitionSource']>('Repeat');
@@ -474,6 +479,8 @@ export default function CustomerTab({
   const [productType, setProductType] = useState(productTypes[0]?.name || '');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProductInput, setNewProductInput] = useState('');
+  const [isAddingClientType, setIsAddingClientType] = useState(false);
+  const [newClientTypeInput, setNewClientTypeInput] = useState('');
   const [showProductManager, setShowProductManager] = useState(false);
   const [newManagerProductInput, setNewManagerProductInput] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -535,20 +542,33 @@ export default function CustomerTab({
   const handleAddProductInline = async () => {
     const cleaned = newProductInput.trim();
     if (cleaned) {
-      const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
-      if (existing) {
-        setProductType(existing.name);
-      } else {
-        const newProd: ProductType = {
-          id: 'pt_' + Date.now(),
-          name: cleaned
-        };
+      const exists = productTypes.some(p => p.name.toLowerCase() === cleaned.toLowerCase());
+      if (!exists) {
+        const newProd = { id: 'pt_' + Date.now(), name: cleaned };
         await onAddProductType(newProd);
+        setProductType(cleaned);
+      } else {
         setProductType(cleaned);
       }
     }
     setNewProductInput('');
     setIsAddingProduct(false);
+  };
+
+  const handleAddClientTypeInline = () => {
+    const cleaned = newClientTypeInput.trim();
+    if (cleaned) {
+      const exists = clientTypes.some(c => c.name.toLowerCase() === cleaned.toLowerCase());
+      if (!exists) {
+        const newType = { id: 'ct_' + Date.now(), name: cleaned };
+        onAddClientType(newType);
+        setClientType(cleaned);
+      } else {
+        setClientType(cleaned);
+      }
+    }
+    setNewClientTypeInput('');
+    setIsAddingClientType(false);
   };
 
   // Open form for Create
@@ -1292,7 +1312,7 @@ export default function CustomerTab({
                       
                       {/* Client Type */}
                       <td className="py-2 px-3 border-r border-[#262626] font-sans">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : 'bg-[#181818] text-gray-300 border-[#262626]'}`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : c.clientType === 'Individual' ? 'bg-[#181818] text-gray-300 border-[#262626]' : 'bg-[#1e1e1e] text-[#ee317b] border-[#ee317b]/30'}`}>
                           {c.clientType.toUpperCase()}
                         </span>
                       </td>
@@ -1346,7 +1366,7 @@ export default function CustomerTab({
 
                       {/* Deposit Account (Advance) */}
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
-                        {c.paymentMethodId === '' ? 'None / Free' : (bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia')}
+                        {c.paymentMethodId === '' ? 'None' : (bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia')}
                       </td>
                       
                       {/* Paper 1 */}
@@ -1540,7 +1560,7 @@ export default function CustomerTab({
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`text-[10px] uppercase font-sans font-bold px-2 py-0.5 rounded-md border ${
-                            c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : 'bg-[#181818] text-gray-300 border-[#262626]'
+                            c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : c.clientType === 'Individual' ? 'bg-[#181818] text-gray-300 border-[#262626]' : 'bg-[#1e1e1e] text-[#ee317b] border-[#ee317b]/30'
                           }`}>
                             {c.clientType}
                           </span>
@@ -1729,7 +1749,7 @@ export default function CustomerTab({
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
                       <span className="text-gray-300 font-medium truncate max-w-[180px]">
-                        {c.paymentMethodId === '' ? 'None / Free' : (bankAccounts.find(ac => ac.id === (c.paymentMethodId || 'b1'))?.name || 'CBE')}
+                        {c.paymentMethodId === '' ? 'None' : (bankAccounts.find(ac => ac.id === (c.paymentMethodId || 'b1'))?.name || 'CBE')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1862,14 +1882,80 @@ export default function CustomerTab({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-type">Client Type</label>
-                        <select
-                          id="field-client-type"
-                          value={clientType}
-                          onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
-                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
-                        >
-                          {CLIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        <div className="flex gap-1.5">
+                          {!isAddingClientType ? (
+                            <>
+                              <select
+                                id="field-client-type"
+                                value={clientType}
+                                onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
+                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
+                              >
+                                {clientTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setIsAddingClientType(true)}
+                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] rounded-md font-sans text-xs font-bold cursor-pointer transition-colors"
+                                title="Add custom Client Type"
+                              >
+                                + New
+                              </button>
+                              {clientType && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const ct = clientTypes.find(c => c.name === clientType);
+                                    if (ct) {
+                                      if (window.confirm(`Are you sure you want to delete client type "${ct.name}"?`)) {
+                                        onDeleteClientType([ct.id]);
+                                        const remaining = clientTypes.filter(c => c.id !== ct.id);
+                                        setClientType(remaining[0]?.name || '');
+                                      }
+                                    }
+                                  }}
+                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                  title="Delete selected Client Type"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] rounded-md px-2 py-1">
+                              <input
+                                type="text"
+                                placeholder="Client type..."
+                                value={newClientTypeInput}
+                                onChange={(e) => setNewClientTypeInput(e.target.value)}
+                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans w-full"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddClientTypeInline();
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddClientTypeInline}
+                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-sans"
+                              >
+                                Add
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewClientTypeInput('');
+                                  setIsAddingClientType(false);
+                                }}
+                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-sans"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -2252,7 +2338,7 @@ export default function CustomerTab({
                             onChange={(e) => setPaymentMethodId(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
                           >
-                            <option value="">-- None / Free --</option>
+                            <option value="">-- None --</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.name} {b.accountNumber ? `(A/C: ${b.accountNumber})` : ''}

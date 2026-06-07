@@ -1,9 +1,19 @@
+export interface ClientType {
+  id: string;
+  name: string;
+}
+
 export interface BankAccount {
   id: string;
   name: string;
   accountNumber?: string;
   initialBalance: number;
 }
+
+export const DEFAULT_CLIENT_TYPES: ClientType[] = [
+  { id: 'ct_1', name: 'Individual' },
+  { id: 'ct_2', name: 'Organization' }
+];
 
 export interface PaperStock {
   id: string;
@@ -13,7 +23,7 @@ export interface PaperStock {
 
 export interface Customer {
   id: string;
-  clientType: 'Individual' | 'Organization';
+  clientType: string;
   clientName: string;
   phone: string;
   acquisitionSource: string;

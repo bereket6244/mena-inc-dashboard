@@ -40,7 +40,9 @@ import {
   INITIAL_EXPENSE_CATEGORIES,
   INITIAL_PURCHASES,
   ProductType,
-  DEFAULT_PRODUCT_TYPES
+  DEFAULT_PRODUCT_TYPES,
+  ClientType,
+  DEFAULT_CLIENT_TYPES
 } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import InventoryTab from './components/InventoryTab';
@@ -54,6 +56,7 @@ const LOCAL_STORAGE_BANKS_KEY = 'mena_inc_bank_accounts_v4';
 const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
 const LOCAL_STORAGE_PRODUCT_TYPES_KEY = 'mena_inc_product_types_v3';
+const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
 
 export default function App() {
   // Theme state
@@ -92,6 +95,7 @@ export default function App() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -385,6 +389,17 @@ export default function App() {
           try {
             initialProd = JSON.parse(savedProductTypes);
           } catch (_) {}
+        }
+
+        const savedClientTypes = localStorage.getItem(LOCAL_STORAGE_CLIENT_TYPES_KEY);
+        if (savedClientTypes) {
+          try {
+            setClientTypes(JSON.parse(savedClientTypes));
+          } catch (_) {
+            setClientTypes(DEFAULT_CLIENT_TYPES);
+          }
+        } else {
+          setClientTypes(DEFAULT_CLIENT_TYPES);
         }
 
         const { isSupabaseConfigured } = await import('./lib/supabase');
@@ -788,16 +803,28 @@ export default function App() {
     }).catch(() => {});
   };
 
-  const handleDeleteProductType = (idOrIds: string | string[]) => {
-    const isArray = Array.isArray(idOrIds);
-    const ids = isArray ? idOrIds : [idOrIds];
+  const handleDeleteProductType = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    try {
+      const { deleteProductTypes } = await import('./lib/dbService');
+      await deleteProductTypes(ids);
+    } catch (e) {
+      console.warn('DB delete product type failed, continuing local update');
+    }
     const updated = productTypes.filter(p => !ids.includes(p.id));
     setProductTypes(updated);
-    localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
+  };
 
-    import('./lib/dbService').then(({ deleteProductTypeDoc }) => {
-      deleteProductTypeDoc(idOrIds).catch(() => {});
-    }).catch(() => {});
+  const handleAddClientType = (newType: ClientType) => {
+    const updated = [...clientTypes, newType];
+    setClientTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
+  };
+
+  const handleDeleteClientType = (ids: string[]) => {
+    const updated = clientTypes.filter(c => !ids.includes(c.id));
+    setClientTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
   };
 
   // Staff and Authentication mutators
@@ -1676,8 +1703,11 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               paperStocks={paperStocks}
               bankAccounts={bankAccounts}
               productTypes={productTypes}
+              clientTypes={clientTypes}
               onAddProductType={handleAddProductType}
               onDeleteProductType={handleDeleteProductType}
+              onAddClientType={handleAddClientType}
+              onDeleteClientType={handleDeleteClientType}
               onAddCustomer={handleAddCustomer}
               onUpdateCustomer={handleEditCustomer}
               onDeleteCustomer={handleDeleteCustomer}
