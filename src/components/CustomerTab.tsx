@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { 
   Plus, 
@@ -2682,6 +2682,96 @@ export default function CustomerTab({
               {/* Printable Area - Rendered using White-Paper Theme */}
               <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-none flex-1 font-sans overscroll-contain" id="proforma-print-container">
                 <style dangerouslySetInnerHTML={{__html: `
+                  /* Explicit print-safe hex color overrides for all elements in the proforma container */
+                  #proforma-print-container {
+                    background-color: #ffffff !important;
+                    color: #111827 !important;
+                    border-color: #e5e7eb !important;
+                  }
+                  #proforma-print-container .text-gray-900,
+                  #proforma-print-container strong,
+                  #proforma-print-container h1,
+                  #proforma-print-container h2 {
+                    color: #111827 !important;
+                  }
+                  #proforma-print-container .text-gray-800,
+                  #proforma-print-container .text-gray-750,
+                  #proforma-print-container .text-gray-705 {
+                    color: #1f2937 !important;
+                  }
+                  #proforma-print-container .text-gray-700,
+                  #proforma-print-container .text-gray-600 {
+                    color: #374151 !important;
+                  }
+                  #proforma-print-container .text-gray-550,
+                  #proforma-print-container .text-gray-500,
+                  #proforma-print-container .text-gray-450 {
+                    color: #6b7280 !important;
+                  }
+                  #proforma-print-container .text-gray-400 {
+                    color: #9ca3af !important;
+                  }
+                  #proforma-print-container .text-black {
+                    color: #000000 !important;
+                  }
+                  #proforma-print-container .text-\[\#ee317b\] {
+                    color: #ee317b !important;
+                  }
+                  #proforma-print-container .text-\[\#71b536\] {
+                    color: #71b536 !important;
+                  }
+                  #proforma-print-container .text-green-700 {
+                    color: #15803d !important;
+                  }
+                  #proforma-print-container .text-red-700 {
+                    color: #b91c1c !important;
+                  }
+                  
+                  #proforma-print-container .border-gray-100 {
+                    border-color: #f3f4f6 !important;
+                  }
+                  #proforma-print-container .border-gray-200 {
+                    border-color: #e5e7eb !important;
+                  }
+                  #proforma-print-container .border-gray-250 {
+                    border-color: #e2e8f0 !important;
+                  }
+                  #proforma-print-container .border-gray-300 {
+                    border-color: #d1d5db !important;
+                  }
+                  #proforma-print-container .border-gray-350 {
+                    border-color: #cbd5e1 !important;
+                  }
+                  #proforma-print-container .border-gray-400 {
+                    border-color: #9ca3af !important;
+                  }
+                  #proforma-print-container table,
+                  #proforma-print-container th,
+                  #proforma-print-container td,
+                  #proforma-print-container tr,
+                  #proforma-print-container div {
+                    border-color: #d1d5db;
+                  }
+                  
+                  #proforma-print-container .bg-white {
+                    background-color: #ffffff !important;
+                  }
+                  #proforma-print-container .bg-gray-100 {
+                    background-color: #f3f4f6 !important;
+                  }
+                  #proforma-print-container .bg-gray-50 {
+                    background-color: #f9fafb !important;
+                  }
+                  #proforma-print-container .bg-gray-55 {
+                    background-color: #f9fafb !important;
+                  }
+                  #proforma-print-container .bg-gray-50\/50 {
+                    background-color: rgba(249, 250, 251, 0.5) !important;
+                  }
+                  #proforma-print-container .bg-gray-50\/20 {
+                    background-color: rgba(249, 250, 251, 0.2) !important;
+                  }
+
                   #proforma-print-container,
                   #proforma-print-container * {
                     -webkit-print-color-adjust: exact !important;
