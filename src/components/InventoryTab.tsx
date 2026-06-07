@@ -194,7 +194,7 @@ export default function InventoryTab({
     <div className="space-y-6 select-none" id="inventory-tab-pnl">
 
       {/* Control Bar & Selection Bar */}
-      <div className="bg-[#121212] border border-[#262626] rounded-none p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -203,7 +203,7 @@ export default function InventoryTab({
               placeholder="Search paper stocks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-sm bg-[#181818] text-white hover:bg-[#1C1C1C] focus:bg-[#1C1C1C] border border-[#262626] rounded-none outline-none focus:border-[#ee317b] transition-all font-sans"
+              className="w-full pl-9 pr-4 py-1.5 text-sm bg-[#181818] text-white hover:bg-[#1C1C1C] focus:bg-[#1C1C1C] border border-[#262626] rounded-md outline-none focus:border-[#ee317b] transition-all font-sans"
             />
           </div>
           
@@ -224,7 +224,7 @@ export default function InventoryTab({
                 });
               }
             }}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-gray-300 bg-[#181818] hover:bg-[#262626] border border-[#262626] rounded-none cursor-pointer transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-sans text-gray-300 bg-[#181818] hover:bg-[#262626] border border-[#262626] rounded-md cursor-pointer transition-colors"
           >
             <CheckSquare className="w-3.5 h-3.5 text-[#ee317b]" />
             {filteredStocks.length > 0 && filteredStocks.every(s => selectedStockIds.includes(s.id))
@@ -239,7 +239,7 @@ export default function InventoryTab({
             onClick={() => {
               exportInventoryCSV(paperStocks, customers);
             }}
-            className="text-xs font-mono font-bold text-cyan-400 hover:text-white hover:bg-cyan-500/10 border border-cyan-500/30 bg-cyan-500/5 rounded-none px-3.5 py-1.5 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="text-xs font-sans font-bold text-cyan-400 hover:text-white hover:bg-cyan-500/10 border border-cyan-500/30 bg-cyan-500/5 rounded-md px-3.5 py-1.5 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             title="Download full stockpile inventory ledger as a CSV file"
           >
             <Download className="w-4 h-4" />
@@ -251,14 +251,14 @@ export default function InventoryTab({
               <button
                 type="button"
                 onClick={() => setShowAddForm(true)}
-                className="text-xs font-mono font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] border border-[#ee317b] rounded-none px-3.5 py-1.5 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
+                className="text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] border border-[#ee317b] rounded-md px-3.5 py-1.5 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Add Paper Stock
               </button>
             </div>
           ) : (
-            <div className="text-xs font-mono text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5">
+            <div className="text-xs font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-[#ee317b]" />
               EMPLOYEE ACCESS: Inventory is READ-ONLY
             </div>
@@ -268,7 +268,7 @@ export default function InventoryTab({
 
       {/* Selected Stock Bulk Action Ribbon */}
       {selectedStockIds.length > 0 && (
-        <div className="bg-[#112918] border border-[#71b536]/30 p-3 rounded-none flex items-center justify-between text-xs font-mono animate-fadeIn mb-4">
+        <div className="bg-[#112918] border border-[#71b536]/30 p-3 rounded-md flex items-center justify-between text-xs font-sans animate-fadeIn mb-4">
           <div className="flex items-center gap-2 text-[#71b536]">
             <span className="w-2 h-2 rounded-full bg-[#71b536] animate-ping" />
             <span>Selected <strong>{selectedStockIds.length}</strong> paper stocks for action...</span>
@@ -296,19 +296,19 @@ export default function InventoryTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* List of Stocks - Responsive scroll table */}
-        <div className="bg-[#121212] border border-[#262626] rounded-none lg:col-span-2 overflow-hidden">
+        <div className="bg-[#121212] border border-[#262626] rounded-md lg:col-span-2 overflow-hidden">
           <div className="px-5 py-4 border-b border-[#262626] flex items-center justify-between bg-[#181818]">
-            <span className="font-mono font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2">
+            <span className="font-sans font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2">
               <Database className="w-4 h-4 text-[#ee317b]" />
               Paper Warehouse ledger
             </span>
-            <span className="text-[10px] font-mono text-gray-500 uppercase">Interactive Sheets Deduct System</span>
+            <span className="text-[10px] font-sans text-gray-500 uppercase">Interactive Sheets Deduct System</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs font-sans">
               <thead>
-                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-mono uppercase tracking-wider">
+                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans uppercase tracking-wider">
                   <th className="py-3 px-3 text-center w-10">
                     <input
                       type="checkbox"
@@ -332,7 +332,7 @@ export default function InventoryTab({
                   <th className="py-3 px-4 text-center w-40">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262626] text-gray-300 font-mono">
+              <tbody className="divide-y divide-[#262626] text-gray-300 font-sans">
                 {calculatedStocks.map((stock) => {
                   const status = getStatus(stock.remaining);
                   const isSelected = selectedStockIds.includes(stock.id);
@@ -403,7 +403,7 @@ export default function InventoryTab({
                               setReplenishingStockId(stock.id);
                               setReplenishAmount('');
                             }}
-                            className="bg-transparent text-[#71b536] hover:bg-[#71b536]/10 p-1 rounded-none border border-[#71b536]/20 text-[10px] tracking-wider transition-colors font-sans cursor-pointer flex items-center gap-0.5"
+                            className="bg-transparent text-[#71b536] hover:bg-[#71b536]/10 p-1 rounded-md border border-[#71b536]/20 text-[10px] tracking-wider transition-colors font-sans cursor-pointer flex items-center gap-0.5"
                             title={`Add Sheets to "${stock.name}" Stock`}
                           >
                             <Plus className="w-3 h-3" />
@@ -415,7 +415,7 @@ export default function InventoryTab({
                               setEditingStock(stock);
                               setEditInitialInput(stock.initialStock.toString());
                             }}
-                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-none transition-colors cursor-pointer"
+                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
                             title={`Update Initial Purchase of "${stock.name}"`}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -423,7 +423,7 @@ export default function InventoryTab({
                           <button
                             type="button"
                             onClick={() => setDeletingStockId(stock.id)}
-                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-none transition-colors cursor-pointer"
+                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
                             title={`Delete "${stock.name}" entirely from system`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -448,10 +448,10 @@ export default function InventoryTab({
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
-                className="bg-[#121212] border border-[#262626] rounded-none p-4 shadow-none"
+                className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none"
               >
                 <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
-                  <span className="font-mono font-bold text-white text-xs uppercase flex items-center gap-1.5">
+                  <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-[#ee317b]" />
                     Adjust Initial Stock
                   </span>
@@ -463,7 +463,7 @@ export default function InventoryTab({
                   </button>
                 </div>
 
-                <form onSubmit={handleEditStockSubmit} className="space-y-4 font-mono text-xs text-gray-300">
+                <form onSubmit={handleEditStockSubmit} className="space-y-4 font-sans text-xs text-gray-300">
                   <div>
                     <span className="text-gray-500 block mb-1 uppercase tracking-wider">Stock Name (Read-Only)</span>
                     <p className="bg-[#181818] px-3 py-2 text-white border border-[#262626]">
@@ -490,9 +490,9 @@ export default function InventoryTab({
                           setEditInitialInput(val.toString());
                         }
                       }}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-none outline-none focus:border-[#ee317b]"
+                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                     />
-                    <div className="text-[10px] text-gray-500 mt-1 font-mono">
+                    <div className="text-[10px] text-gray-500 mt-1 font-sans">
                       Parsed: {parseFractionOrExpression(editInitialInput)} sheets
                     </div>
                   </div>
@@ -527,10 +527,10 @@ export default function InventoryTab({
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 15 }}
-                  className="bg-[#121212] border border-[#71b536]/30 rounded-none p-4 shadow-none space-y-4"
+                  className="bg-[#121212] border border-[#71b536]/30 rounded-md p-4 shadow-none space-y-4"
                 >
                   <div className="flex justify-between items-center border-b border-[#262626] pb-3 select-none">
-                    <span className="font-mono font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
+                    <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
                       <Plus className="w-3.5 h-3.5" />
                       Add More Sheets to Stock
                     </span>
@@ -543,11 +543,11 @@ export default function InventoryTab({
                     </button>
                   </div>
 
-                  <p className="text-xs text-gray-400 font-mono">
+                  <p className="text-xs text-gray-400 font-sans">
                     Refill warehouse category <strong className="text-white">"{stock.name}"</strong> by adding sheets directly to current initial count.
                   </p>
 
-                  <div className="space-y-3 font-mono">
+                  <div className="space-y-3 font-sans">
                     <div>
                       <label className="block text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Sheets to Add (expression enabled)</label>
                       <input
@@ -555,7 +555,7 @@ export default function InventoryTab({
                         placeholder="e.g. 500 or 1000"
                         value={replenishAmount}
                         onChange={(e) => setReplenishAmount(cleanLeadingZeros(e.target.value))}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-none outline-none focus:border-[#71b536]"
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#71b536]"
                       />
                     </div>
 
@@ -577,7 +577,7 @@ export default function InventoryTab({
                           setReplenishingStockId(null);
                         }
                       }}
-                      className="w-full py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold font-mono tracking-wider cursor-pointer"
+                      className="w-full py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold font-sans tracking-wider cursor-pointer"
                     >
                       Confirm Stock Replenishment
                     </button>
@@ -594,10 +594,10 @@ export default function InventoryTab({
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
-                className="bg-[#121212] border border-[#262626] rounded-none p-4 shadow-none"
+                className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none"
               >
                 <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
-                  <span className="font-mono font-bold text-white text-xs uppercase flex items-center gap-1.5">
+                  <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                     <Plus className="w-4 h-4 text-[#ee317b]" />
                     Register New Paper
                   </span>
@@ -609,7 +609,7 @@ export default function InventoryTab({
                   </button>
                 </div>
 
-                <form onSubmit={handleAddStock} className="space-y-4 font-mono text-xs text-gray-300">
+                <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
                   <div>
                     <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
                     <input
@@ -619,7 +619,7 @@ export default function InventoryTab({
                       placeholder="e.g. Bronze wave"
                       value={newStockName}
                       onChange={(e) => setNewStockName(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-none outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
+                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
                     />
                   </div>
 
@@ -639,9 +639,9 @@ export default function InventoryTab({
                           setNewStockInitial(val.toString());
                         }
                       }}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-none outline-none focus:border-[#ee317b]"
+                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                     />
-                    <div className="text-[10px] text-gray-500 mt-1 font-mono">
+                    <div className="text-[10px] text-gray-500 mt-1 font-sans">
                       Parsed: {parseFractionOrExpression(newStockInitial)} sheets
                     </div>
                   </div>
@@ -667,8 +667,8 @@ export default function InventoryTab({
           </AnimatePresence>
 
           {/* Guidelines info card helper */}
-          <div className="bg-[#121212] border border-[#262626] rounded-none p-4 space-y-3 font-sans">
-            <span className="font-mono text-xs text-[#ee317b] tracking-wider uppercase font-bold block">Warehouse Instructions</span>
+          <div className="bg-[#121212] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
+            <span className="font-sans text-xs text-[#ee317b] tracking-wider uppercase font-bold block">Warehouse Instructions</span>
             <ul className="text-xs text-gray-400 space-y-2 list-disc list-inside leading-relaxed bg-[#181818]/40 p-3 border border-[#262626]">
               <li>Paper counts must be kept up-to-date daily.</li>
               <li>Stocks dropping under 50 sheets trigger a flash <strong className="text-[#FACC15]">Low Stock Alert</strong> automations.</li>
@@ -692,24 +692,24 @@ export default function InventoryTab({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-none"
+                className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-none">
+                  <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
                     <AlertTriangle className="w-6 h-6 animate-pulse" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <h3 className="font-mono text-base font-bold text-white uppercase tracking-wider">Remove Paper Stock?</h3>
-                    <p className="text-xs text-gray-400 leading-relaxed font-mono">
-                      Are you sure you want to completely remove the paper stock <span className="text-white font-semibold font-mono">"{targetStock.name}"</span>?
+                    <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Remove Paper Stock?</h3>
+                    <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                      Are you sure you want to completely remove the paper stock <span className="text-white font-semibold font-sans">"{targetStock.name}"</span>?
                     </p>
-                    <p className="text-xs text-[#F87171] leading-relaxed font-mono">
+                    <p className="text-xs text-[#F87171] leading-relaxed font-sans">
                       Warning: Removing this paper variant from warehouse will break active visual automatic calculations for customers ordering this paper type.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 mt-6 font-mono text-xs">
+                <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
                   <button
                     type="button"
                     onClick={() => setDeletingStockId(null)}
@@ -739,24 +739,24 @@ export default function InventoryTab({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-none"
+              className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
             >
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-none">
+                <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
                   <AlertTriangle className="w-6 h-6 animate-pulse" />
                 </div>
                 <div className="space-y-2 text-left">
-                  <h3 className="font-mono text-base font-bold text-white uppercase tracking-wider">Bulk-Remove Stocks?</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed font-mono">
-                    Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-mono">{selectedStockIds.length}</span> selected paper stockroom files?
+                  <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Bulk-Remove Stocks?</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                    Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedStockIds.length}</span> selected paper stockroom files?
                   </p>
-                  <p className="text-xs text-[#F87171] leading-relaxed font-mono">
+                  <p className="text-xs text-[#F87171] leading-relaxed font-sans">
                     Warning: This action is irreversible. Deleting warehouses values will affect calculations for customer orders bound to these materials!
                   </p>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-6 font-mono text-xs">
+              <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
                 <button
                   type="button"
                   onClick={() => setShowBulkDeleteConfirm(false)}

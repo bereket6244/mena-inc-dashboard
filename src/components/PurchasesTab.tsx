@@ -644,9 +644,9 @@ export default function PurchasesTab({
     <div className="space-y-6 select-none animate-fadeIn" id="purchases-tab-pnl">
       
       {/* Dynamic Summary Ribbon */}
-      <div className="bg-[#121212] border border-[#262626] rounded-none p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-mono font-extrabold text-white uppercase tracking-widest flex items-center gap-1.5">
+          <h2 className="text-sm font-sans font-extrabold text-white uppercase tracking-widest flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-[#ee317b]" />
             Business Expenses &amp; Purchases Ledger
           </h2>
@@ -657,8 +657,8 @@ export default function PurchasesTab({
 
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="text-[10px] text-gray-500 font-mono tracking-wider uppercase block">Total Expenses (Filtered)</span>
-            <span className="text-xl font-mono font-bold text-red-400 block">
+            <span className="text-[10px] text-gray-500 font-sans tracking-wider uppercase block">Total Expenses (Filtered)</span>
+            <span className="text-xl font-sans font-bold text-red-400 block">
               E{totalExpenseAmount.toLocaleString(undefined, { minimumFractionDigits: 1 })} ETB
             </span>
           </div>
@@ -669,7 +669,7 @@ export default function PurchasesTab({
               const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'Awash Bank / System Default';
               exportPurchasesCSV(purchases, getBankName);
             }}
-            className="px-3.5 py-2.5 bg-[#181818] hover:bg-[#262626] text-gray-300 hover:text-white border border-[#262626] text-xs font-mono font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-none"
+            className="px-3.5 py-2.5 bg-[#181818] hover:bg-[#262626] text-gray-300 hover:text-white border border-[#262626] text-xs font-sans font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-md"
             title="Download full supplier expenses ledger as a CSV file"
           >
             <Download className="w-4 h-4 text-[#71b536]" />
@@ -679,7 +679,7 @@ export default function PurchasesTab({
           <button
             type="button"
             onClick={handleOpenAddForm}
-            className="px-4 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-mono font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-none"
+            className="px-4 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-md"
           >
             <Plus className="w-4 h-4" />
             Add Bulk Purchases
@@ -691,9 +691,9 @@ export default function PurchasesTab({
         
         {/* Left Side: Expense Categories Sidebar Layout */}
         <div className="xl:col-span-1 space-y-4">
-          <div className="bg-[#121212] border border-[#262626] p-4 rounded-none space-y-4">
+          <div className="bg-[#121212] border border-[#262626] p-4 rounded-md space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-xs font-sans font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-[#ee317b]" />
                 Expense Categories
               </h3>
@@ -722,7 +722,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsMobileCategoriesCollapsed(!isMobileCategoriesCollapsed)}
-                  className="xl:hidden px-2 py-1 text-[10px] font-mono font-extrabold tracking-wider bg-[#1c1c1c] text-white hover:bg-[#262626] hover:text-[#ee317b] border border-[#262626] transition-colors uppercase"
+                  className="xl:hidden px-2 py-1 text-[10px] font-sans font-extrabold tracking-wider bg-[#1c1c1c] text-white hover:bg-[#262626] hover:text-[#ee317b] border border-[#262626] transition-colors uppercase"
                 >
                   {isMobileCategoriesCollapsed ? "Expand" : "Collapse"}
                 </button>
@@ -748,12 +748,12 @@ export default function PurchasesTab({
                         required
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
-                        className="flex-1 px-2 py-1 text-xs bg-[#101010] border border-[#262626] rounded-none focus:border-[#ee317b] text-white"
+                        className="flex-1 px-2 py-1 text-xs bg-[#101010] border border-[#262626] rounded-md focus:border-[#ee317b] text-white"
                         placeholder="e.g. Rent & Utilities"
                       />
                       <button
                         type="submit"
-                        className="px-2.5 bg-[#71b536] text-white hover:bg-[#5a932a] text-xs font-mono font-bold cursor-pointer"
+                        className="px-2.5 bg-[#71b536] text-white hover:bg-[#5a932a] text-xs font-sans font-bold cursor-pointer"
                       >
                         Add
                       </button>
@@ -765,11 +765,11 @@ export default function PurchasesTab({
               {/* List of Categories and their Subitems (Fully Editable) */}
               <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
                 {categories.map((cat) => (
-                  <div key={cat.id} className="border border-[#202020] bg-[#161616]/45 p-3 rounded-none relative">
+                  <div key={cat.id} className="border border-[#202020] bg-[#161616]/45 p-3 rounded-md relative">
                     
                     {/* Category Rename inline editor or standard display label */}
                     {editingCategoryId === cat.id ? (
-                      <div className="flex items-center gap-1.5 bg-[#101010] p-1.5 border border-[#71b536] mb-2 font-mono">
+                      <div className="flex items-center gap-1.5 bg-[#101010] p-1.5 border border-[#71b536] mb-2 font-sans">
                         <input
                           type="text"
                           value={editCategoryNameValue}
@@ -792,7 +792,7 @@ export default function PurchasesTab({
                       </div>
                     ) : (
                       <div className="flex items-center justify-between mb-2 pb-1 border-b border-[#222222]">
-                        <span className="text-[11px] font-mono font-bold text-white uppercase tracking-wider block truncate max-w-[150px]" title={cat.name}>
+                        <span className="text-[11px] font-sans font-bold text-white uppercase tracking-wider block truncate max-w-[150px]" title={cat.name}>
                           {cat.name}
                         </span>
                         
@@ -818,7 +818,7 @@ export default function PurchasesTab({
                             onClick={() => setActiveCategoryIdForNewItem(
                               activeCategoryIdForNewItem === cat.id ? null : cat.id
                             )}
-                            className="text-[9px] text-[#71b536] hover:text-[#5fa22e] font-mono uppercase bg-[#141414] px-1.5 py-0.5 border border-[#202020] cursor-pointer ml-1"
+                            className="text-[9px] text-[#71b536] hover:text-[#5fa22e] font-sans uppercase bg-[#141414] px-1.5 py-0.5 border border-[#202020] cursor-pointer ml-1"
                           >
                             + Item
                           </button>
@@ -840,7 +840,7 @@ export default function PurchasesTab({
                             }
                           }}
                           placeholder="New subitem..."
-                          className="flex-1 px-2 py-0.5 text-[11px] bg-[#141414] border border-[#262626] text-white font-mono"
+                          className="flex-1 px-2 py-0.5 text-[11px] bg-[#141414] border border-[#262626] text-white font-sans"
                         />
                         <button
                           type="button"
@@ -860,7 +860,7 @@ export default function PurchasesTab({
                         {cat.items.map((item, i) => (
                           <span 
                             key={i} 
-                            className="text-[9px] bg-stone-200 dark:bg-[#222222] border border-stone-300 dark:border-[#2d2d2d] text-stone-800 dark:text-stone-300 font-mono px-2 py-0.5"
+                            className="text-[9px] bg-stone-200 dark:bg-[#222222] border border-stone-300 dark:border-[#2d2d2d] text-stone-800 dark:text-stone-300 font-sans px-2 py-0.5"
                             title="Ready for auto-fill in purchase entry"
                           >
                             {item}
@@ -872,7 +872,7 @@ export default function PurchasesTab({
                 ))}
               </div>
 
-              <p className="text-[10px] text-gray-500 font-mono leading-tight pt-1">
+              <p className="text-[10px] text-gray-500 font-sans leading-tight pt-1">
                 💡 Renaming a category automatically cascades and updates all existing purchase rows locked to that category!
               </p>
             </div>
@@ -892,7 +892,7 @@ export default function PurchasesTab({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 bg-[#181818] border border-[#262626] rounded-none text-xs text-white placeholder-gray-500 outline-none focus:border-[#ee317b]"
+                  className="w-full pl-9 pr-4 py-1.5 bg-[#181818] border border-[#262626] rounded-md text-xs text-white placeholder-gray-500 outline-none focus:border-[#ee317b]"
                   placeholder="Query purchases, buyers, or loggers..."
                 />
               </div>
@@ -902,7 +902,7 @@ export default function PurchasesTab({
                 <select
                   value={selectedCategoryFilter}
                   onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-none focus:border-[#ee317b] outline-none"
+                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
                 >
                   <option value="All">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -914,7 +914,7 @@ export default function PurchasesTab({
                 <select
                   value={selectedBankFilter}
                   onChange={(e) => setSelectedBankFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-none focus:border-[#ee317b] outline-none"
+                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
                 >
                   <option value="All">All Bank Methods</option>
                   {bankAccounts.map(b => (
@@ -943,7 +943,7 @@ export default function PurchasesTab({
                     });
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-gray-300 bg-[#181818] hover:bg-[#262626] border border-[#262626] rounded-none cursor-pointer transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-sans text-gray-300 bg-[#181818] hover:bg-[#262626] border border-[#262626] rounded-md cursor-pointer transition-colors"
               >
                 <CheckSquare className="w-3.5 h-3.5 text-[#ee317b]" />
                 {sortedPurchases.length > 0 && sortedPurchases.every(p => selectedPurchaseIds.includes(p.id))
@@ -955,7 +955,7 @@ export default function PurchasesTab({
 
           {/* Bulk Action Ribbon */}
           {selectedPurchaseIds.length > 0 && (
-            <div className="bg-[#112918] border border-[#71b536]/30 p-3 rounded-none flex items-center justify-between text-xs font-mono animate-fadeIn">
+            <div className="bg-[#112918] border border-[#71b536]/30 p-3 rounded-md flex items-center justify-between text-xs font-sans animate-fadeIn">
               <span className="text-[#a7f3d0] font-bold">
                 ✓ {selectedPurchaseIds.length} purchase logs selected
               </span>
@@ -970,11 +970,11 @@ export default function PurchasesTab({
           )}
 
           {/* Table Spreadsheet View */}
-          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-none shadow-none">
+          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
-                  <tr className="border-b border-[#262626] bg-[#181818] text-[10px] text-gray-400 font-mono uppercase tracking-wider select-none">
+                  <tr className="border-b border-[#262626] bg-[#181818] text-[10px] text-gray-400 font-sans uppercase tracking-wider select-none">
                     <th className="py-3 px-3 text-center w-12">
                       <input
                         type="checkbox"
@@ -1020,10 +1020,10 @@ export default function PurchasesTab({
                     <th className="py-3 px-4 text-center w-32">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#262626] text-gray-300 font-mono text-xs">
+                <tbody className="divide-y divide-[#262626] text-gray-300 font-sans text-xs">
                   {sortedPurchases.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-gray-500 font-mono leading-relaxed italic">
+                      <td colSpan={10} className="py-12 text-center text-gray-500 font-sans leading-relaxed italic">
                         No purchase logs recorded in filter settings. Use the Add button to record ledger data.
                       </td>
                     </tr>
@@ -1061,12 +1061,12 @@ export default function PurchasesTab({
                               <span>{p.itemOrService}</span>
                               <div className="flex flex-wrap gap-1 mt-0.5 select-none">
                                 {p.hasVat && (
-                                  <span className="text-[8px] tracking-wider uppercase bg-[#182318] text-emerald-400 border border-emerald-900/50 px-1 font-mono font-bold">
+                                  <span className="text-[8px] tracking-wider uppercase bg-[#182318] text-emerald-400 border border-emerald-900/50 px-1 font-sans font-bold">
                                     +15% VAT
                                   </span>
                                 )}
                                 {p.hasWithholding && (
-                                  <span className="text-[8px] tracking-wider uppercase bg-[#31111E] text-red-400 border border-rose-950/50 px-1 font-mono font-bold">
+                                  <span className="text-[8px] tracking-wider uppercase bg-[#31111E] text-red-400 border border-rose-950/50 px-1 font-sans font-bold">
                                     -3% WH
                                   </span>
                                 )}
@@ -1088,7 +1088,7 @@ export default function PurchasesTab({
                           <td className="py-3 px-4 text-right text-gray-400">{Number(p.unitPrice).toLocaleString()}</td>
 
                           {/* Total Price */}
-                          <td className="py-3 px-4 text-right text-red-400 font-bold font-mono">
+                          <td className="py-3 px-4 text-right text-red-400 font-bold font-sans">
                             <div className="flex flex-col items-end">
                               <span>{Number(p.totalPrice).toLocaleString()} ETB</span>
                               {p.baseAmount && (p.hasVat || p.hasWithholding) && (
@@ -1108,7 +1108,7 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Recorded By */}
-                          <td className="py-3 px-4 text-gray-400 font-mono text-[11px]">{p.recordedBy}</td>
+                          <td className="py-3 px-4 text-gray-400 font-sans text-[11px]">{p.recordedBy}</td>
 
                           {/* Actions */}
                           <td className="py-3 px-4 text-center">
@@ -1116,7 +1116,7 @@ export default function PurchasesTab({
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditForm(p)}
-                                className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-none transition-colors cursor-pointer"
+                                className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
                                 title="Edit Purchase Record"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
@@ -1124,7 +1124,7 @@ export default function PurchasesTab({
                               <button
                                 type="button"
                                 onClick={() => setDeletingPurchaseId(p.id)}
-                                className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-none transition-colors cursor-pointer"
+                                className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
                                 title="Delete Purchase Ledger Line"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1156,23 +1156,23 @@ export default function PurchasesTab({
                 className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
               >
                 <div className="space-y-2">
-                  <h3 className="font-mono text-white font-bold uppercase tracking-wider text-sm">Discards Specific Expense</h3>
+                  <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Discards Specific Expense</h3>
                   <p className="text-stone-400 text-xs leading-relaxed font-sans">
                     Are you sure you want to permanently delete the registered purchase entry for <strong className="text-white">"{target.itemOrService}"</strong> recorded on {target.purchaseDate} for {target.totalPrice} ETB?
                   </p>
                 </div>
-                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-mono">
+                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
                   <button
                     type="button"
                     onClick={() => setDeletingPurchaseId(null)}
-                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-none"
+                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteSingle(deletingPurchaseId)}
-                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-none"
+                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
                   >
                     Confirm Delete
                   </button>
@@ -1194,19 +1194,19 @@ export default function PurchasesTab({
               className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
             >
               <div className="space-y-2">
-                <h3 className="font-mono text-white font-bold uppercase tracking-wider text-sm">Discards Highlighted Purchases</h3>
+                <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Discards Highlighted Purchases</h3>
                 <p className="text-stone-400 text-xs leading-relaxed font-sans">
-                  Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-mono">{selectedPurchaseIds.length}</span> selected purchase logs?
+                  Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedPurchaseIds.length}</span> selected purchase logs?
                 </p>
                 <p className="text-stone-500 text-[11px] leading-relaxed font-sans">
                   Warning: This action will permanently remove these expenses from your calculations and reports. It cannot be undone.
                 </p>
               </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-mono">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
                 <button
                   type="button"
                   onClick={() => setShowBulkDeleteConfirm(false)}
-                  className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-none"
+                  className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
                 >
                   Cancel
                 </button>
@@ -1216,7 +1216,7 @@ export default function PurchasesTab({
                     handleBulkDelete();
                     setShowBulkDeleteConfirm(false);
                   }}
-                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-none"
+                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
                 >
                   Delete Selected
                 </button>
@@ -1239,7 +1239,7 @@ export default function PurchasesTab({
                 className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
               >
                 <div className="space-y-2">
-                  <h3 className="font-mono text-white font-bold uppercase tracking-wider text-sm">Remove Expense Category</h3>
+                  <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Remove Expense Category</h3>
                   <p className="text-stone-400 text-xs leading-relaxed font-sans">
                     Are you sure you want to delete the expense category <strong className="text-white">"{deletingCategory.name}"</strong>?
                   </p>
@@ -1249,11 +1249,11 @@ export default function PurchasesTab({
                     </p>
                   )}
                 </div>
-                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-mono">
+                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
                   <button
                     type="button"
                     onClick={() => setDeletingCategory(null)}
-                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-none"
+                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
                   >
                     Cancel
                   </button>
@@ -1263,7 +1263,7 @@ export default function PurchasesTab({
                       onUpdateCategories(categories.filter(c => c.id !== deletingCategory.id));
                       setDeletingCategory(null);
                     }}
-                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-none"
+                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
                   >
                     Confirm Delete
                   </button>
@@ -1289,11 +1289,11 @@ export default function PurchasesTab({
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818] flex-shrink-0">
                 <div>
-                  <h4 className="font-mono font-bold text-white text-sm flex items-center gap-1.5 uppercase">
+                  <h4 className="font-sans font-bold text-white text-sm flex items-center gap-1.5 uppercase">
                     <Sparkles className="w-4 h-4 text-[#ee317b]" />
                     {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
                   </h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                  <p className="text-[10px] text-gray-400 mt-0.5 font-sans">
                     {editingPurchase ? 'Modify ledger row details.' : 'Add multiple products or services below, review the batch summary, and commit everything.'}
                   </p>
                 </div>
@@ -1301,7 +1301,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-none cursor-pointer"
+                  className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1311,8 +1311,8 @@ export default function PurchasesTab({
                <div className="flex-1 p-6 space-y-5 overflow-y-auto overscroll-contain">
                 
                 {/* BATCH CORE DETAILS (Date, Charger bank, Operator, logger) */}
-                <div className="bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-none">
-                    <span className="text-[10px] font-mono font-extrabold text-[#71b536] uppercase tracking-widest block border-b border-stone-250 dark:border-[#222222] pb-1.5">
+                <div className="bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-md">
+                    <span className="text-[10px] font-sans font-extrabold text-[#71b536] uppercase tracking-widest block border-b border-stone-250 dark:border-[#222222] pb-1.5">
                       Step 1: Batch Configuration Details
                     </span>
 
@@ -1324,7 +1324,7 @@ export default function PurchasesTab({
                           required
                           value={purchaseDate}
                           onChange={(e) => setPurchaseDate(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono"
+                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
                         />
                       </div>
 
@@ -1333,7 +1333,7 @@ export default function PurchasesTab({
                         <select
                           value={paymentMethodId}
                           onChange={(e) => setPaymentMethodId(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer"
+                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                         >
                           {bankAccounts.map((b) => (
                             <option key={b.id} value={b.id}>{b.name} (Acct: {b.accountNumber || 'Cash'})</option>
@@ -1356,7 +1356,7 @@ export default function PurchasesTab({
                             disabled={!isAdmin}
                             value={recordedBy}
                             onChange={(e) => setRecordedBy(e.target.value)}
-                            className={`w-full px-2.5 py-2 text-xs border rounded-none outline-none focus:border-[#ee317b] font-sans ${
+                            className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none focus:border-[#ee317b] font-sans ${
                               !isAdmin 
                                 ? 'bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed' 
                                 : 'bg-white dark:bg-[#181818] text-stone-950 dark:text-white border-stone-300 dark:border-[#262626]'
@@ -1368,8 +1368,8 @@ export default function PurchasesTab({
                   </div>
 
                   {/* ITEM INPUT ENGINE */}
-                  <div className="border border-stone-250 dark:border-[#2d2d2d] bg-stone-50 dark:bg-[#1a1215]/30 p-4 space-y-4 rounded-none relative">
-                    <span className="text-[10px] font-mono font-extrabold text-[#ee317b] uppercase tracking-widest block border-b border-stone-250 dark:border-[#2d2024] pb-1.5">
+                  <div className="border border-stone-250 dark:border-[#2d2d2d] bg-stone-50 dark:bg-[#1a1215]/30 p-4 space-y-4 rounded-md relative">
+                    <span className="text-[10px] font-sans font-extrabold text-[#ee317b] uppercase tracking-widest block border-b border-stone-250 dark:border-[#2d2024] pb-1.5">
                       {editingPurchase ? 'Edit Ledger Item Parameters' : 'Step 2: Add New Item to batch'}
                     </span>
 
@@ -1383,7 +1383,7 @@ export default function PurchasesTab({
                         value={expenseCategory}
                         disabled={isExactItemMatchedFromCatalog}
                         onChange={(e) => setExpenseCategory(e.target.value)}
-                        className={`w-full px-2.5 py-2 text-xs border rounded-none outline-none font-sans ${
+                        className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none font-sans ${
                           isExactItemMatchedFromCatalog 
                             ? 'bg-stone-100 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed' 
                             : 'bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] cursor-pointer'
@@ -1413,7 +1413,7 @@ export default function PurchasesTab({
                             }
                           }
                         }}
-                        className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-950 dark:text-white border border-stone-300 dark:border-[#262626] rounded-none outline-none focus:border-[#ee317b] font-sans"
+                        className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-950 dark:text-white border border-stone-300 dark:border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
                         placeholder="Type products (e.g. CMYK toner, Kraft backing...)"
                       />
 
@@ -1431,7 +1431,7 @@ export default function PurchasesTab({
                               <div
                                 key={idx}
                                 onClick={() => handleSuggestionClick(sug.name, sug.categoryName)}
-                                className="px-3 py-2 text-xs text-stone-850 dark:text-stone-250 hover:bg-[#ee317b]/10 hover:text-[#ee317b] dark:hover:text-white flex items-center justify-between font-mono font-medium"
+                                className="px-3 py-2 text-xs text-stone-850 dark:text-stone-250 hover:bg-[#ee317b]/10 hover:text-[#ee317b] dark:hover:text-white flex items-center justify-between font-sans font-medium"
                               >
                                 <span>{sug.name}</span>
                                 <span className="text-[9px] text-[#ee317b] bg-[#ee317b]/10 dark:bg-[#31111E] px-1.5 py-0.5 border border-[#ee317b]/20 lowercase">
@@ -1449,7 +1449,7 @@ export default function PurchasesTab({
                                   <PlusCircle className="w-4 h-4 text-[#ee317b]" />
                                   <span>Create <strong className="text-[#ee317b]">"{itemOrServiceInput.trim()}"</strong> as a new item...</span>
                                 </div>
-                                <span className="text-[10px] text-[#ee317b] uppercase font-mono font-bold tracking-wider">Catalog Tool</span>
+                                <span className="text-[10px] text-[#ee317b] uppercase font-sans font-bold tracking-wider">Catalog Tool</span>
                               </div>
                             )}
                           </motion.div>
@@ -1467,7 +1467,7 @@ export default function PurchasesTab({
                           required
                           value={quantity || ''}
                           onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] font-mono"
+                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
                         />
                       </div>
 
@@ -1480,7 +1480,7 @@ export default function PurchasesTab({
                           required
                           value={unitPrice || ''}
                           onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] font-mono"
+                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
                         />
                       </div>
                     </div>
@@ -1494,7 +1494,7 @@ export default function PurchasesTab({
                           onChange={(e) => setHasVat(e.target.checked)}
                           className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer"
                         />
-                        <div className="font-mono">
+                        <div className="font-sans">
                           <span className="text-[10px] uppercase font-bold text-gray-300 block">Add 15% VAT</span>
                           <span className="text-[9px] text-gray-500 block">Value Added Tax</span>
                         </div>
@@ -1507,7 +1507,7 @@ export default function PurchasesTab({
                           onChange={(e) => setHasWithholding(e.target.checked)}
                           className="accent-[#ee317b] w-3.5 h-3.5 cursor-pointer"
                         />
-                        <div className="font-mono">
+                        <div className="font-sans">
                           <span className="text-[10px] uppercase font-bold text-gray-300 block">3% Withholding</span>
                           <span className="text-[9px] text-gray-500 block">Supplier tax deduction</span>
                         </div>
@@ -1545,7 +1545,7 @@ export default function PurchasesTab({
                         value={notesOrDescription}
                         onChange={(e) => setNotesOrDescription(e.target.value)}
                         rows={1.5}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] font-sans resize-none"
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans resize-none"
                         placeholder="Add manufacturer invoice number, roll weights, etc."
                       />
                     </div>
@@ -1556,7 +1556,7 @@ export default function PurchasesTab({
                         <button
                           type="button"
                           onClick={handleAddCurrentRowToBatch}
-                          className="w-full py-2.5 bg-[#1f2d1e] hover:bg-[#2d422a] text-[#71b536] border border-[#71b536]/30 font-mono font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-none transition-all"
+                          className="w-full py-2.5 bg-[#1f2d1e] hover:bg-[#2d422a] text-[#71b536] border border-[#71b536]/30 font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all"
                         >
                           <Check className="w-4 h-4" />
                           + Confirm &amp; Add Item to Batch List
@@ -1568,9 +1568,9 @@ export default function PurchasesTab({
 
                   {/* BATCH OVERVIEW / PENDING SUMMARY BOX (Only in Add Mode) */}
                   {!editingPurchase && pendingBatchItems.length > 0 && (
-                    <div className="border border-zinc-700 bg-[#141414] p-4 space-y-4 rounded-none h-auto">
+                    <div className="border border-zinc-700 bg-[#141414] p-4 space-y-4 rounded-md h-auto">
                       <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                        <span className="text-[11px] font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="text-[11px] font-sans font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                           <Calculator className="w-4 h-4 text-[#ee317b]" />
                           Reviewing Pending Batch Summary ({pendingBatchItems.length} Products)
                         </span>
@@ -1578,14 +1578,14 @@ export default function PurchasesTab({
                         <button
                           type="button"
                           onClick={() => setPendingBatchItems([])}
-                          className="text-[9px] text-rose-400 hover:text-rose-300 uppercase tracking-wider font-mono outline-none"
+                          className="text-[9px] text-rose-400 hover:text-rose-300 uppercase tracking-wider font-sans outline-none"
                         >
                           Clear batch
                         </button>
                       </div>
 
                       {/* Small Grid pending items spreadsheet */}
-                      <div className="overflow-x-auto border border-[#222222] text-[11px] font-mono bg-[#101010]">
+                      <div className="overflow-x-auto border border-[#222222] text-[11px] font-sans bg-[#101010]">
                         <table className="w-full text-left border-collapse">
                           <thead>
                             <tr className="bg-[#181818] text-gray-500 uppercase text-[9px] border-b border-[#222222]">
@@ -1630,7 +1630,7 @@ export default function PurchasesTab({
                       </div>
 
                       {/* Cumulative Pricing Mathematics */}
-                      <div className="bg-[#181818] text-xs font-mono p-3 space-y-1.5 text-gray-400 border border-[#2d2d2d] rounded-none">
+                      <div className="bg-[#181818] text-xs font-sans p-3 space-y-1.5 text-gray-400 border border-[#2d2d2d] rounded-md">
                         <div className="flex justify-between">
                           <span>Total Cumulative Base Amount:</span>
                           <span className="text-white font-bold">
@@ -1666,14 +1666,14 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-mono select-none cursor-pointer border border-[#262626] hover:bg-[#202020] rounded-none"
+                  className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans select-none cursor-pointer border border-[#262626] hover:bg-[#202020] rounded-md"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSavePurchase}
-                  className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-mono font-bold cursor-pointer select-none rounded-none"
+                  className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer select-none rounded-md"
                 >
                   {editingPurchase 
                     ? 'Update Single Ledger Row' 
@@ -1696,21 +1696,21 @@ export default function PurchasesTab({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-[#121212] border border-stone-300 dark:border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-5 shadow-2xl rounded-none animate-fadeIn"
+              className="bg-white dark:bg-[#121212] border border-stone-300 dark:border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-5 shadow-2xl rounded-md animate-fadeIn"
             >
               <div>
-                <h3 className="font-mono text-stone-950 dark:text-white font-bold uppercase tracking-wider text-sm flex items-center gap-1.5">
+                <h3 className="font-sans text-stone-950 dark:text-white font-bold uppercase tracking-wider text-sm flex items-center gap-1.5">
                   <Tag className="w-4 h-4 text-[#ee317b]" />
                   Add New Item to Catalog
                 </h3>
-                <p className="text-stone-500 dark:text-gray-400 text-[11px] leading-relaxed font-mono mt-1">
+                <p className="text-stone-500 dark:text-gray-400 text-[11px] leading-relaxed font-sans mt-1">
                   You are registering <strong className="text-[#ee317b]">"{addingNewItemFromSearch}"</strong> to the business catalog. Assign it to an expense category below.
                 </p>
               </div>
 
               <div className="space-y-4">
                 {/* Category Option Selector Mode Toggle */}
-                <div className="flex gap-4 border-b border-stone-200 dark:border-[#222222] pb-2 text-xs font-mono">
+                <div className="flex gap-4 border-b border-stone-200 dark:border-[#222222] pb-2 text-xs font-sans">
                   <label className="flex items-center gap-1.5 cursor-pointer text-stone-900 dark:text-white">
                     <input
                       type="radio"
@@ -1737,7 +1737,7 @@ export default function PurchasesTab({
                     <select
                       value={newItemTargetCategory}
                       onChange={(e) => setNewItemTargetCategory(e.target.value)}
-                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer"
+                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                     >
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -1753,24 +1753,24 @@ export default function PurchasesTab({
                       value={modalNewCategoryName}
                       onChange={(e) => setModalNewCategoryName(e.target.value)}
                       placeholder="e.g. Licensing & Compliance"
-                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-sans"
+                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-stone-200 dark:border-[#222222] font-mono">
+              <div className="flex justify-end gap-3 pt-3 border-t border-stone-200 dark:border-[#222222] font-sans">
                 <button
                   type="button"
                   onClick={() => setAddingNewItemFromSearch(null)}
-                  className="px-4 py-1.5 bg-stone-100 dark:bg-[#1a1a1a] border border-stone-300 dark:border-[#2d2d2d] text-stone-700 dark:text-gray-300 hover:text-stone-950 dark:hover:text-white cursor-pointer text-xs rounded-none"
+                  className="px-4 py-1.5 bg-stone-100 dark:bg-[#1a1a1a] border border-stone-300 dark:border-[#2d2d2d] text-stone-700 dark:text-gray-300 hover:text-stone-950 dark:hover:text-white cursor-pointer text-xs rounded-md"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveNewItemFromSearch}
-                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-none"
+                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
                 >
                   Save Item
                 </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
@@ -127,10 +127,62 @@ export default function CustomerTab({
 
   // Proforma VAT State variables inside modal scope integration
   const [proformaIncludeVat, setProformaIncludeVat] = useState(true);
-  const [standaloneClientName, setStandaloneClientName] = useState('Mena Corporate Client PLC');
-  const [standaloneClientPhone, setStandaloneClientPhone] = useState('+251 900 000 000');
+  const [standaloneClientName, setStandaloneClientName] = useState('');
+  const [standaloneClientPhone, setStandaloneClientPhone] = useState('');
   const [applyDigitalStamp, setApplyDigitalStamp] = useState(true);
   const [proformaBankId, setProformaBankId] = useState<string>('');
+  const lastShowProformaModalRef = useRef(false);
+
+  // Editable proforma text states
+  const [proformaLogoMain, setProformaLogoMain] = useState('mena');
+  const [proformaLogoSuffix, setProformaLogoSuffix] = useState('inc');
+  const [proformaLogoSubtitle, setProformaLogoSubtitle] = useState('Mena Inc Trading PLC');
+  const [proformaContactTitle, setProformaContactTitle] = useState('Contact Information');
+  const [proformaContactAddress1, setProformaContactAddress1] = useState('Bole Brass, adjacent to Yod Abyssinia');
+  const [proformaContactAddress2, setProformaContactAddress2] = useState('Addis Ababa, Ethiopia');
+  const [proformaContactPhone1, setProformaContactPhone1] = useState('📞 +251 942 125 568');
+  const [proformaContactPhone2, setProformaContactPhone2] = useState('📞 +251 924 148 847');
+  const [proformaContactEmail, setProformaContactEmail] = useState('email: mena.inc@trading-plc.com');
+  const [proformaDocTitle, setProformaDocTitle] = useState('PROFORMA INVOICE');
+  const [proformaDocNoPrefix, setProformaDocNoPrefix] = useState('Document No: ');
+  const [proformaDocNo, setProformaDocNo] = useState('');
+  const [proformaDocIssueDateLabel, setProformaDocIssueDateLabel] = useState('Doc Issue Date:');
+  const [proformaDocIssueDate, setProformaDocIssueDate] = useState('');
+  const [proformaClientBillToLabel, setProformaClientBillToLabel] = useState('CLIENT BILL TO');
+  const [proformaClientName, setProformaClientName] = useState('');
+  const [proformaClientPhone, setProformaClientPhone] = useState('');
+  const [proformaClientRecipientId, setProformaClientRecipientId] = useState('');
+  const [proformaAuthorityLabel, setProformaAuthorityLabel] = useState('ISSUED BY AUTHORITY');
+  const [proformaIssuerName, setProformaIssuerName] = useState('');
+  const [proformaIssuerPositionLabel, setProformaIssuerPositionLabel] = useState('Position: ');
+  const [proformaIssuerPosition, setProformaIssuerPosition] = useState('');
+  const [proformaVerificationNote, setProformaVerificationNote] = useState('Secure conversion ledger validation active.');
+  const [proformaColNo, setProformaColNo] = useState('No.');
+  const [proformaColDesc, setProformaColDesc] = useState('Description of Product Line');
+  const [proformaColQty, setProformaColQty] = useState('Qty (pcs)');
+  const [proformaColPrice, setProformaColPrice] = useState('Unit Price (ETB)');
+  const [proformaColTotal, setProformaColTotal] = useState('Subtotal (ETB)');
+  const [proformaTermsTitle, setProformaTermsTitle] = useState('Terms & General Conditions');
+  const [proformaTerm1Prefix, setProformaTerm1Prefix] = useState('1. Delivery Term: ');
+  const [proformaDeliveryTerm, setProformaDeliveryTerm] = useState('Within 7 to 10 days from order receipt validation.');
+  const [proformaTerm2Prefix, setProformaTerm2Prefix] = useState('2. Payment Term: ');
+  const [proformaPaymentTerm, setProformaPaymentTerm] = useState('Requires at least 50% deposit ledger record, balance due prior to packaging release.');
+  const [proformaTerm3Prefix, setProformaTerm3Prefix] = useState('3. Validity: ');
+  const [proformaValidityTerm, setProformaValidityTerm] = useState('This proforma remains valid and conversion rates locked for 10 days from the dates above.');
+  const [proformaBankDetailsTitle, setProformaBankDetailsTitle] = useState('Payment Details (Direct Transfer)');
+  const [proformaBankNameLabel, setProformaBankNameLabel] = useState('Bank Name: ');
+  const [proformaBankName, setProformaBankName] = useState('');
+  const [proformaBankAccountNumberLabel, setProformaBankAccountNumberLabel] = useState('Account Number: ');
+  const [proformaBankAccountNumber, setProformaBankAccountNumber] = useState('');
+  const [proformaFooterNote, setProformaFooterNote] = useState('processed in real-time by digital workbook agent, securely archived.');
+  const [proformaPreparedByTitle, setProformaPreparedByTitle] = useState('PREPARED BY LEDGER CLERK');
+  const [proformaPreparedByNote, setProformaPreparedByNote] = useState('');
+  const [proformaPreparedByVerification, setProformaPreparedByVerification] = useState('Computer generated invoice. Requires no physical signature.');
+  const [proformaAuthorizedStampTitle, setProformaAuthorizedStampTitle] = useState('AUTHORIZED PLC STAMP');
+  const [proformaAuthorizedStampSubtitle, setProformaAuthorizedStampSubtitle] = useState('Mena Inc Conversion Division');
+  
+  // Edited product descriptions map (maps itemId -> customized product description)
+  const [editedProductDescriptions, setEditedProductDescriptions] = useState<Record<string, string>>({});
 
   // Dynamic html2canvas + jsPDF direct file exporter (pure modern Vector text-layout based PDF engine)
   const exportDirectPDF = async () => {
@@ -285,6 +337,10 @@ export default function CustomerTab({
       container.style.height = 'auto';
       container.style.width = '800px';
 
+      // Force a reflow and give the browser a moment to repaint the 800px layout before capturing
+      void container.offsetHeight;
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Render the container to a canvas with high scale for high resolution print quality
       const canvas = await html2canvas(container, {
         scale: 2.5, // High resolution scale for clear vector text output
@@ -385,9 +441,25 @@ export default function CustomerTab({
   // Set default bank account if bankAccounts list is loaded and no bank is selected
   useEffect(() => {
     if (bankAccounts && bankAccounts.length > 0 && !proformaBankId) {
-      setProformaBankId(bankAccounts[0].id);
+      const defaultBank = bankAccounts.find(b => b.accountNumber === '1000632725896');
+      if (defaultBank) {
+        setProformaBankId(defaultBank.id);
+      } else {
+        setProformaBankId(bankAccounts[0].id);
+      }
     }
   }, [bankAccounts, proformaBankId]);
+
+  // Synchronize inline bank details text when proformaBankId changes
+  useEffect(() => {
+    if (proformaBankId && bankAccounts) {
+      const bank = bankAccounts.find(b => b.id === proformaBankId);
+      if (bank) {
+        setProformaBankName(bank.name);
+        setProformaBankAccountNumber(bank.accountNumber || '');
+      }
+    }
+  }, [proformaBankId, bankAccounts]);
 
   // Form Fields State
   const [clientType, setClientType] = useState<Customer['clientType']>('Individual');
@@ -802,26 +874,98 @@ export default function CustomerTab({
     : customers.filter(c => selectedCustomerIds.includes(c.id)).map(c => ({
         id: c.id,
         clientName: c.clientName,
+        phone: c.phone,
         productType: c.productType,
         quantity: c.quantity,
         unitPrice: c.unitPrice,
         advancePayment: c.advancePayment || 0
       }));
 
+  // Reset/Initialize proforma editable states when the modal is opened
+  useEffect(() => {
+    if (showProformaModal && !lastShowProformaModalRef.current) {
+      setEditedProductDescriptions({});
+      
+      if (isStandaloneProformaMode) {
+        setProformaClientName(standaloneClientName || 'Valued Corporate Client');
+        setProformaClientPhone(standaloneClientPhone || '+251 900 000 000');
+      } else {
+        const firstCust = proformaItemsToRender[0] as any;
+        setProformaClientName(firstCust?.clientName || 'Valued Corporate Client');
+        setProformaClientPhone(firstCust?.phone || '+251 (Customer Record)');
+      }
+
+      setProformaLogoMain('mena');
+      setProformaLogoSuffix('inc');
+      setProformaLogoSubtitle('Mena Inc Trading PLC');
+      setProformaContactTitle('Contact Information');
+      setProformaContactAddress1('Bole Brass, adjacent to Yod Abyssinia');
+      setProformaContactAddress2('Addis Ababa, Ethiopia');
+      setProformaContactPhone1('📞 +251 942 125 568');
+      setProformaContactPhone2('📞 +251 924 148 847');
+      setProformaContactEmail('email: mena.inc@trading-plc.com');
+      setProformaDocTitle('PROFORMA INVOICE');
+      setProformaDocNoPrefix('Document No: ');
+      setProformaDocNo(`PRO-2026-${new Date().getMonth() + 1}${new Date().getDate()}-${Math.floor(1000 + Math.random() * 9000)}`);
+      setProformaDocIssueDateLabel('Doc Issue Date:');
+      setProformaDocIssueDate(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
+      setProformaClientBillToLabel('CLIENT BILL TO');
+      setProformaClientRecipientId(`Approved Ledger Recipient ID: CLN-2026-${(proformaItemsToRender[0]?.id || 'DRAFT').slice(0, 6)}`);
+      setProformaAuthorityLabel('ISSUED BY AUTHORITY');
+      setProformaIssuerName(currentUser?.name || 'Mena Automated Operator');
+      setProformaIssuerPositionLabel('Position: ');
+      setProformaIssuerPosition(currentUser?.role || 'Staff Operator');
+      setProformaVerificationNote('Secure conversion ledger validation active.');
+      setProformaColNo('No.');
+      setProformaColDesc('Description of Product Line');
+      setProformaColQty('Qty (pcs)');
+      setProformaColPrice('Unit Price (ETB)');
+      setProformaColTotal('Subtotal (ETB)');
+      setProformaTermsTitle('Terms & General Conditions');
+      setProformaTerm1Prefix('1. Delivery Term: ');
+      setProformaDeliveryTerm('Within 7 to 10 days from order receipt validation.');
+      setProformaTerm2Prefix('2. Payment Term: ');
+      setProformaPaymentTerm('Requires at least 50% deposit ledger record, balance due prior to packaging release.');
+      setProformaTerm3Prefix('3. Validity: ');
+      setProformaValidityTerm('This proforma remains valid and conversion rates locked for 10 days from the dates above.');
+      setProformaBankDetailsTitle('Payment Details (Direct Transfer)');
+      setProformaFooterNote('processed in real-time by digital workbook agent, securely archived.');
+      setProformaPreparedByTitle('PREPARED BY LEDGER CLERK');
+      setProformaPreparedByNote(`${currentUser?.name || 'Mena Automated Operator'} (${currentUser?.role || 'authorized staff'})`);
+      setProformaPreparedByVerification('Computer generated invoice. Requires no physical signature.');
+      setProformaAuthorizedStampTitle('AUTHORIZED PLC STAMP');
+      setProformaAuthorizedStampSubtitle('Mena Inc Conversion Division');
+
+      if (bankAccounts && bankAccounts.length > 0) {
+        const defaultBank = bankAccounts.find(b => b.accountNumber === '1000632725896');
+        if (defaultBank) {
+          setProformaBankId(defaultBank.id);
+          setProformaBankName(defaultBank.name);
+          setProformaBankAccountNumber(defaultBank.accountNumber || '');
+        } else {
+          setProformaBankId(bankAccounts[0].id);
+          setProformaBankName(bankAccounts[0].name);
+          setProformaBankAccountNumber(bankAccounts[0].accountNumber || '');
+        }
+      }
+    }
+    lastShowProformaModalRef.current = showProformaModal;
+  }, [showProformaModal, isStandaloneProformaMode, standaloneClientName, standaloneClientPhone, currentUser, bankAccounts, proformaItemsToRender]);
+
   return (
     <div className="space-y-6" id="customers-tab-pnl">
       
       {/* Search and Filters Strip - Optimized for Mobile Screen limits */}
-      <div className="bg-[#121212] border border-[#262626] rounded-none p-4 shadow-none flex flex-col gap-4 select-none">
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col gap-4 select-none">
         
         {/* Row 1: Selectors and buttons */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 font-mono w-full lg:w-auto text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 font-sans w-full lg:w-auto text-xs">
             {/* Filter Agent */}
             <select
               value={filterAgent}
               onChange={(e) => setFilterAgent(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">All Staff</option>
               {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
@@ -833,7 +977,7 @@ export default function CustomerTab({
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">All Leads</option>
               {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
@@ -843,7 +987,7 @@ export default function CustomerTab({
             <select
               value={filterPayment}
               onChange={(e) => setFilterPayment(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">Any Payment</option>
               <option value="Debt">Outstanding Debt</option>
@@ -854,7 +998,7 @@ export default function CustomerTab({
             <select
               value={filterCompletion}
               onChange={(e) => setFilterCompletion(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">All Job Statuses</option>
               <option value="Completed">Completed Only</option>
@@ -866,7 +1010,7 @@ export default function CustomerTab({
             <select
               value={filterReceipt}
               onChange={(e) => setFilterReceipt(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">All Receipts</option>
               <option value="NeedsReceipt">Needs Receipts (VAT)</option>
@@ -894,7 +1038,7 @@ export default function CustomerTab({
                   });
                 }
               }}
-              className="text-xs font-mono text-gray-300 hover:text-white bg-[#181818] hover:bg-[#262626] border border-[#262626] px-3.5 py-1.5 flex items-center justify-center gap-1.5 cursor-pointer rounded-none transition-colors"
+              className="text-xs font-sans text-gray-300 hover:text-white bg-[#181818] hover:bg-[#262626] border border-[#262626] px-3.5 py-1.5 flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition-colors"
               title="Toggle selection of all filtered items"
             >
               <CheckSquare className="w-3.5 h-3.5 text-[#ee317b]" />
@@ -904,11 +1048,11 @@ export default function CustomerTab({
             </button>
 
             {/* Grid vs Cards Switcher */}
-            <div className="border border-[#262626] rounded-none p-0.5 flex bg-[#181818] justify-center">
+            <div className="border border-[#262626] rounded-md p-0.5 flex bg-[#181818] justify-center">
               <button
                 type="button"
                 onClick={() => setLayoutMode('grid')}
-                className={`p-1.5 rounded-none cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
+                className={`p-1.5 rounded-md cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
                 title="Tabular Grid View (Default)"
               >
                 <TableIcon className="w-4 h-4" />
@@ -916,7 +1060,7 @@ export default function CustomerTab({
               <button
                 type="button"
                 onClick={() => setLayoutMode('cards')}
-                className={`p-1.5 rounded-none cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
+                className={`p-1.5 rounded-md cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
                 title="Responsive Cards View"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -928,7 +1072,7 @@ export default function CustomerTab({
               onClick={() => {
                 exportCustomersCSV(customers, (id) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default');
               }}
-              className="text-xs font-mono font-bold text-[#ee317b] hover:text-white hover:bg-[#ee317b]/10 border border-[#ee317b]/30 bg-[#ee317b]/5 rounded-none px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs font-sans font-bold text-[#ee317b] hover:text-white hover:bg-[#ee317b]/10 border border-[#ee317b]/30 bg-[#ee317b]/5 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               title="Download currently loaded customer & order ledger as a CSV file"
             >
               <Download className="w-4 h-4" />
@@ -942,15 +1086,15 @@ export default function CustomerTab({
                 setStandaloneProformaItems([
                   {
                     id: 'temp-1',
-                    productType: 'Premium Double Ring Notebook A4 (70 gsm)',
-                    quantity: 1000,
-                    unitPrice: 95.00,
-                    advancePayment: 25000
+                    productType: '',
+                    quantity: 0,
+                    unitPrice: 0,
+                    advancePayment: 0
                   }
                 ]);
                 setShowProformaModal(true);
               }}
-              className="text-xs font-mono font-bold text-gray-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-none px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs font-sans font-bold text-gray-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-4 h-4 text-[#ee317b]" />
               Standalone Proforma Tool
@@ -959,7 +1103,7 @@ export default function CustomerTab({
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="text-xs font-mono font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] rounded-none px-4 py-2 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
+              className="text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] rounded-md px-4 py-2 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Create Customer Order
@@ -975,7 +1119,7 @@ export default function CustomerTab({
             placeholder="Search clients by name, phone, product type or lead source..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-[#181818] text-white hover:bg-[#1E1E1E] focus:bg-[#1E1E1E] border border-[#262626] rounded-none outline-none focus:border-[#ee317b] transition-all font-sans"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-[#181818] text-white hover:bg-[#1E1E1E] focus:bg-[#1E1E1E] border border-[#262626] rounded-md outline-none focus:border-[#ee317b] transition-all font-sans"
           />
         </div>
 
@@ -983,7 +1127,7 @@ export default function CustomerTab({
 
       {/* Bulk Executive Actions Strip */}
       {selectedCustomerIds.length > 0 && (
-        <div className="bg-[#181818] border border-blue-900/45 p-3 rounded-none flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono animate-fade-in relative z-30">
+        <div className="bg-[#181818] border border-blue-900/45 p-3 rounded-md flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-sans animate-fade-in relative z-30">
           <div className="flex items-center gap-2 text-blue-400">
             <CheckSquare className="w-4 h-4 text-[#ee317b]" />
             <span>Selected <strong className="text-white bg-blue-950 px-1.5 py-0.5 border border-blue-900">{selectedCustomerIds.length}</strong> {selectedCustomerIds.length === 1 ? 'order file' : 'order files'}</span>
@@ -1027,12 +1171,12 @@ export default function CustomerTab({
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
       {layoutMode === 'grid' ? (
-        <div className="bg-[#121212] border border-[#262626] rounded-none overflow-hidden shadow-none">
+        <div className="bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
-                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-mono tracking-wider uppercase text-center">
-                  <th className="py-2.5 px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-mono text-center w-8 text-xs">Index</th>
+                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
+                  <th className="py-2.5 px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-xs">Index</th>
                   <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs">
                     <input
                       type="checkbox"
@@ -1080,7 +1224,7 @@ export default function CustomerTab({
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Remaining Bank</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-stone-400 text-left">Incompletion Reason</th>
                   
-                  <th className="py-2.5 px-3 text-center text-gray-400 font-mono w-24">Actions</th>
+                  <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
@@ -1105,7 +1249,7 @@ export default function CustomerTab({
                       }`}
                     >
                       {/* Grid Row Index */}
-                      <td className="py-2 px-1 text-center font-mono text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 2}</td>
+                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 2}</td>
                       
                       {/* Grid Row Checkbox Column */}
                       <td className="py-2 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
@@ -1125,8 +1269,8 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Client Type */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-mono">
-                        <span className={`inline-flex px-2 py-0.5 rounded-none text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : 'bg-[#181818] text-gray-300 border-[#262626]'}`}>
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans">
+                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : 'bg-[#181818] text-gray-300 border-[#262626]'}`}>
                           {c.clientType.toUpperCase()}
                         </span>
                       </td>
@@ -1135,11 +1279,11 @@ export default function CustomerTab({
                       <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white whitespace-nowrap">{c.clientName}</td>
                       
                       {/* Phone / Contact */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-mono text-gray-400 whitespace-nowrap">{c.phone || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-gray-400 whitespace-nowrap">{c.phone || '-'}</td>
                       
                       {/* Acquisition Channel */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-mono">
-                        <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-none">{c.acquisitionSource}</span>
+                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans">
+                        <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md">{c.acquisitionSource}</span>
                       </td>
                       
                       {/* Order Taken By */}
@@ -1149,10 +1293,10 @@ export default function CustomerTab({
                       <td className="py-2 px-3 border-r border-[#262626] text-gray-300 whitespace-nowrap font-sans">{c.productType}</td>
                       
                       {/* Quantity */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono text-white">{c.quantity.toLocaleString()}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-white">{c.quantity.toLocaleString()}</td>
                       
                       {/* Unit Price (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono text-gray-300">
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300">
                         <div>{c.unitPrice.toLocaleString()}</div>
                         {c.isVatAdded && (
                           <div className="text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</div>
@@ -1160,10 +1304,10 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Advance (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono text-[#71b536] bg-[#112918]/10">{c.advancePayment.toLocaleString()}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-[#71b536] bg-[#112918]/10">{c.advancePayment.toLocaleString()}</td>
                       
                       {/* Inline Date Picker for Advance Payment Date */}
-                      <td className="py-1.5 px-2 border-r border-[#262626] font-mono text-center bg-[#1c1c1c]/10">
+                      <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
                         <input
                           type="date"
                           value={c.advancePaymentDate || ''}
@@ -1173,48 +1317,48 @@ export default function CustomerTab({
                               advancePaymentDate: e.target.value
                             });
                           }}
-                          className="bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-mono cursor-pointer rounded-none"
+                          className="bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md"
                           title="Change Advance Payment Date directly"
                         />
                       </td>
 
                       {/* Deposit Account (Advance) */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-mono text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
                         {bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia'}
                       </td>
                       
                       {/* Paper 1 */}
                       <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType1}</td>
                       {/* Amount 1 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono bg-[#31111E]/10">{c.amount1 || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount1 || '-'}</td>
                       
                       {/* Paper 2 */}
                       <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType2}</td>
                       {/* Amount 2 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono bg-[#31111E]/10">{c.amount2 || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount2 || '-'}</td>
                       
                       {/* Paper 3 */}
                       <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType3}</td>
                       {/* Amount 3 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono bg-[#31111E]/10">{c.amount3 || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount3 || '-'}</td>
                       
                       {/* Entrance Paper */}
                       <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans">{c.entrancePaper}</td>
                       {/* Amt /16 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono bg-[#112233]/20">{c.amount16 || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount16 || '-'}</td>
                       
                       {/* Ajabi Paper */}
                       <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans">{c.ajabiPaper}</td>
                       {/* Amt /9 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono bg-[#112233]/20">{c.amount9 || '-'}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount9 || '-'}</td>
                       
                       {/* Remaining (V) */}
-                      <td className={`py-2 px-3 border-r border-[#262626] text-right font-mono font-bold ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
+                      <td className={`py-2 px-3 border-r border-[#262626] text-right font-sans font-bold ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
                         {remainingVal === 0 ? 'PAID' : remainingVal.toLocaleString()}
                       </td>
                       
                       {/* Final Payment Date */}
-                      <td className="py-2.5 px-3 border-r border-[#262626] font-mono whitespace-nowrap bg-[#1c1c1c]/30 text-center">
+                      <td className="py-2.5 px-3 border-r border-[#262626] font-sans whitespace-nowrap bg-[#1c1c1c]/30 text-center">
                         <div className="inline-flex items-center justify-center gap-1">
                           <input
                             type="date"
@@ -1225,7 +1369,7 @@ export default function CustomerTab({
                                 deliveryDate: e.target.value
                               });
                             }}
-                            className="bg-[#121212] text-xs text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-mono cursor-pointer rounded-none"
+                            className="bg-[#121212] text-xs text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans cursor-pointer rounded-md"
                             title="Change Final Payment Date directly"
                           />
                           {c.deliveryDate && (
@@ -1248,10 +1392,10 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Full (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-mono font-bold text-white bg-[#31111E]/10">{fullVal.toLocaleString()}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans font-bold text-white bg-[#31111E]/10">{fullVal.toLocaleString()}</td>
  
                       {/* Inline Dropdown for Remaining Bank account (Col Y) */}
-                      <td className="py-1.5 px-2 border-r border-[#262626] font-mono text-center bg-[#1c1c1c]/10">
+                      <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
                         <select
                           value={c.bankRemainingId || ''}
                           onChange={(e) => {
@@ -1260,7 +1404,7 @@ export default function CustomerTab({
                               bankRemainingId: e.target.value || undefined
                             });
                           }}
-                          className="bg-[#121212] text-xs text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-mono cursor-pointer rounded-none w-full min-w-[130px] max-w-[180px]"
+                          className="bg-[#121212] text-xs text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans cursor-pointer rounded-md w-full min-w-[130px] max-w-[180px]"
                         >
                           <option value="">- Empty/Unpaid -</option>
                           {bankAccounts.map(b => (
@@ -1283,18 +1427,18 @@ export default function CustomerTab({
                               incompletionReason: e.target.value
                             });
                           }}
-                          className="bg-[#121212] text-xs text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans rounded-none w-full"
+                          className="bg-[#121212] text-xs text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans rounded-md w-full"
                           title="Change Incompletion Reason directly"
                         />
                       </td>
                       
                       {/* Actions */}
                       <td className="py-1 px-2 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1 font-mono">
+                        <div className="flex items-center justify-center gap-1 font-sans">
                           <button
                             type="button"
                             onClick={() => handleOpenDuplicate(c)}
-                            className="text-gray-400 hover:text-sky-400 hover:bg-[#262626] p-1.5 rounded-none transition-colors cursor-pointer"
+                            className="text-gray-400 hover:text-sky-400 hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                             title="Add Another Order for Client (Duplicate details)"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1302,7 +1446,7 @@ export default function CustomerTab({
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(c)}
-                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-none transition-colors cursor-pointer"
+                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                             title="Edit Record"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -1310,7 +1454,7 @@ export default function CustomerTab({
                           <button
                             type="button"
                             onClick={() => setDeletingCustomerId(c.id)}
-                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-none transition-colors cursor-pointer"
+                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                             title="Delete Record"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1322,7 +1466,7 @@ export default function CustomerTab({
                 })}
                 {filteredCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={24} className="text-center py-10 font-mono text-sm text-gray-500">
+                    <td colSpan={24} className="text-center py-10 font-sans text-sm text-gray-500">
                       No customer ledger logs matching this criteria.
                     </td>
                   </tr>
@@ -1343,7 +1487,7 @@ export default function CustomerTab({
             return (
               <div 
                 key={c.id} 
-                className={`border rounded-none p-5 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 ${
+                className={`border rounded-md p-5 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 ${
                   isCompleted 
                     ? 'bg-[#112918]/25 border-green-800/60 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.15)] text-green-300' 
                     : c.incompletionReason
@@ -1368,43 +1512,43 @@ export default function CustomerTab({
                             setSelectedCustomerIds(prev => prev.filter(id => id !== c.id));
                           }
                         }}
-                        className="accent-[#ee317b] w-4.5 h-4.5 mt-0.5 cursor-pointer rounded-none border border-[#262626]"
+                        className="accent-[#ee317b] w-4.5 h-4.5 mt-0.5 cursor-pointer rounded-md border border-[#262626]"
                         title="Select/Deselect order item"
                       />
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-none border ${
+                          <span className={`text-[10px] uppercase font-sans font-bold px-2 py-0.5 rounded-md border ${
                             c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : 'bg-[#181818] text-gray-300 border-[#262626]'
                           }`}>
                             {c.clientType}
                           </span>
                           
                           {isCompleted && (
-                            <span className="text-[10px] bg-green-900/40 text-green-300 px-2 py-0.5 font-mono border border-green-800/40 rounded-none font-bold uppercase">
+                            <span className="text-[10px] bg-green-900/40 text-green-300 px-2 py-0.5 font-sans border border-green-800/40 rounded-md font-bold uppercase">
                               ✓ COMPLETED
                             </span>
                           )}
 
-                          <span className="text-[10px] bg-[#181818] text-gray-400 px-1.5 py-0.5 font-mono border border-[#262626] rounded-none">
+                          <span className="text-[10px] bg-[#181818] text-gray-400 px-1.5 py-0.5 font-sans border border-[#262626] rounded-md">
                             AGENT: {c.orderTakenBy.toUpperCase()}
                           </span>
                         </div>
-                        <h3 className="font-mono font-bold text-white mt-2.5 text-base">{c.clientName}</h3>
+                        <h3 className="font-sans font-bold text-white mt-2.5 text-base">{c.clientName}</h3>
                       </div>
                     </div>
                     
-                    <span className="text-xs text-gray-500 font-mono">
+                    <span className="text-xs text-gray-500 font-sans">
                       #{c.id.substring(c.id.length - 4)}
                     </span>
                   </div>
 
                   {/* Detail Info */}
-                  <div className="text-xs text-gray-300 space-y-1.5 font-mono">
+                  <div className="text-xs text-gray-300 space-y-1.5 font-sans">
                     <div className="flex items-center gap-2">
                        <Phone className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>{c.phone || 'No phone record'}</span>
                     </div>
-                    <div className="flex items-center gap-2 font-mono text-xs">
+                    <div className="flex items-center gap-2 font-sans text-xs">
                        <span className="text-[#ee317b] font-bold text-xs">📅</span>
                        <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
                          Final Payment Date:
@@ -1417,7 +1561,7 @@ export default function CustomerTab({
                                deliveryDate: e.target.value
                              });
                            }}
-                           className="bg-[#161616] text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-mono px-1.5 py-0.5 rounded-none outline-none cursor-pointer"
+                           className="bg-[#161616] text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer"
                          />
                          {c.deliveryDate && (
                            <button
@@ -1444,9 +1588,9 @@ export default function CustomerTab({
                   </div>
 
                   {/* Deductions breakdown */}
-                  <div className="bg-[#181818] border border-[#262626] rounded-none p-3 text-xs space-y-2">
-                    <span className="font-mono text-[10px] text-gray-500 uppercase tracking-wider block font-bold">STOCK ROOM DEDUCTIONS</span>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 font-mono">
+                  <div className="bg-[#181818] border border-[#262626] rounded-md p-3 text-xs space-y-2">
+                    <span className="font-sans text-[10px] text-gray-500 uppercase tracking-wider block font-bold">STOCK ROOM DEDUCTIONS</span>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 font-sans">
                       {c.paperType1 !== 'None' && (() => {
                         const raw = Number((c.amount1 * c.quantity).toFixed(2));
                         const ceiled = Math.ceil(c.amount1 * c.quantity);
@@ -1515,7 +1659,7 @@ export default function CustomerTab({
                   </div>
 
                   {/* Finance Calculations */}
-                  <div className="border-t border-[#262626] pt-3 grid grid-cols-3 gap-1 text-center font-mono text-xs">
+                  <div className="border-t border-[#262626] pt-3 grid grid-cols-3 gap-1 text-center font-sans text-xs">
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase">Full Value</span>
                       <span className="font-bold text-white">{fullVal.toLocaleString()} ETB</span>
@@ -1533,7 +1677,7 @@ export default function CustomerTab({
                   </div>
 
                   {/* Dynamic Treasury Deposit Indicators */}
-                  <div className="mt-3.5 pt-2.5 border-t border-[#262626]/60 flex flex-col gap-1.5 text-[10px] font-mono">
+                  <div className="mt-3.5 pt-2.5 border-t border-[#262626]/60 flex flex-col gap-1.5 text-[10px] font-sans">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
                       <span className="text-gray-300 font-medium truncate max-w-[180px]">
@@ -1561,7 +1705,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={() => handleOpenDuplicate(c)}
-                    className="text-xs text-sky-400 hover:text-white font-mono font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-none transition-all flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-sky-400 hover:text-white font-sans font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer"
                     title="Copy details to add another order for this client"
                   >
                     <Copy className="w-3.5 h-3.5" />
@@ -1570,7 +1714,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(c)}
-                    className="text-xs text-[#ee317b] hover:text-white font-mono font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-none transition-all flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-[#ee317b] hover:text-white font-sans font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     Modify
@@ -1578,7 +1722,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={() => setDeletingCustomerId(c.id)}
-                    className="text-xs text-gray-400 hover:text-[#F87171] font-mono hover:bg-[#262626] px-2.5 py-1.5 rounded-none transition-all cursor-pointer"
+                    className="text-xs text-gray-400 hover:text-[#F87171] font-sans hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all cursor-pointer"
                   >
                     Remove
                   </button>
@@ -1587,7 +1731,7 @@ export default function CustomerTab({
             );
           })}
           {filteredCustomers.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-[#121212] border border-[#262626] rounded-none text-gray-400 text-sm font-mono">
+            <div className="col-span-full text-center py-12 bg-[#121212] border border-[#262626] rounded-md text-gray-400 text-sm font-sans">
               No customer records matched your query terms.
             </div>
           )}
@@ -1610,42 +1754,42 @@ export default function CustomerTab({
               <div>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
                   <div>
-                    <h3 className="font-mono font-bold text-white text-base flex items-center gap-1.5 uppercase">
+                    <h3 className="font-sans font-bold text-white text-base flex items-center gap-1.5 uppercase">
                       <Sparkles className="w-5 h-5 text-[#ee317b]" />
                       {editingCustomer ? `Edit Order #${editingCustomer.id.slice(-4)}` : 'Create New Customer Order'}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5 font-mono">Stock room computations subtraction automatically runs based on ledger rules.</p>
+                    <p className="text-xs text-gray-400 mt-0.5 font-sans">Stock room computations subtraction automatically runs based on ledger rules.</p>
                   </div>
                   
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-none cursor-pointer"
+                    className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
                   >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
 
                 {/* Wizard Tab buttons */}
-                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-mono font-semibold text-[11px] select-none bg-[#181818]">
+                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-sans font-semibold text-[11px] select-none bg-[#181818]">
                   <button
                     type="button"
                     onClick={() => setFormStep(1)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-none ${formStep === 1 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 1 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     1. Account Info
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormStep(2)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-none ${formStep === 2 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 2 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     2. Primary Papers
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormStep(3)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-none ${formStep === 3 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 3 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     3. Aux &amp; Special
                   </button>
@@ -1654,7 +1798,7 @@ export default function CustomerTab({
 
               {/* Error strip */}
               {formError && (
-                <div className="mx-6 mt-4 bg-[#31111E] border border-[#ee317b]/30 p-3 rounded-none text-[#F87171] text-xs flex items-center gap-2 font-mono">
+                <div className="mx-6 mt-4 bg-[#31111E] border border-[#ee317b]/30 p-3 rounded-md text-[#F87171] text-xs flex items-center gap-2 font-sans">
                   <AlertCircle className="w-4 h-4 text-[#F87171] flex-shrink-0" />
                   <span>{formError}</span>
                 </div>
@@ -1665,23 +1809,23 @@ export default function CustomerTab({
                 
                 {formStep === 1 && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-mono uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">1. Client Billing &amp; Pricing Metadata</h4>
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">1. Client Billing &amp; Pricing Metadata</h4>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-type">Client Type</label>
+                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-type">Client Type</label>
                         <select
                           id="field-client-type"
                           value={clientType}
                           onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
-                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer font-mono"
+                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                         >
                           {CLIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-source">Lead Channel</label>
+                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-source">Lead Channel</label>
                         <div className="flex gap-1.5">
                           {!isAddingChannel ? (
                             <>
@@ -1689,14 +1833,14 @@ export default function CustomerTab({
                                 id="field-client-source"
                                 value={acquisitionSource}
                                 onChange={(e) => setAcquisitionSource(e.target.value as Customer['acquisitionSource'])}
-                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer font-mono"
+                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                               >
                                 {acquisitionChannels.map(s => <option key={s} value={s}>{s}</option>)}
                               </select>
                               <button
                                 type="button"
                                 onClick={() => setIsAddingChannel(true)}
-                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-mono text-xs font-bold cursor-pointer transition-colors"
+                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-sans text-xs font-bold cursor-pointer transition-colors"
                                 title="Add custom Lead Option"
                               >
                                 + New
@@ -1709,7 +1853,7 @@ export default function CustomerTab({
                                 placeholder="Channel name..."
                                 value={newChannelInput}
                                 onChange={(e) => setNewChannelInput(e.target.value)}
-                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-mono"
+                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -1759,7 +1903,7 @@ export default function CustomerTab({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-name">Client Name <span className="text-[#F87171]">*</span></label>
+                      <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-name">Client Name <span className="text-[#F87171]">*</span></label>
                       <input
                         id="field-client-name"
                         type="text"
@@ -1767,25 +1911,25 @@ export default function CustomerTab({
                         placeholder="e.g. Almaz Tekle"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-sans"
+                        className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-phone">Phone / Contact</label>
+                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-phone">Phone / Contact</label>
                         <input
                           id="field-client-phone"
                           type="text"
                            placeholder="e.g. +251 911..."
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono"
+                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1 flex items-center gap-1" htmlFor="field-client-agent">
+                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1 flex items-center gap-1" htmlFor="field-client-agent">
                           Taken By <span className="text-[#F87171]">*</span>
                           <Lock className="w-3 h-3 text-[#ee317b]" />
                         </label>
@@ -1794,7 +1938,7 @@ export default function CustomerTab({
                           disabled={true}
                           value={orderTakenBy}
                           onChange={(e) => setOrderTakenBy(e.target.value as Customer['orderTakenBy'])}
-                          className="w-full px-3 py-2 text-sm border font-mono rounded-none outline-none bg-[#181818]/60 border-[#222222] text-zinc-500 cursor-not-allowed"
+                          className="w-full px-3 py-2 text-sm border font-sans rounded-md outline-none bg-[#181818]/60 border-[#222222] text-zinc-500 cursor-not-allowed"
                         >
                           {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
                             <option key={a} value={a}>{a}</option>
@@ -1806,11 +1950,11 @@ export default function CustomerTab({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
+                          <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
                           <button
                             type="button"
                             onClick={() => setShowProductManager(true)}
-                            className="text-[10px] text-[#ee317b] hover:underline uppercase font-mono font-bold cursor-pointer"
+                            className="text-[10px] text-[#ee317b] hover:underline uppercase font-sans font-bold cursor-pointer"
                           >
                             Manage
                           </button>
@@ -1822,14 +1966,14 @@ export default function CustomerTab({
                                 id="field-client-product"
                                 value={productType}
                                 onChange={(e) => setProductType(e.target.value)}
-                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer font-sans"
+                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                               >
                                 {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                               </select>
                               <button
                                 type="button"
                                 onClick={() => setIsAddingProduct(true)}
-                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-mono text-xs font-bold cursor-pointer transition-colors"
+                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-sans text-xs font-bold cursor-pointer transition-colors"
                                 title="Add custom Product Type"
                               >
                                 + New
@@ -1847,7 +1991,7 @@ export default function CustomerTab({
                                       }
                                     }
                                   }}
-                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 font-mono text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
                                   title="Delete selected Product Type"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1872,7 +2016,7 @@ export default function CustomerTab({
                               <button
                                 type="button"
                                 onClick={handleAddProductInline}
-                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-mono"
+                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-sans"
                               >
                                 Add
                               </button>
@@ -1882,7 +2026,7 @@ export default function CustomerTab({
                                   setNewProductInput('');
                                   setIsAddingProduct(false);
                                 }}
-                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-mono"
+                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-sans"
                               >
                                 Cancel
                               </button>
@@ -1893,23 +2037,23 @@ export default function CustomerTab({
 
                       {editingCustomer && (
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
+                          <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
                           <input
                             id="field-client-delivery"
                             type="date"
                             value={deliveryDate}
                             onChange={(e) => setDeliveryDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono cursor-pointer"
+                            className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           />
                         </div>
                       )}
                     </div>
 
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 mt-6 space-y-4">
-                      <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider font-bold block">Live Automated Financial Calculations</span>
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 mt-6 space-y-4">
+                      <span className="text-[10px] text-gray-500 font-sans uppercase tracking-wider font-bold block">Live Automated Financial Calculations</span>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-qty">Quantity</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-qty">Quantity</label>
                           <input
                             id="field-client-qty"
                             type="text"
@@ -1928,7 +2072,7 @@ export default function CustomerTab({
                                 setQuantity(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b]"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
                           />
                         </div>
 
@@ -1960,7 +2104,7 @@ export default function CustomerTab({
                           {isVatAdded && (
                             <div className="grid grid-cols-2 gap-3 pt-1 border-t border-[#262626]/60">
                               <div>
-                                <label className="block text-[10px] text-gray-400 uppercase tracking-wider font-mono mb-1">Item Price BEFORE VAT (ETB)</label>
+                                <label className="block text-[10px] text-gray-400 uppercase tracking-wider font-sans mb-1">Item Price BEFORE VAT (ETB)</label>
                                 <input
                                   type="text"
                                   value={baseUnitPriceInput}
@@ -1973,11 +2117,11 @@ export default function CustomerTab({
                                     setPriceInput(withVat.toString());
                                     setUnitPrice(withVat);
                                   }}
-                                  className="w-full px-2.5 py-1.5 text-xs bg-[#181818] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b]"
+                                  className="w-full px-2.5 py-1.5 text-xs bg-[#181818] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
                                   placeholder="e.g. 100"
                                 />
                               </div>
-                              <div className="text-xs font-mono flex flex-col justify-center text-gray-500 pl-1">
+                              <div className="text-xs font-sans flex flex-col justify-center text-gray-500 pl-1">
                                 <p>15% VAT Rate Added</p>
                                 <p className="text-white">VAT: <span className="text-[#ee317b] font-bold">{(parseFractionOrExpression(baseUnitPriceInput) * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB</span></p>
                               </div>
@@ -1986,7 +2130,7 @@ export default function CustomerTab({
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-price">Unit Price (ETB)</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-price">Unit Price (ETB)</label>
                           <input
                             id="field-client-price"
                             type="text"
@@ -2010,12 +2154,12 @@ export default function CustomerTab({
                                 setUnitPrice(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b] disabled:opacity-65"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] disabled:opacity-65"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance (ETB)</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance (ETB)</label>
                           <input
                             id="field-client-advance"
                             type="text"
@@ -2034,31 +2178,31 @@ export default function CustomerTab({
                                 setAdvancePayment(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b]"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 pt-2">
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance-date">Advance Payment Date</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance-date">Advance Payment Date</label>
                           <input
                             id="field-client-advance-date"
                             type="date"
                             required
                             value={advancePaymentDate}
                             onChange={(e) => setAdvancePaymentDate(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b] cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Bank Account for Advance (Deposit)</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Bank Account for Advance (Deposit)</label>
                           <select
                             id="field-client-bank"
                             value={paymentMethodId}
                             onChange={(e) => setPaymentMethodId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b] cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
                           >
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
@@ -2071,12 +2215,12 @@ export default function CustomerTab({
 
                       <div className="grid grid-cols-2 gap-4 pb-1">
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Bank for Remaining Balance (Final)</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Bank for Remaining Balance (Final)</label>
                           <select
                             id="field-client-bank-remaining"
                             value={bankRemainingId}
                             onChange={(e) => setBankRemainingId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-mono focus:border-[#ee317b] cursor-pointer animate-pulse"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer animate-pulse"
                           >
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
@@ -2087,27 +2231,27 @@ export default function CustomerTab({
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-incompletion-reason">Incompletion Reason / Notes</label>
+                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-incompletion-reason">Incompletion Reason / Notes</label>
                           <input
                             id="field-incompletion-reason"
                             type="text"
                             placeholder="e.g. Awaiting design finalization or None"
                             value={incompletionReason}
                             onChange={(e) => setIncompletionReason(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-none outline-none font-sans focus:border-[#ee317b]"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#262626] text-xs font-mono">
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#262626] text-xs font-sans">
                         <div>
-                          <span className="text-gray-500 block text-[9px] uppercase font-mono">Full Payment</span>
+                          <span className="text-gray-500 block text-[9px] uppercase font-sans">Full Payment</span>
                           <span className="text-sm font-semibold text-[#ee317b]">
                             {computedFullPayment.toLocaleString()} ETB
                           </span>
                         </div>
                         <div>
-                          <span className="text-gray-500 block text-[9px] uppercase font-mono">Remaining Due</span>
+                          <span className="text-gray-500 block text-[9px] uppercase font-sans">Remaining Due</span>
                           <span className={`text-sm font-semibold ${computedRemainingBalance > 0 ? 'text-[#F87171]' : 'text-[#71b536]'}`}>
                             {computedRemainingBalance <= 0 ? 'Paid (0 ETB)' : `${computedRemainingBalance.toLocaleString()} ETB`}
                           </span>
@@ -2119,13 +2263,13 @@ export default function CustomerTab({
 
                 {formStep === 2 && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-mono uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">2. Standard Layout Papers Deduction</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed font-mono">
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">2. Standard Layout Papers Deduction</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed font-sans">
                       Select which paper variant types and the literal sheets consumed by this project. Standard papers decrement 1-for-1 from matching stock names.
                     </p>
 
                     {/* Paper Type 1 */}
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 space-y-3 font-mono">
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-[#ee317b] tracking-wider uppercase font-bold block">First Layout Stock Deduction</span>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -2133,7 +2277,7 @@ export default function CustomerTab({
                           <select
                             value={paperType1}
                             onChange={(e) => setPaperType1(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                           </select>
@@ -2150,10 +2294,10 @@ export default function CustomerTab({
                                 setAmount1(parseFractionOrExpression(amount1).toString());
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b]"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b]"
                             placeholder="e.g. 1/4 or 0.5"
                           />
-                          <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-mono gap-0.5">
+                          <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
                             <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount1)} sheets/card</span>
                             <span className="text-[#ee317b]">Total sheets deducted ({parseFractionOrExpression(amount1)} × {quantity}): {Number((parseFractionOrExpression(amount1) * quantity).toFixed(2))} sheets</span>
                           </div>
@@ -2162,7 +2306,7 @@ export default function CustomerTab({
                     </div>
 
                     {/* Paper Type 2 */}
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 space-y-3 font-mono">
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Second Layout Stock</span>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -2170,7 +2314,7 @@ export default function CustomerTab({
                           <select
                             value={paperType2}
                             onChange={(e) => setPaperType2(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -2189,11 +2333,11 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={paperType2 === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
                             placeholder="e.g. 1/2"
                           />
                           {paperType2 !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-mono gap-0.5">
+                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
                               <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount2)} sheets/card</span>
                               <span className="text-[#71b536]">Total sheets deducted ({parseFractionOrExpression(amount2)} × {quantity}): {Number((parseFractionOrExpression(amount2) * quantity).toFixed(2))} sheets</span>
                             </div>
@@ -2203,7 +2347,7 @@ export default function CustomerTab({
                     </div>
 
                     {/* Paper Type 3 */}
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 space-y-3 font-mono">
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Third Layout Stock</span>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -2211,7 +2355,7 @@ export default function CustomerTab({
                           <select
                             value={paperType3}
                             onChange={(e) => setPaperType3(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none font-mono cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -2230,11 +2374,11 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={paperType3 === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
                             placeholder="e.g. 1/4"
                           />
                           {paperType3 !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-mono gap-0.5">
+                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
                               <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount3)} sheets/card</span>
                               <span className="text-[#71b536]">Total sheets deducted ({parseFractionOrExpression(amount3) * quantity}): {Number((parseFractionOrExpression(amount3) * quantity).toFixed(2))} sheets</span>
                             </div>
@@ -2246,17 +2390,17 @@ export default function CustomerTab({
                 )}
 
                 {formStep === 3 && (
-                  <div className="space-y-4 font-mono">
-                    <h4 className="text-xs font-mono uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">3. Auxiliary / Special Layout Sheets</h4>
+                  <div className="space-y-4 font-sans">
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">3. Auxiliary / Special Layout Sheets</h4>
                     <p className="text-xs text-gray-400 leading-relaxed">
                       Entrance paper sheet counts are divided by 16, and Ajabi paper counts are divided by 9 prior to subtracting. Select materials below:
                     </p>
 
                     {/* Entrance Aux (Divided by 16) */}
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 space-y-3">
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] text-sky-400 tracking-wider uppercase font-bold block">Entrance Sheets Spec</span>
-                        <span className="text-[9px] bg-[#112233]/40 border border-sky-900 text-sky-400 px-1.5 py-0.5 rounded-none font-mono">DIVIDED BY 16</span>
+                        <span className="text-[9px] bg-[#112233]/40 border border-sky-900 text-sky-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 16</span>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3">
@@ -2265,7 +2409,7 @@ export default function CustomerTab({
                           <select
                             value={entrancePaper}
                             onChange={(e) => setEntrancePaper(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -2284,11 +2428,11 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={entrancePaper === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
                             placeholder="e.g. 160 or 16 * 10"
                           />
                           {entrancePaper !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-mono">
+                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans">
                               <span className="text-stone-300">Parsed: {parseFractionOrExpression(amount16)} sheets</span>
                               <span className="text-sky-400">Deduction ratio (sheets/16): {(parseFractionOrExpression(amount16) / 16).toFixed(2)} sheets</span>
                             </div>
@@ -2301,10 +2445,10 @@ export default function CustomerTab({
                     </div>
 
                     {/* Ajabi Aux (Divided by 9) */}
-                    <div className="bg-[#181818] border border-[#262626] rounded-none p-4 space-y-3">
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] text-pink-400 tracking-wider uppercase font-bold block">Ajabi Sheets Spec</span>
-                        <span className="text-[9px] bg-pink-900/20 border border-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded-none font-mono">DIVIDED BY 9</span>
+                        <span className="text-[9px] bg-pink-900/20 border border-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 9</span>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3">
@@ -2313,7 +2457,7 @@ export default function CustomerTab({
                           <select
                             value={ajabiPaper}
                             onChange={(e) => setAjabiPaper(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -2332,11 +2476,11 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={ajabiPaper === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-none outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
                             placeholder="e.g. 90 or 9 * 10"
                           />
                           {ajabiPaper !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-mono">
+                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans">
                               <span className="text-stone-300">Parsed: {parseFractionOrExpression(amount9)} sheets</span>
                               <span className="text-pink-400">Deduction ratio (sheets/9): {(parseFractionOrExpression(amount9) / 9).toFixed(2)} sheets</span>
                             </div>
@@ -2359,7 +2503,7 @@ export default function CustomerTab({
                     <button
                       type="button"
                       onClick={() => setFormStep((prev) => (prev - 1) as 1 | 2 | 3)}
-                      className="px-4 py-2 bg-transparent text-gray-300 hover:text-white border border-[#262626] select-none text-xs font-mono font-bold cursor-pointer"
+                      className="px-4 py-2 bg-transparent text-gray-300 hover:text-white border border-[#262626] select-none text-xs font-sans font-bold cursor-pointer"
                     >
                       Back
                     </button>
@@ -2370,7 +2514,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-mono select-none cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans select-none cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -2380,7 +2524,7 @@ export default function CustomerTab({
                     <button
                       type="button"
                       onClick={handleSaveAndAddAnother}
-                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-mono font-bold cursor-pointer select-none"
+                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer select-none"
                       title="Save this order, and immediately start another order for this same customer"
                     >
                       Save &amp; Add Another Order
@@ -2390,7 +2534,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={handleFormSubmit}
-                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-mono font-bold cursor-pointer select-none"
+                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer select-none"
                   >
                     {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
                   </button>
@@ -2406,7 +2550,7 @@ export default function CustomerTab({
                         setFormError('');
                         setFormStep((prev) => (prev + 1) as 1 | 2 | 3);
                       }}
-                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-mono font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer select-none"
+                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer select-none"
                     >
                       <span>Next Page</span>
                       <ChevronRight className="w-4 h-4" />
@@ -2429,7 +2573,7 @@ export default function CustomerTab({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-mono select-none"
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
             >
               <motion.div 
                 initial={{ scale: 0.95, y: 20 }}
@@ -2442,7 +2586,7 @@ export default function CustomerTab({
                   <div className="space-y-1.5 font-semibold text-white">
                     <h3 className="text-white text-sm font-bold uppercase tracking-wider">Confirm Card Order Disposal</h3>
                     <p className="text-xs text-gray-400 font-sans font-normal leading-relaxed">
-                      Are you sure you want to delete the paper consumption record for <span className="text-white font-semibold font-mono">"{targetCust.clientName}"</span>? This operation is irreversible and will restore occupied paper quantities back to your available inventory room balances.
+                      Are you sure you want to delete the paper consumption record for <span className="text-white font-semibold font-sans">"{targetCust.clientName}"</span>? This operation is irreversible and will restore occupied paper quantities back to your available inventory room balances.
                     </p>
                   </div>
                 </div>
@@ -2476,7 +2620,7 @@ export default function CustomerTab({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-mono select-none"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
@@ -2489,7 +2633,7 @@ export default function CustomerTab({
                 <div className="space-y-1.5 font-semibold text-white">
                   <h3 className="text-white text-sm font-bold uppercase tracking-wider">Confirm Bulk Order Disposal</h3>
                   <p className="text-xs text-gray-400 font-sans font-normal leading-relaxed">
-                    Are you sure you want to permanently delete the <span className="text-white font-bold font-mono">{selectedCustomerIds.length}</span> selected customer logs? 
+                    Are you sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedCustomerIds.length}</span> selected customer logs? 
                   </p>
                   <p className="text-xs text-stone-500 leading-relaxed font-sans font-normal">
                     This will wipe out all selected client records and return occupied paper stock weights to available inventory balances.
@@ -2500,13 +2644,13 @@ export default function CustomerTab({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
                 <button
                   onClick={() => setShowBulkDeleteConfirm(false)}
-                  className="px-3.5 py-1.5 text-xs text-gray-400 hover:text-white border border-[#262626] bg-[#181818] uppercase tracking-wider cursor-pointer font-mono"
+                  className="px-3.5 py-1.5 text-xs text-gray-400 hover:text-white border border-[#262626] bg-[#181818] uppercase tracking-wider cursor-pointer font-sans"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={executeBulkDeleteConfirmed}
-                  className="px-4 py-1.5 text-xs bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold uppercase tracking-widest cursor-pointer font-mono"
+                  className="px-4 py-1.5 text-xs bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold uppercase tracking-widest cursor-pointer font-sans"
                 >
                   Delete Selected
                 </button>
@@ -2519,10 +2663,10 @@ export default function CustomerTab({
       <AnimatePresence>
         {showProformaModal && (
           <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs overscroll-contain">
-            <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-none my-8 max-h-[90vh] overscroll-contain">
+            <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-md my-8 max-h-[90vh] overscroll-contain">
               
               {/* Controller Bar */}
-              <div className="flex flex-col gap-3 border-b pb-3 border-[#262626] font-mono text-xs print-hidden-stamp-toggle">
+              <div className="flex flex-col gap-3 border-b pb-3 border-[#262626] font-sans text-xs print-hidden-stamp-toggle">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
@@ -2559,7 +2703,7 @@ export default function CustomerTab({
                       <select
                         value={proformaBankId}
                         onChange={(e) => setProformaBankId(e.target.value)}
-                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors"
+                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors"
                       >
                         <option value="">-- No Bank Details --</option>
                         {bankAccounts.map((b) => (
@@ -2575,7 +2719,7 @@ export default function CustomerTab({
                       id="export-pdf-direct-btn"
                       type="button"
                       onClick={exportDirectPDF}
-                      className="px-4 py-1.5 bg-[#71b536] hover:bg-[#5ea126] text-black font-bold cursor-pointer rounded-none uppercase text-[10px] tracking-wider transition-colors flex items-center gap-1"
+                      className="px-4 py-1.5 bg-[#71b536] hover:bg-[#5ea126] text-black font-bold cursor-pointer rounded-md uppercase text-[10px] tracking-wider transition-colors flex items-center gap-1"
                     >
                       <span>📥 Export PDF</span>
                     </button>
@@ -2583,7 +2727,7 @@ export default function CustomerTab({
                     <button
                       type="button"
                       onClick={() => setShowProformaModal(false)}
-                      className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 font-bold cursor-pointer rounded-none uppercase text-[10px] tracking-wider transition-colors"
+                      className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 font-bold cursor-pointer rounded-md uppercase text-[10px] tracking-wider transition-colors"
                     >
                       Close
                     </button>
@@ -2592,7 +2736,7 @@ export default function CustomerTab({
 
                 {/* STANDALONE PROFORMA FORM WRITER CONTROLS ROW */}
                 {isStandaloneProformaMode && (
-                  <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-mono text-xs select-none">
+                  <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs select-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#110b0d] p-3 border border-[#2d2024] mb-1">
                       <div>
                         <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT NAME</label>
@@ -2658,7 +2802,7 @@ export default function CustomerTab({
                                   const val = e.target.value;
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, productType: val } : p));
                                 }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-none outline-none focus:border-[#ee317b]"
+                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -2671,7 +2815,7 @@ export default function CustomerTab({
                                   const val = Number(e.target.value) || 0;
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
                                 }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-none outline-none focus:border-[#ee317b]"
+                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -2684,7 +2828,7 @@ export default function CustomerTab({
                                   const val = Number(e.target.value) || 0;
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
                                 }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-none outline-none focus:border-[#ee317b]"
+                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
                               />
                             </div>
                             <div className="col-span-2">
@@ -2697,7 +2841,7 @@ export default function CustomerTab({
                                   const val = Number(e.target.value) || 0;
                                   setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
                                 }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-none outline-none focus:border-[#ee317b]"
+                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
                               />
                             </div>
                             <div className="col-span-1 text-right pt-2.5">
@@ -2721,7 +2865,7 @@ export default function CustomerTab({
               </div>
               
               {/* Printable Area - Rendered using White-Paper Theme */}
-              <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-none flex-1 font-sans overscroll-contain" id="proforma-print-container">
+              <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-md flex-1 font-sans overscroll-contain" id="proforma-print-container">
                 <style dangerouslySetInnerHTML={{__html: `
                   /* Explicit print-safe hex color overrides for all elements in the proforma container */
                   #proforma-print-container {
@@ -2878,17 +3022,18 @@ export default function CustomerTab({
                       alt="Mena Logo" 
                       className="w-12 h-12 object-contain bg-white border border-gray-250 p-1 mt-1"
                       referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
                     />
                     <div>
-                      <h1 className="text-xl font-black tracking-tight text-gray-900 font-mono text-left" style={{ textTransform: 'lowercase' }}>
+                      <h1 className="text-xl font-black tracking-tight text-gray-900 font-sans text-left" style={{ textTransform: 'lowercase' }}>
                         mena<span className="text-[#ee317b] font-sans">.</span>inc
                       </h1>
-                      <p className="text-[10px] uppercase font-mono tracking-widest text-[#71b536] font-bold text-left">Mena Inc Trading PLC</p>
+                      <p className="text-[10px] uppercase font-sans tracking-widest text-[#71b536] font-bold text-left">Mena Inc Trading PLC</p>
                     </div>
                   </div>
 
                   {/* Letterhead address coordinates */}
-                  <div className="text-right font-mono text-[9.5px] text-gray-700 space-y-0.5">
+                  <div className="text-right font-sans text-[9.5px] text-gray-700 space-y-0.5">
                     <p className="font-bold text-gray-900 uppercase">Contact Information</p>
                     <p>Bole Brass, adjacent to Yod Abyssinia</p>
                     <p>Addis Ababa, Ethiopia</p>
@@ -2901,10 +3046,10 @@ export default function CustomerTab({
                 {/* Sub-header document metrics */}
                 <div className="flex justify-between items-end mb-6">
                   <div className="text-left">
-                    <h2 className="text-base font-black uppercase text-gray-900 tracking-wider font-mono">PROFORMA INVOICE</h2>
-                    <p className="text-[10px] font-mono text-gray-500">Document No: <strong className="text-black">PRO-2026-{new Date().getMonth() + 1}{new Date().getDate()}-{Math.floor(1000 + Math.random() * 9000)}</strong></p>
+                    <h2 className="text-base font-black uppercase text-gray-900 tracking-wider font-sans">PROFORMA INVOICE</h2>
+                    <p className="text-[10px] font-sans text-gray-500">Document No: <strong className="text-black">PRO-2026-{new Date().getMonth() + 1}{new Date().getDate()}-{Math.floor(1000 + Math.random() * 9000)}</strong></p>
                   </div>
-                  <div className="text-right font-mono text-[10px]">
+                  <div className="text-right font-sans text-[10px]">
                     <p className="text-gray-550">Doc Issue Date:</p>
                     <p className="font-bold text-gray-900">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
@@ -2913,7 +3058,7 @@ export default function CustomerTab({
                 {/* Client Recipient Details */}
                 <div className="grid grid-cols-2 gap-4 mb-6 border-t border-b border-gray-200 py-4 font-sans text-[10px]">
                   <div className="text-left border-r border-gray-100 pr-4">
-                    <p className="font-mono text-[8px] uppercase tracking-widest text-[#ee317b] font-bold mb-1">CLIENT BILL TO</p>
+                    <p className="font-sans text-[8px] uppercase tracking-widest text-[#ee317b] font-bold mb-1">CLIENT BILL TO</p>
                     <p className="font-bold text-gray-900 text-xs font-sans uppercase">
                       {isStandaloneProformaMode 
                         ? standaloneClientName 
@@ -2926,7 +3071,7 @@ export default function CustomerTab({
                     </p>
                     <p className="text-gray-400 text-[9px] mt-0.5">Approved Ledger Recipient ID: CLN-2026-{(proformaItemsToRender[0]?.id || 'DRAFT').slice(0, 6)}</p>
                   </div>
-                  <div className="text-left pl-4 font-mono text-left">
+                  <div className="text-left pl-4 font-sans text-left">
                     <p className="text-[8px] uppercase tracking-widest text-[#71b536] font-bold mb-1">ISSUED BY AUTHORITY</p>
                     <p className="text-gray-800 font-bold uppercase">{currentUser?.name || 'Mena Automated Operator'}</p>
                     <p className="text-gray-500 font-sans text-[9.5px]">Position: <span className="text-black font-semibold uppercase text-[9px]">{currentUser?.role || 'Staff Operator'}</span></p>
@@ -2935,10 +3080,10 @@ export default function CustomerTab({
                 </div>
 
                 {/* Table of selected Order items */}
-                <div className="border border-gray-350 overflow-hidden mb-6 rounded-none">
+                <div className="border border-gray-350 overflow-hidden mb-6 rounded-md">
                   <table className="w-full text-left border-collapse text-[10px]">
                     <thead>
-                      <tr className="bg-gray-100 border-b border-gray-300 text-gray-705 font-mono uppercase text-[9px] tracking-wider text-center">
+                      <tr className="bg-gray-100 border-b border-gray-300 text-gray-705 font-sans uppercase text-[9px] tracking-wider text-center">
                         <th className="py-2 px-3 border-r border-gray-300 font-bold w-12 text-center bg-gray-100">No.</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-left bg-gray-100">Description of Product Line</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-20 bg-gray-100">Qty (pcs)</th>
@@ -2951,19 +3096,19 @@ export default function CustomerTab({
                         const rowTotal = item.quantity * item.unitPrice;
                         return (
                           <tr key={item.id} className="hover:bg-gray-55/50">
-                            <td className="py-2 px-3 border-r border-gray-300 font-mono text-center text-gray-500">{idx + 1}</td>
+                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-center text-gray-500">{idx + 1}</td>
                             <td className="py-2 px-3 border-r border-gray-300 text-left text-gray-800 font-sans">
                               <strong className="text-black font-semibold">{item.productType}</strong>
                             </td>
-                            <td className="py-2 px-3 border-r border-gray-300 font-mono text-right text-black font-semibold">{item.quantity.toLocaleString()}</td>
-                            <td className="py-2 px-3 border-r border-gray-300 font-mono text-right text-gray-900">{Number(item.unitPrice).toFixed(2)}</td>
-                            <td className="py-2 px-3 font-mono text-right font-bold text-black">{rowTotal.toFixed(2)}</td>
+                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-black font-semibold">{item.quantity.toLocaleString()}</td>
+                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-gray-900">{Number(item.unitPrice).toFixed(2)}</td>
+                            <td className="py-2 px-3 font-sans text-right font-bold text-black">{rowTotal.toFixed(2)}</td>
                           </tr>
                         );
                       })}
                       {proformaItemsToRender.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 font-mono text-gray-400">
+                          <td colSpan={5} className="text-center py-8 font-sans text-gray-400">
                             No drafted items found. Use the editor to add items.
                           </td>
                         </tr>
@@ -2975,7 +3120,7 @@ export default function CustomerTab({
                 {/* Totals & Deductions summaries */}
                 <div className="flex flex-col md:flex-row items-stretch justify-between gap-6 mb-8 text-[11px]">
                   {/* Terms and Conditions Block */}
-                  <div className="border border-gray-300 bg-gray-50/50 p-4 font-mono text-[9px] text-gray-600 flex-1 rounded-none leading-relaxed text-left">
+                  <div className="border border-gray-300 bg-gray-50/50 p-4 font-sans text-[9px] text-gray-600 flex-1 rounded-md leading-relaxed text-left">
                     <p className="font-bold text-gray-800 uppercase tracking-wider mb-1.5 text-[9.5px]">Terms &amp; General Conditions</p>
                     <p className="mb-1">1. <strong>Delivery Term:</strong> Within 7 to 10 days from order receipt validation.</p>
                     <p className="mb-1">2. <strong>Payment Term:</strong> Requires at least 50% deposit ledger record, balance due prior to packaging release.</p>
@@ -2988,7 +3133,7 @@ export default function CustomerTab({
                         <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-gray-700">
                           <p className="font-bold text-gray-800 uppercase tracking-wider mb-1 text-[8.5px]">Payment Details (Direct Transfer)</p>
                           <p className="mb-0.5">Bank Name: <strong className="text-black font-semibold">{bank.name}</strong></p>
-                          {bank.accountNumber && <p>Account Number: <strong className="text-black font-semibold font-mono">{bank.accountNumber}</strong></p>}
+                          {bank.accountNumber && <p>Account Number: <strong className="text-black font-semibold font-sans">{bank.accountNumber}</strong></p>}
                         </div>
                       );
                     })()}
@@ -2997,7 +3142,7 @@ export default function CustomerTab({
                   </div>
 
                   {/* Summary math table */}
-                  <div className="w-full md:w-80 font-mono space-y-1.5 border border-gray-250 p-4 bg-gray-50/20">
+                  <div className="w-full md:w-80 font-sans space-y-1.5 border border-gray-250 p-4 bg-gray-50/20">
                     <div className="flex justify-between text-gray-600">
                       <span>Itemized Sub-Total:</span>
                       <span className="font-bold text-gray-900">
@@ -3041,7 +3186,7 @@ export default function CustomerTab({
 
                 {/* Sign-Off Letterhead Block with Corporate Ink Stamp overlapping Authorized signature */}
                 <div className="flex items-center justify-between mt-12 pt-8 border-t border-gray-200 relative">
-                  <div className="space-y-4 font-mono text-[9px] text-left">
+                  <div className="space-y-4 font-sans text-[9px] text-left">
                     <div className="space-y-0.5">
                       <p className="font-bold text-gray-800">PREPARED BY LEDGER CLERK</p>
                       <p className="text-gray-500 uppercase">{currentUser?.name || 'Mena Automated Operator'} ({currentUser?.role || 'authorized staff'})</p>
@@ -3054,7 +3199,7 @@ export default function CustomerTab({
                   <div className="relative w-44 h-28 flex items-center justify-end">
                     
                     {/* The signature row */}
-                    <div className="absolute left-0 bottom-4 font-mono text-[9px] text-right pr-6 space-y-1">
+                    <div className="absolute left-0 bottom-4 font-sans text-[9px] text-right pr-6 space-y-1">
                       <p className="font-bold text-gray-800 uppercase">AUTHORIZED PLC STAMP</p>
                       <p className="text-gray-500 text-[8px]">Mena Inc Conversion Division</p>
                     </div>
@@ -3067,6 +3212,7 @@ export default function CustomerTab({
                           alt="Company Stamp Seal" 
                           className="w-[125px] h-[125px] object-contain mix-blend-multiply opacity-90"
                           referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
                           onError={(e) => {
                             // Render standard SVG stamp if external image fails to fetch due to connection issues
                             (e.target as HTMLElement).style.display = 'none';
@@ -3124,7 +3270,7 @@ export default function CustomerTab({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#121212] border border-[#262626] w-full max-w-md overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              className="bg-[#121212] border border-[#262626] w-full max-w-md overflow-hidden shadow-2xl flex flex-col relative font-sans"
             >
               <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#ee317b] to-[#71b536]" />
               
@@ -3132,7 +3278,7 @@ export default function CustomerTab({
               <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-[#ee317b]" />
-                  <h3 className="text-sm font-bold font-mono tracking-wider uppercase text-white">Manage Product Types</h3>
+                  <h3 className="text-sm font-bold font-sans tracking-wider uppercase text-white">Manage Product Types</h3>
                 </div>
                 <button
                   onClick={() => { 
@@ -3150,7 +3296,7 @@ export default function CustomerTab({
               <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4">
                 
                 {/* Add product type form */}
-                <div className="bg-[#181818] border border-[#262626] p-4 space-y-3 font-mono">
+                <div className="bg-[#181818] border border-[#262626] p-4 space-y-3 font-sans">
                   <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">
                     Add Product Type
                   </span>
@@ -3187,7 +3333,7 @@ export default function CustomerTab({
                           setNewManagerProductInput('');
                         }
                       }}
-                      className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-none transition-colors cursor-pointer"
+                      className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-md transition-colors cursor-pointer"
                     >
                       Add
                     </button>
@@ -3195,7 +3341,7 @@ export default function CustomerTab({
                 </div>
 
                 {/* Product Types List */}
-                <div className="space-y-2 font-mono">
+                <div className="space-y-2 font-sans">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Active Product Categories ({productTypes.length})</span>
                   
                   {productTypes.length > 0 && (
@@ -3225,7 +3371,7 @@ export default function CustomerTab({
                   )}
 
                   {selectedProductIds.length > 0 && (
-                    <div className="flex items-center justify-between px-3 py-2 bg-[#2d1217] border border-red-900/40 text-xs text-red-400 font-mono animate-fadeIn">
+                    <div className="flex items-center justify-between px-3 py-2 bg-[#2d1217] border border-red-900/40 text-xs text-red-400 font-sans animate-fadeIn">
                       <span>Selected: <strong className="text-white bg-red-950/60 px-1 py-0.5 border border-red-900/40">{selectedProductIds.length}</strong> categories</span>
                       <button
                         type="button"
@@ -3243,7 +3389,7 @@ export default function CustomerTab({
                             setSelectedProductIds([]);
                           }
                         }}
-                        className="px-2.5 py-1 bg-[#421A1D] hover:bg-red-700 text-white font-bold uppercase text-[10px] tracking-wider rounded-none transition-colors cursor-pointer"
+                        className="px-2.5 py-1 bg-[#421A1D] hover:bg-red-700 text-white font-bold uppercase text-[10px] tracking-wider rounded-md transition-colors cursor-pointer"
                       >
                         🗑 Delete Selected
                       </button>
@@ -3254,7 +3400,7 @@ export default function CustomerTab({
                     {productTypes.map(prod => {
                       const isSelected = selectedProductIds.includes(prod.id);
                       return (
-                        <div key={prod.id} className={`px-4 py-2 flex items-center justify-between text-xs font-mono transition-colors ${isSelected ? 'bg-red-950/10' : 'hover:bg-[#1c1c1c]/40'}`}>
+                        <div key={prod.id} className={`px-4 py-2 flex items-center justify-between text-xs font-sans transition-colors ${isSelected ? 'bg-red-950/10' : 'hover:bg-[#1c1c1c]/40'}`}>
                           <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
@@ -3281,7 +3427,7 @@ export default function CustomerTab({
                                 setSelectedProductIds(prev => prev.filter(id => id !== prod.id));
                               }
                             }}
-                            className="p-1 text-gray-500 hover:text-red-400 rounded-none cursor-pointer transition-colors"
+                            className="p-1 text-gray-500 hover:text-red-400 rounded-md cursor-pointer transition-colors"
                             title="Delete Product Type"
                           >
                             <Trash2 className="w-3.5 h-3.5 text-red-500" />
@@ -3307,7 +3453,7 @@ export default function CustomerTab({
                     setNewManagerProductInput(''); 
                     setSelectedProductIds([]);
                   }}
-                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
+                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-sans font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-md"
                 >
                   Done
                 </button>

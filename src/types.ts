@@ -53,7 +53,14 @@ export interface ProductType {
   name: string;
 }
 
-export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [];
+export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
+  {
+    id: 'b_cbe_default',
+    name: 'CBE (Mena INK Trading PLC)',
+    accountNumber: '1000632725896',
+    initialBalance: 0
+  }
+];
 
 export const DEFAULT_PAPER_STOCKS: PaperStock[] = [];
 

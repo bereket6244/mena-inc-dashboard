@@ -370,6 +370,7 @@ export default function App() {
           fetchAllPaperStocks, 
           fetchAllCustomers, 
           fetchAllBankAccounts,
+          saveBankAccountDoc,
           fetchAllPurchases,
           fetchAllExpenseCategories,
           fetchAllEmployees,
@@ -413,6 +414,17 @@ export default function App() {
           return repaired;
         });
         const finalB = await fetchAllBankAccounts(initialB);
+        const hasCbeDefault = finalB.some(b => b.accountNumber === '1000632725896');
+        if (!hasCbeDefault) {
+          const cbeAccount = {
+            id: 'b_cbe_default',
+            name: 'CBE (Mena INK Trading PLC)',
+            accountNumber: '1000632725896',
+            initialBalance: 0
+          };
+          await saveBankAccountDoc(cbeAccount).catch(() => {});
+          finalB.push(cbeAccount);
+        }
         const finalP = await fetchAllPurchases(initialP);
         const finalCat = await fetchAllExpenseCategories(initialCat);
         const finalEmployees = await fetchAllEmployees(initialEmployees);
@@ -916,6 +928,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
           fetchAllPaperStocks, 
           fetchAllCustomers, 
           fetchAllBankAccounts,
+          saveBankAccountDoc,
           fetchAllPurchases,
           fetchAllExpenseCategories,
           fetchAllEmployees
@@ -932,6 +945,18 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
           fetchAllExpenseCategories(current.categories),
           fetchAllEmployees(current.employees)
         ]);
+
+        const hasCbeDefault = newB.some(b => b.accountNumber === '1000632725896');
+        if (!hasCbeDefault) {
+          const cbeAccount = {
+            id: 'b_cbe_default',
+            name: 'CBE (Mena INK Trading PLC)',
+            accountNumber: '1000632725896',
+            initialBalance: 0
+          };
+          await saveBankAccountDoc(cbeAccount).catch(() => {});
+          newB.push(cbeAccount);
+        }
 
         const isDifferent = (a: any[], b: any[]) => JSON.stringify(a) !== JSON.stringify(b);
 
@@ -1016,37 +1041,37 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               </div>
             </div>
             <h2 className="text-xl font-bold tracking-tight uppercase">AUTHENTICATED GATEWAY</h2>
-            <p className="text-xs text-gray-500 font-mono tracking-widest uppercase mt-1">Mena Inc. Corporate Security</p>
+            <p className="text-xs text-gray-500 font-sans tracking-widest uppercase mt-1">Mena Inc. Corporate Security</p>
           </div>
 
           {loginError && (
-            <div className="bg-[#31111E] border border-[#ee317b]/25 text-[#F87171] p-3 text-xs mb-5 font-mono border-l-2 border-l-[#ee317b]">
+            <div className="bg-[#31111E] border border-[#ee317b]/25 text-[#F87171] p-3 text-xs mb-5 font-sans border-l-2 border-l-[#ee317b]">
               {loginError}
             </div>
           )}
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] uppercase font-mono tracking-wider text-gray-400 mb-1 font-bold">Username / Operator ID</label>
+              <label className="block text-[10px] uppercase font-sans tracking-wider text-gray-400 mb-1 font-bold">Username / Operator ID</label>
               <input
                 type="text"
                 required
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-mono"
+                className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans"
                 placeholder="e.g. bereket"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-mono tracking-wider text-gray-400 mb-1 font-bold">Passkey Keyphrase</label>
+              <label className="block text-[10px] uppercase font-sans tracking-wider text-gray-400 mb-1 font-bold">Passkey Keyphrase</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-mono font-sans"
+                  className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans font-sans"
                   placeholder="••••••••"
                 />
                 <button
@@ -1061,7 +1086,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
 
             <button
               type="submit"
-              className="w-full bg-[#ee317b] text-black font-bold font-mono py-2.5 hover:bg-white hover:text-black transition-all cursor-pointer text-xs uppercase"
+              className="w-full bg-[#ee317b] text-black font-bold font-sans py-2.5 hover:bg-white hover:text-black transition-all cursor-pointer text-xs uppercase"
             >
               Verify &amp; Unlock Space
             </button>
@@ -1071,7 +1096,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               type="button"
               onClick={triggerPwaInstall}
-              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-mono py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
+              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-sans py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
               Download Web App
@@ -1079,8 +1104,8 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
           </div>
 
           <div className="mt-8 border-t border-[#232323] pt-5">
-            <span className="block text-[9px] uppercase tracking-wider font-mono text-[#71b536] mb-2 font-bold">Standard Demorun Credentials:</span>
-            <div className="bg-[#181818] p-3 rounded-none text-[11px] font-mono text-gray-400 space-y-1 bg-opacity-40">
+            <span className="block text-[9px] uppercase tracking-wider font-sans text-[#71b536] mb-2 font-bold">Standard Demorun Credentials:</span>
+            <div className="bg-[#181818] p-3 rounded-md text-[11px] font-sans text-gray-400 space-y-1 bg-opacity-40">
               <div className="flex justify-between">
                 <span>🛡️ Admin:</span>
                 <span className="text-white">admin / admin</span>
@@ -1094,7 +1119,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 <span>yeabsra / 1234</span>
               </div>
             </div>
-            <p className="text-[9px] text-gray-600 mt-3 font-mono leading-relaxed">
+            <p className="text-[9px] text-gray-600 mt-3 font-sans leading-relaxed">
               * Employees possess full read/write customer logs capabilities, but deletions, inventory initial values updates, and financials are guarded exclusively for Admins.
             </p>
           </div>
@@ -1110,7 +1135,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
       <div className="sticky top-[env(safe-area-inset-top)] z-40">
         {/* Telegram-style Connection Status indicator bar */}
         {!isOnline && (
-          <div className="bg-[#C53030] text-white text-center py-1 px-3 text-xs font-mono font-bold flex items-center justify-center gap-2 animate-pulse shadow-md">
+          <div className="bg-[#C53030] text-white text-center py-1 px-3 text-xs font-sans font-bold flex items-center justify-center gap-2 animate-pulse shadow-md">
             <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
             <span>CONNECTING TO DIRECT DIGITAL LEDGER... (WORKING OFFLINE)</span>
           </div>
@@ -1126,7 +1151,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 <img 
                   src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
                 alt="Mena Logo" 
-                className="w-10 h-10 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-none"
+                className="w-10 h-10 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
@@ -1134,14 +1159,14 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                   if (fallback) fallback.classList.remove('hidden');
                 }}
               />
-              <div id="branding-icon-fallback" className="w-9 h-9 rounded-none bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
+              <div id="branding-icon-fallback" className="w-9 h-9 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
                 <Database className="w-5 h-5 text-black" />
               </div>
               <div>
                 <h1 className="text-base font-bold text-white tracking-tight font-sans">
-                  MENA INC. <span className="font-medium text-[#ee317b] font-mono text-xs">V2.1</span>
+                  MENA INC. <span className="font-medium text-[#ee317b] font-sans text-xs">V2.1</span>
                 </h1>
-                <p className="text-[10px] text-gray-500 font-mono tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
+                <p className="text-[10px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
               </div>
             </div>
 
@@ -1155,8 +1180,8 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  ) : (
                    <User className="w-3.5 h-3.5 text-[#71b536]" />
                  )}
-                 <span className="text-gray-200 font-mono tracking-wide font-medium">{currentUser.name}</span>
-                 <span className={`text-[8px] uppercase tracking-wider px-1 border font-bold font-mono py-0.5 ml-1 hidden xs:inline ${
+                 <span className="text-gray-200 font-sans tracking-wide font-medium">{currentUser.name}</span>
+                 <span className={`text-[8px] uppercase tracking-wider px-1 border font-bold font-sans py-0.5 ml-1 hidden xs:inline ${
                    currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
                  }`}>
                    {currentUser.role}
@@ -1168,7 +1193,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  <button
                    type="button"
                    onClick={() => setShowStaffModal(true)}
-                   className="bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-300 px-2.5 py-1.5 rounded-none font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                   className="bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-300 px-2.5 py-1.5 rounded-md font-sans flex items-center gap-1 cursor-pointer transition-colors"
                    title="Manage Employee passkeys and register workers"
                  >
                    <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
@@ -1176,7 +1201,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  </button>
                )}
 
-               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-mono bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-none">
+               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-sans bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-md">
                  <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
                  <span>UTC: {timeStr || '08:12'}</span>
                </div>
@@ -1184,7 +1209,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                <button
                  type="button"
                  onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                 className="text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer flex items-center gap-1.5"
+                 className="text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5"
                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
                >
                  {theme === 'dark' ? (
@@ -1203,7 +1228,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                <button
                  type="button"
                  onClick={handleLogout}
-                 className="text-xs text-gray-400 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-none transition-all cursor-pointer"
+                 className="text-xs text-gray-400 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-md transition-all cursor-pointer"
                  title="Log Out Operator"
                >
                  <LogOut className="w-3.5 h-3.5" />
@@ -1214,7 +1239,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
              <button
                type="button"
                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-               className="md:hidden p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-none focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
+               className="md:hidden p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-md focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
                aria-label="Toggle Navigation Menu"
              >
                {isMobileMenuOpen ? (
@@ -1237,7 +1262,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                transition={{ duration: 0.2, ease: 'easeInOut' }}
                className="absolute left-0 right-0 top-16 md:hidden border-b border-[#262626] bg-[#121212]/95 backdrop-blur-md overflow-hidden shadow-2xl z-50"
              >
-               <div className="px-4 py-4 space-y-4 font-mono">
+               <div className="px-4 py-4 space-y-4 font-sans">
                  
                  {/* Logged in User Tag */}
                  <div className="flex items-center justify-between bg-[#181818] border border-[#262626] px-3 py-2 text-xs">
@@ -1272,7 +1297,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        setActiveTab('customers');
                        setIsMobileMenuOpen(false);
                      }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
                        activeTab === 'customers'
                          ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
                          : 'bg-[#181818] text-gray-400 hover:text-white'
@@ -1282,7 +1307,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        <Users className="w-4 h-4" />
                        <span>Customer Management</span>
                      </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'customers' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'customers' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
                        {customers.length}
                      </span>
                    </button>
@@ -1293,7 +1318,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        setActiveTab('inventory');
                        setIsMobileMenuOpen(false);
                      }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
                        activeTab === 'inventory'
                          ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
                          : 'bg-[#181818] text-gray-400 hover:text-white'
@@ -1303,7 +1328,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        <Package className="w-4 h-4" />
                        <span>Inventory Dashboard</span>
                      </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'inventory' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'inventory' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
                        {paperStocks.length}
                      </span>
                    </button>
@@ -1314,7 +1339,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        setActiveTab('purchases');
                        setIsMobileMenuOpen(false);
                      }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
                        activeTab === 'purchases'
                          ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
                          : 'bg-[#181818] text-gray-400 hover:text-white'
@@ -1324,7 +1349,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        <Database className="w-4 h-4" />
                        <span>Purchases &amp; Expenses</span>
                      </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'purchases' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
+                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'purchases' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
                        {purchases.length}
                      </span>
                    </button>
@@ -1335,7 +1360,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        setActiveTab('performance');
                        setIsMobileMenuOpen(false);
                      }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-none ${
+                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
                        activeTab === 'performance'
                          ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
                          : 'bg-[#181818] text-gray-400 hover:text-white'
@@ -1357,7 +1382,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                      <button
                        type="button"
                        onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                       className="w-full text-left text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] border border-[#262626] px-3 py-2 rounded-none transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                       className="w-full text-left text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] border border-[#262626] px-3 py-2 rounded-md transition-all cursor-pointer flex items-center gap-1.5 justify-center"
                      >
                        {theme === 'dark' ? (
                          <>
@@ -1379,7 +1404,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                          setIsMobileMenuOpen(false);
                          handleLogout();
                        }}
-                       className="w-full text-left text-xs text-gray-350 hover:text-rose-400 bg-[#181818] border border-[#262626] px-3 py-2 rounded-none transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                       className="w-full text-left text-xs text-gray-350 hover:text-rose-400 bg-[#181818] border border-[#262626] px-3 py-2 rounded-md transition-all cursor-pointer flex items-center gap-1.5 justify-center"
                      >
                        <LogOut className="w-3.5 h-3.5 text-rose-500" />
                        <span>Log Out</span>
@@ -1394,7 +1419,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                          setIsMobileMenuOpen(false);
                          setShowStaffModal(true);
                        }}
-                       className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-none font-mono flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2"
+                       className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2"
                      >
                        <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>Manage Staff Settings</span>
@@ -1420,7 +1445,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-cust-trigger"
               onClick={() => setActiveTab('customers')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
                 activeTab === 'customers'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
@@ -1428,7 +1453,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Users className="w-4 h-4" />
               Customer Management
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'customers' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'customers' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {customers.length}
               </span>
             </button>
@@ -1437,7 +1462,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-inv-trigger"
               onClick={() => setActiveTab('inventory')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
                 activeTab === 'inventory'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
@@ -1445,7 +1470,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Package className="w-4 h-4" />
               Inventory Dashboard
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'inventory' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'inventory' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {paperStocks.length}
               </span>
             </button>
@@ -1454,7 +1479,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-purchases-trigger"
               onClick={() => setActiveTab('purchases')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
                 activeTab === 'purchases'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
@@ -1462,7 +1487,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Database className="w-4 h-4" />
               Purchases &amp; Expenses Ledger
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-mono ${activeTab === 'purchases' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'purchases' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {purchases.length}
               </span>
             </button>
@@ -1471,7 +1496,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-perf-trigger"
               onClick={() => setActiveTab('performance')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
                 activeTab === 'performance'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
@@ -1487,7 +1512,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
         {/* ACTIVE MODULE CONTAINER */}
         <div className="transition-all duration-300">
           {dbValidationError && (
-            <div className="mb-6 bg-[#160b0e] border-l-4 border-[#ee317b] p-5 font-mono text-xs text-left max-w-7xl mx-auto space-y-4">
+            <div className="mb-6 bg-[#160b0e] border-l-4 border-[#ee317b] p-5 font-sans text-xs text-left max-w-7xl mx-auto space-y-4">
               {/* Header */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -1505,15 +1530,15 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
 
               {/* Step-by-Step explanation of what to do */}
               <div className="text-gray-300 space-y-2 leading-relaxed font-sans text-xs">
-                <p className="font-semibold text-[#ee317b] font-mono text-xs">
-                  ⚠️ Live Error: <code className="bg-[#240c11] px-1.5 py-0.5 text-white font-mono break-all">{dbValidationError}</code>
+                <p className="font-semibold text-[#ee317b] font-sans text-xs">
+                  ⚠️ Live Error: <code className="bg-[#240c11] px-1.5 py-0.5 text-white font-sans break-all">{dbValidationError}</code>
                 </p>
                 <p className="pt-1">
                   Because the database tables are either missing or have <strong>Row Level Security (RLS)</strong> enabled, your app has <strong>automatically and safely loaded all data from local JSON storage</strong> so that you don't lose any of your progress.
                 </p>
                 
-                <div className="mt-3 bg-[#0a0a0a] p-4 border border-[#202020] rounded-none space-y-3 font-sans text-xs">
-                  <div className="text-[#71b536] font-bold font-mono uppercase tracking-wider text-[11px]">⚙️ Step-by-Step Fix (Takes 30 seconds):</div>
+                <div className="mt-3 bg-[#0a0a0a] p-4 border border-[#202020] rounded-md space-y-3 font-sans text-xs">
+                  <div className="text-[#71b536] font-bold font-sans uppercase tracking-wider text-[11px]">⚙️ Step-by-Step Fix (Takes 30 seconds):</div>
                   <ol className="list-decimal list-inside space-y-2 text-gray-400">
                     <li>
                       Log into your <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-[#71b536] underline hover:text-[#8ce644]">Supabase Dashboard</a>.
@@ -1524,7 +1549,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                     <li>
                       Click <strong>"New query"</strong>, click the green button top right <strong className="text-white cursor-pointer hover:underline" onClick={() => setShowDbConfigModal(true)}>"View Bootstrapping SQL"</strong>, copy the complete script, paste it in, and click <strong>"Run"</strong>.
                     </li>
-                    <li className="text-yellow-400 font-semibold font-mono text-[11px]">
+                    <li className="text-yellow-400 font-semibold font-sans text-[11px]">
                       • IMPORTANT: The script contains commands to disable Row Level Security (RLS) on each table (e.g. <code>ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;</code>). Supabase enables RLS by default, which blocks insertions unless disabled!
                     </li>
                     <li>
@@ -1609,7 +1634,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full font-mono text-xs select-none overscroll-contain"
+            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full font-sans text-xs select-none overscroll-contain"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -1673,7 +1698,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-[#ee317b]" />
-                  <h3 className="text-sm font-bold font-mono tracking-wider uppercase text-white">Staff passkey &amp; Access Controls</h3>
+                  <h3 className="text-sm font-bold font-sans tracking-wider uppercase text-white">Staff passkey &amp; Access Controls</h3>
                 </div>
                 <button
                   onClick={() => { 
@@ -1695,7 +1720,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               <div className="p-6 overflow-y-auto max-h-[80vh] space-y-6">
                 
                 {/* Add/Edit dynamic worker form */}
-                <form onSubmit={handleCreateStaffSubmit} className="bg-[#181818] border border-[#262626] p-4 space-y-4 font-mono">
+                <form onSubmit={handleCreateStaffSubmit} className="bg-[#181818] border border-[#262626] p-4 space-y-4 font-sans">
                   <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">
                     {editingEmployee ? `Edit Staff Personnel: ${editingEmployee.name}` : 'Add Staff Personnel / Operator'}
                   </span>
@@ -1727,7 +1752,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         placeholder="e.g. samuel"
                         value={newStaffUser}
                         onChange={(e) => setNewStaffUser(e.target.value)}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-mono"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans"
                       />
                     </div>
 
@@ -1739,7 +1764,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         placeholder="••••••••"
                         value={newStaffPass}
                         onChange={(e) => setNewStaffPass(e.target.value)}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-mono tracking-widest"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans tracking-widest"
                       />
                     </div>
 
@@ -1748,7 +1773,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                       <select
                         value={newStaffRole}
                         onChange={(e) => setNewStaffRole(e.target.value as 'admin' | 'employee')}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-mono cursor-pointer"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans cursor-pointer"
                       >
                         <option value="employee">Employee - Read/Write, NO Deletes</option>
                         <option value="admin">Admin - Full access</option>
@@ -1761,14 +1786,14 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                       <button
                         type="button"
                         onClick={handleCancelEditEmployee}
-                        className="bg-[#262626] hover:bg-stone-850 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-none font-mono transition-colors cursor-pointer"
+                        className="bg-[#262626] hover:bg-stone-850 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-md font-sans transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
                     )}
                     <button
                       type="submit"
-                      className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-none font-mono transition-colors cursor-pointer"
+                      className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-md font-sans transition-colors cursor-pointer"
                     >
                       {editingEmployee ? 'Save Changes' : 'Authorize Operator'}
                     </button>
@@ -1776,12 +1801,12 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 </form>
 
                 {/* Registered Workers List */}
-                <div className="space-y-3 font-mono">
+                <div className="space-y-3 font-sans">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Registered Workforce ({employees.length})</span>
                   
                   <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden">
                     {employees.map(emp => (
-                      <div key={emp.username} className="px-4 py-3 flex items-center justify-between text-xs font-mono">
+                      <div key={emp.username} className="px-4 py-3 flex items-center justify-between text-xs font-sans">
                         <div>
                           <span className="font-semibold text-white font-sans">{emp.name}</span>
                           <span className="text-[10px] text-gray-550 block">Username ID: <span className="text-gray-300">{emp.username}</span> | Passkey: <span className="text-gray-400">{emp.password}</span></span>
@@ -1798,7 +1823,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                             <button
                               type="button"
                               onClick={() => handleStartEditEmployee(emp)}
-                              className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#71b536] rounded-none cursor-pointer text-[9px] font-bold font-mono transition-colors"
+                              className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#71b536] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
                               title="Edit worker credentials & role"
                             >
                               EDIT
@@ -1812,10 +1837,10 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                                   handleDeleteEmployee(emp.username);
                                 }
                               }}
-                              className="p-1 text-gray-500 hover:text-red-400 border border-transparent hover:border-[#F87171]/20 rounded-none cursor-pointer transition-colors"
+                              className="p-1 text-gray-500 hover:text-red-400 border border-transparent hover:border-[#F87171]/20 rounded-md cursor-pointer transition-colors"
                               title="Delete worker credentials"
                             >
-                              <span className="text-red-500 hover:text-red-400 font-bold font-mono">✕</span>
+                              <span className="text-red-500 hover:text-red-400 font-bold font-sans">✕</span>
                             </button>
                           )}
                         </div>
@@ -1825,7 +1850,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 </div>
 
                 {/* System Admin Settings (Database Link & Configurations) */}
-                <div className="border-t border-[#262626] pt-5 space-y-3 font-mono">
+                <div className="border-t border-[#262626] pt-5 space-y-3 font-sans">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Administrative Controls</span>
                   <div className="flex flex-wrap gap-2.5">
                     {/* Database Config Trigger */}
@@ -1835,7 +1860,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         setShowStaffModal(false);
                         setShowDbConfigModal(true);
                       }}
-                      className={`flex items-center gap-1.5 text-xs font-mono px-3 py-2 rounded-none border cursor-pointer transition-all outline-none ${
+                      className={`flex items-center gap-1.5 text-xs font-sans px-3 py-2 rounded-md border cursor-pointer transition-all outline-none ${
                         liveDbLinked && !dbValidationError
                           ? 'bg-[#112918] text-[#71b536] border-[#71b536]/30 hover:border-[#71b536]' 
                           : 'bg-[#1E1215] text-[#ee317b] border-[#ee317b]/20 hover:border-[#ee317b]'
@@ -1854,7 +1879,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               <div className="px-6 py-4 border-t border-[#262626] bg-[#181818]/60 flex justify-end">
                 <button
                   onClick={() => { setShowStaffModal(false); setStaffError(''); }}
-                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
+                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-sans font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-md"
                 >
                   Done
                 </button>
@@ -1879,7 +1904,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               
               {/* Modal header */}
               <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
-                <div className="flex items-center gap-2 font-mono">
+                <div className="flex items-center gap-2 font-sans">
                   <Database className="w-4 h-4 text-[#71b536]" />
                   <h3 className="text-sm font-bold tracking-wider uppercase text-white">Supabase Cloud Database Setup Guide</h3>
                 </div>
@@ -1900,7 +1925,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                     There is no need to copy or paste variables!
                   </p>
                   
-                  <div className="bg-[#1E1215] border border-[#ee317b]/15 p-4 font-mono text-[11px] text-gray-300 space-y-2 leading-relaxed">
+                  <div className="bg-[#1E1215] border border-[#ee317b]/15 p-4 font-sans text-[11px] text-gray-300 space-y-2 leading-relaxed">
                      <span className="text-[#ee317b] font-bold uppercase block">⚡ Setup Checklist (How to Link Database Successfully):</span>
                     <div>1. Log into your **Supabase Dashboard** for the project.</div>
                     <div>2. Open the **SQL Editor** in the left menu.</div>
@@ -1909,11 +1934,11 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                   </div>
 
                   {dbValidationError && (
-                    <div className="bg-[#240A10] border border-[#ee317b]/50 p-4 font-mono text-[11px] text-[#ee317b] space-y-1 rounded-none text-left">
+                    <div className="bg-[#240A10] border border-[#ee317b]/50 p-4 font-sans text-[11px] text-[#ee317b] space-y-1 rounded-md text-left">
                       <span className="text-[#ee317b] font-bold uppercase flex items-center gap-1.5">
                         ⚠️ Database Synchronizer Alert:
                       </span>
-                      <div className="text-gray-300 select-all font-sans leading-relaxed pt-1 whitespace-pre-wrap text-xs font-mono">
+                      <div className="text-gray-300 select-all font-sans leading-relaxed pt-1 whitespace-pre-wrap text-xs font-sans">
                         {dbValidationError}
                       </div>
                       <div className="text-gray-400 text-[10px] font-sans pt-2 leading-relaxed">
@@ -1924,13 +1949,13 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 </div>
 
                 {/* SQL setup schema script */}
-                <div className="border-t border-[#262626] pt-4 font-mono text-left">
+                <div className="border-t border-[#262626] pt-4 font-sans text-left">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] uppercase text-[#71b536] tracking-wider font-bold block">📋 Supabase Bootstrapping SQL Schema</span>
                     <button
                       type="button"
                       onClick={handleCopySql}
-                      className="text-[9px] bg-[#1d1d1d] hover:bg-[#2a2a2a] border border-[#2d2d2d] text-gray-200 font-mono px-2 py-1 transition-colors flex items-center gap-1 cursor-pointer rounded-none active:scale-95"
+                      className="text-[9px] bg-[#1d1d1d] hover:bg-[#2a2a2a] border border-[#2d2d2d] text-gray-200 font-sans px-2 py-1 transition-colors flex items-center gap-1 cursor-pointer rounded-md active:scale-95"
                     >
                       {sqlCopied ? '✅ Copied!' : '📋 Copy SQL Code'}
                     </button>
@@ -1938,8 +1963,8 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                   <div className="text-[10px] text-gray-400 mb-2 font-sans leading-relaxed">
                     Copy and run this schema code directly inside your **Supabase SQL Editor**:
                   </div>
-                  <div className="relative bg-[#0a0a0a] border border-[#202020] p-3 text-[10px] text-gray-300 max-h-56 overflow-y-auto selection:bg-[#71b536]/25 rounded-none">
-                    <pre className="whitespace-pre overflow-x-auto text-[9px] text-left leading-normal font-mono text-gray-300">
+                  <div className="relative bg-[#0a0a0a] border border-[#202020] p-3 text-[10px] text-gray-300 max-h-56 overflow-y-auto selection:bg-[#71b536]/25 rounded-md">
+                    <pre className="whitespace-pre overflow-x-auto text-[9px] text-left leading-normal font-sans text-gray-300">
                       {bootstrapSqlText}
                     </pre>
                   </div>
@@ -1951,7 +1976,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               <div className="px-6 py-4 border-t border-[#262626] bg-[#181818]/60 flex justify-end">
                 <button
                   onClick={() => setShowDbConfigModal(false)}
-                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
+                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-sans font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-md"
                 >
                   Close Settings
                 </button>
@@ -1969,7 +1994,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between sm:justify-start gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-mono text-xs select-none max-w-[calc(100vw-2rem)] sm:max-w-xs w-full sm:w-auto overscroll-contain"
+            className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between sm:justify-start gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-sans text-xs select-none max-w-[calc(100vw-2rem)] sm:max-w-xs w-full sm:w-auto overscroll-contain"
           >
             <div className="relative flex items-center justify-center">
               <svg className="animate-spin h-4 w-4 text-[#ee317b]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1995,7 +2020,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#121212] border border-[#262626] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              className="bg-[#121212] border border-[#262626] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col relative font-sans"
             >
               <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#71b536] to-[#ee317b]" />
               
@@ -2050,29 +2075,29 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
 
                     <ol className="space-y-4 text-xs">
                       <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-none text-[10px] font-bold shrink-0">1</span>
+                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold shrink-0">1</span>
                         <div className="space-y-1 font-sans">
-                          <p className="font-bold text-gray-200 font-mono text-[11px]">Open the Safari Share Sheet</p>
+                          <p className="font-bold text-gray-200 font-sans text-[11px]">Open the Safari Share Sheet</p>
                           <p className="text-gray-400 leading-normal text-[11px]">
-                            Tap the <strong>Share button</strong> <span className="inline-flex items-center gap-1 p-1 bg-[#242424] text-white rounded-none font-mono text-[10px]">Share <Share2 className="w-3 h-3 text-[#ee317b]" /></span> standard control at the bottom (on iPhone) or top (on iPad) of Safari.
+                            Tap the <strong>Share button</strong> <span className="inline-flex items-center gap-1 p-1 bg-[#242424] text-white rounded-md font-sans text-[10px]">Share <Share2 className="w-3 h-3 text-[#ee317b]" /></span> standard control at the bottom (on iPhone) or top (on iPad) of Safari.
                           </p>
                         </div>
                       </li>
 
                       <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-none text-[10px] font-bold shrink-0">2</span>
+                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold shrink-0">2</span>
                         <div className="space-y-1 font-sans">
-                          <p className="font-bold text-gray-200 font-mono text-[11px]">Select &apos;Add to Home Screen&apos;</p>
+                          <p className="font-bold text-gray-200 font-sans text-[11px]">Select &apos;Add to Home Screen&apos;</p>
                           <p className="text-gray-400 leading-normal text-[11px]">
-                            Scroll down the options list and find the item marked with a plus icon <span className="bg-[#242424] text-white font-mono px-1.5 py-0.5 font-bold text-[10px] border border-[#333]">+ Add to Home Screen</span>.
+                            Scroll down the options list and find the item marked with a plus icon <span className="bg-[#242424] text-white font-sans px-1.5 py-0.5 font-bold text-[10px] border border-[#333]">+ Add to Home Screen</span>.
                           </p>
                         </div>
                       </li>
 
                       <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-none text-[10px] font-bold shrink-0">3</span>
+                        <span className="bg-[#ee317b] text-white w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold shrink-0">3</span>
                         <div className="space-y-1 font-sans">
-                          <p className="font-bold text-gray-200 font-mono text-[11px]">Confirm Setup Name</p>
+                          <p className="font-bold text-gray-200 font-sans text-[11px]">Confirm Setup Name</p>
                           <p className="text-gray-400 leading-normal text-[11px]">
                             Check the title (<strong>Mena CRM</strong>) and tap <strong className="text-[#ee317b]">Add</strong> in the top-right corner.
                           </p>
@@ -2080,7 +2105,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                       </li>
                     </ol>
 
-                    <div className="bg-[#1E1215] border border-[#ee317b]/15 p-3 text-[10px] text-gray-400 font-mono leading-relaxed">
+                    <div className="bg-[#1E1215] border border-[#ee317b]/15 p-3 text-[10px] text-gray-400 font-sans leading-relaxed">
                       💡 <strong>WHY INSTALL:</strong> This enables immersive fullscreen operation without Safari URL search bars, loads instantly, and runs with fast gesture response times!
                     </div>
                   </div>
@@ -2102,7 +2127,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                             setShowInstallGuideModal(false);
                             await triggerPwaInstall();
                           }}
-                          className="w-full bg-[#71b536] hover:bg-[#5f9c2d] text-black text-xs font-bold uppercase py-2.5 transition-colors cursor-pointer text-center rounded-none"
+                          className="w-full bg-[#71b536] hover:bg-[#5f9c2d] text-black text-xs font-bold uppercase py-2.5 transition-colors cursor-pointer text-center rounded-md"
                         >
                           📲 Trigger Instant App Download
                         </button>
@@ -2110,9 +2135,9 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                     ) : (
                       <ol className="space-y-4 text-xs font-sans">
                         <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-none font-mono text-[10px] font-bold shrink-0">1</span>
+                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-md font-sans text-[10px] font-bold shrink-0">1</span>
                           <div className="space-y-1">
-                            <p className="font-bold text-gray-200 font-mono text-[11px]">Open Browser Settings</p>
+                            <p className="font-bold text-gray-200 font-sans text-[11px]">Open Browser Settings</p>
                             <p className="text-gray-400 leading-normal text-[11px]">
                               Tap your browser menu (the <strong>three vertical dots icon</strong> at the top right of Chrome/Edge).
                             </p>
@@ -2120,9 +2145,9 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         </li>
 
                         <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-none font-mono text-[10px] font-bold shrink-0">2</span>
+                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-md font-sans text-[10px] font-bold shrink-0">2</span>
                           <div className="space-y-1">
-                            <p className="font-bold text-gray-200 font-mono text-[11px]">Tap &apos;Install app&apos; / &apos;Add to Home screen&apos;</p>
+                            <p className="font-bold text-gray-200 font-sans text-[11px]">Tap &apos;Install app&apos; / &apos;Add to Home screen&apos;</p>
                             <p className="text-gray-400 leading-normal text-[11px]">
                               Locate and tap either <strong className="text-white">Install App</strong>, <strong className="text-white">Add Page to...</strong> or <strong className="text-white">Add to Home Screen</strong>.
                             </p>
@@ -2130,9 +2155,9 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         </li>
 
                         <li className="flex items-start gap-3 bg-[#181818] p-3 border border-[#262626]">
-                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-none font-mono text-[10px] font-bold shrink-0">3</span>
+                          <span className="bg-[#71b536] text-black w-5 h-5 flex items-center justify-center rounded-md font-sans text-[10px] font-bold shrink-0">3</span>
                           <div className="space-y-1">
-                            <p className="font-bold text-gray-200 font-mono text-[11px]">Launch From Launcher Tray</p>
+                            <p className="font-bold text-gray-200 font-sans text-[11px]">Launch From Launcher Tray</p>
                             <p className="text-gray-400 leading-normal text-[11px]">
                               The application launches from your offline desktop or application list as a standalone database client, bypassing generic web frames!
                             </p>
@@ -2141,7 +2166,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                       </ol>
                     )}
 
-                    <div className="bg-[#1C201A] border border-[#71b536]/15 p-3 text-[10px] text-gray-400 font-mono leading-relaxed">
+                    <div className="bg-[#1C201A] border border-[#71b536]/15 p-3 text-[10px] text-gray-400 font-sans leading-relaxed">
                       💡 <strong>WHY INSTALL:</strong> Installs offline ledger features, delivers seamless database response matrices, and acts as an independent application.
                     </div>
                   </div>
@@ -2154,7 +2179,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                 <button
                   type="button"
                   onClick={() => setShowInstallGuideModal(false)}
-                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
+                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-sans font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-md"
                 >
                   Dismiss Guide
                 </button>
