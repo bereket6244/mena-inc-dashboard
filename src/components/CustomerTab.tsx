@@ -145,68 +145,126 @@ export default function CustomerTab({
     const originalStyleDeclarationCssTextDesc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText');
     const originalRuleCssTextDesc = Object.getOwnPropertyDescriptor(CSSRule.prototype, 'cssText');
 
-    try {
-      // 1. Patch CSSStyleDeclaration.prototype.getPropertyValue
-      CSSStyleDeclaration.prototype.getPropertyValue = function(propertyName: string) {
-        const val = originalGetPropertyValue.call(this, propertyName);
-        if (typeof val === 'string') {
-          return convertColorStringToRgb(val);
+    const originalAppendChild = Node.prototype.appendChild;
+    const originalInsertBefore = Node.prototype.insertBefore;
+
+    const iframeRestores: Array<() => void> = [];
+
+    function patchWindowStyles(w: any) {
+      if (!w) return;
+      try {
+        const origGetComputedStyle = w.getComputedStyle;
+        const origGetPropertyValue = w.CSSStyleDeclaration?.prototype?.getPropertyValue;
+        const origStyleDeclarationCssTextDesc = w.CSSStyleDeclaration ? Object.getOwnPropertyDescriptor(w.CSSStyleDeclaration.prototype, 'cssText') : null;
+        const origRuleCssTextDesc = w.CSSRule ? Object.getOwnPropertyDescriptor(w.CSSRule.prototype, 'cssText') : null;
+
+        iframeRestores.push(() => {
+          try {
+            if (origGetPropertyValue) {
+              w.CSSStyleDeclaration.prototype.getPropertyValue = origGetPropertyValue;
+            }
+            if (origStyleDeclarationCssTextDesc) {
+              Object.defineProperty(w.CSSStyleDeclaration.prototype, 'cssText', origStyleDeclarationCssTextDesc);
+            }
+            if (origRuleCssTextDesc) {
+              Object.defineProperty(w.CSSRule.prototype, 'cssText', origRuleCssTextDesc);
+            }
+            w.getComputedStyle = origGetComputedStyle;
+          } catch (_) {}
+        });
+
+        if (origGetPropertyValue) {
+          w.CSSStyleDeclaration.prototype.getPropertyValue = function(propertyName: string) {
+            const val = origGetPropertyValue.call(this, propertyName);
+            if (typeof val === 'string') {
+              return convertColorStringToRgb(val);
+            }
+            return val;
+          };
         }
-        return val;
+
+        if (origStyleDeclarationCssTextDesc && origStyleDeclarationCssTextDesc.get) {
+          Object.defineProperty(w.CSSStyleDeclaration.prototype, 'cssText', {
+            ...origStyleDeclarationCssTextDesc,
+            get() {
+              const val = origStyleDeclarationCssTextDesc.get!.call(this);
+              if (typeof val === 'string') {
+                return convertColorStringToRgb(val);
+              }
+              return val;
+            }
+          });
+        }
+
+        if (origRuleCssTextDesc && origRuleCssTextDesc.get) {
+          Object.defineProperty(w.CSSRule.prototype, 'cssText', {
+            ...origRuleCssTextDesc,
+            get() {
+              const val = origRuleCssTextDesc.get!.call(this);
+              if (typeof val === 'string') {
+                return convertColorStringToRgb(val);
+              }
+              return val;
+            }
+          });
+        }
+
+        w.getComputedStyle = function(el: any, pseudoElt: any) {
+          const style = origGetComputedStyle(el, pseudoElt);
+          return new Proxy(style, {
+            get(target, prop) {
+              if (prop === 'getPropertyValue') {
+                return function(propertyName: string) {
+                  let val = target.getPropertyValue(propertyName);
+                  if (typeof val === 'string') {
+                    val = convertColorStringToRgb(val);
+                  }
+                  return val;
+                };
+              }
+              let val = Reflect.get(target, prop);
+              if (typeof val === 'string') {
+                val = convertColorStringToRgb(val);
+              }
+              if (typeof val === 'function') {
+                return val.bind(target);
+              }
+              return val;
+            }
+          });
+        };
+      } catch (e) {
+        console.warn("Failed to patch window styles for:", w, e);
+      }
+    }
+
+    try {
+      // 1. Patch parent window
+      patchWindowStyles(window);
+
+      // 2. Intercept iframe appends to patch sandboxed html2canvas windows
+      Node.prototype.appendChild = function<T extends Node>(newChild: T): T {
+        const res = originalAppendChild.call(this, newChild);
+        if (newChild instanceof HTMLIFrameElement) {
+          try {
+            patchWindowStyles(newChild.contentWindow);
+          } catch (e) {
+            console.warn("Failed to patch iframe on appendChild", e);
+          }
+        }
+        return res;
       };
 
-      // 2. Patch CSSStyleDeclaration.prototype.cssText
-      if (originalStyleDeclarationCssTextDesc && originalStyleDeclarationCssTextDesc.get) {
-        Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', {
-          ...originalStyleDeclarationCssTextDesc,
-          get() {
-            const val = originalStyleDeclarationCssTextDesc.get!.call(this);
-            if (typeof val === 'string') {
-              return convertColorStringToRgb(val);
-            }
-            return val;
+      Node.prototype.insertBefore = function<T extends Node>(newChild: T, refChild: Node | null): T {
+        const res = originalInsertBefore.call(this, newChild, refChild);
+        if (newChild instanceof HTMLIFrameElement) {
+          try {
+            patchWindowStyles(newChild.contentWindow);
+          } catch (e) {
+            console.warn("Failed to patch iframe on insertBefore", e);
           }
-        });
-      }
-
-      // 3. Patch CSSRule.prototype.cssText
-      if (originalRuleCssTextDesc && originalRuleCssTextDesc.get) {
-        Object.defineProperty(CSSRule.prototype, 'cssText', {
-          ...originalRuleCssTextDesc,
-          get() {
-            const val = originalRuleCssTextDesc.get!.call(this);
-            if (typeof val === 'string') {
-              return convertColorStringToRgb(val);
-            }
-            return val;
-          }
-        });
-      }
-
-      // 4. Temporarily patch window.getComputedStyle to translate OKLCH, OKLAB, and color-mix colors to RGB for html2canvas support
-      window.getComputedStyle = function(el, pseudoElt) {
-        const style = originalGetComputedStyle(el, pseudoElt);
-        return new Proxy(style, {
-          get(target, prop) {
-            if (prop === 'getPropertyValue') {
-              return function(propertyName: string) {
-                let val = target.getPropertyValue(propertyName);
-                if (typeof val === 'string') {
-                  val = convertColorStringToRgb(val);
-                }
-                return val;
-              };
-            }
-            let val = Reflect.get(target, prop);
-            if (typeof val === 'string') {
-              val = convertColorStringToRgb(val);
-            }
-            if (typeof val === 'function') {
-              return val.bind(target);
-            }
-            return val;
-          }
-        });
+        }
+        return res;
       };
 
       const container = document.getElementById('proforma-print-container');
@@ -276,7 +334,18 @@ export default function CustomerTab({
       alert(`Export Error: ${err?.message || String(err)}`);
       throw err;
     } finally {
-      // Restore all original prototypes and methods
+      // 1. Run all iframe restores
+      for (const restore of iframeRestores) {
+        try {
+          restore();
+        } catch (_) {}
+      }
+
+      // 2. Restore DOM insertion methods
+      Node.prototype.appendChild = originalAppendChild;
+      Node.prototype.insertBefore = originalInsertBefore;
+
+      // 3. Restore parent window prototypes and methods
       CSSStyleDeclaration.prototype.getPropertyValue = originalGetPropertyValue;
       if (originalStyleDeclarationCssTextDesc) {
         Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', originalStyleDeclarationCssTextDesc);
@@ -285,6 +354,7 @@ export default function CustomerTab({
         Object.defineProperty(CSSRule.prototype, 'cssText', originalRuleCssTextDesc);
       }
       window.getComputedStyle = originalGetComputedStyle;
+
       if (btn) {
         btn.innerHTML = originalText;
         btn.removeAttribute('disabled');
