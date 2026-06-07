@@ -88,7 +88,7 @@ interface CustomerTabProps {
   bankAccounts: BankAccount[];
   productTypes: ProductType[];
   onAddProductType: (prod: ProductType) => Promise<void> | void;
-  onDeleteProductType: (id: string) => Promise<void> | void;
+  onDeleteProductType: (idOrIds: string | string[]) => Promise<void> | void;
   onAddCustomer: (customer: Customer) => void;
   onUpdateCustomer: (customer: Customer) => void;
   onDeleteCustomer: (id: string) => void;
@@ -400,6 +400,7 @@ export default function CustomerTab({
   const [newProductInput, setNewProductInput] = useState('');
   const [showProductManager, setShowProductManager] = useState(false);
   const [newManagerProductInput, setNewManagerProductInput] = useState('');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
@@ -3122,6 +3123,7 @@ export default function CustomerTab({
                   onClick={() => { 
                     setShowProductManager(false); 
                     setNewManagerProductInput('');
+                    setSelectedProductIds([]);
                   }}
                   className="text-gray-400 hover:text-white cursor-pointer transition-colors"
                 >
@@ -3181,27 +3183,97 @@ export default function CustomerTab({
                 <div className="space-y-2 font-mono">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Active Product Categories ({productTypes.length})</span>
                   
-                  <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden max-h-60 overflow-y-auto">
-                    {productTypes.map(prod => (
-                      <div key={prod.id} className="px-4 py-2 flex items-center justify-between text-xs font-mono">
-                        <span className="font-sans text-white font-semibold">{prod.name}</span>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
-                              await onDeleteProductType(prod.id);
-                              if (productType === prod.name) {
-                                setProductType(productTypes.find(p => p.id !== prod.id)?.name || '');
-                              }
+                  {productTypes.length > 0 && (
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#181818] border border-[#262626] border-b-0 text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={selectedProductIds.length === productTypes.length && productTypes.length > 0}
+                          ref={(el) => {
+                            if (el) {
+                              el.indeterminate = selectedProductIds.length > 0 && selectedProductIds.length < productTypes.length;
                             }
                           }}
-                          className="p-1 text-gray-500 hover:text-red-400 rounded-none cursor-pointer transition-colors"
-                          title="Delete Product Type"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        </button>
-                      </div>
-                    ))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedProductIds(productTypes.map(p => p.id));
+                            } else {
+                              setSelectedProductIds([]);
+                            }
+                          }}
+                          className="accent-[#ee317b] h-3.5 w-3.5 cursor-pointer"
+                        />
+                        <span>Select All</span>
+                      </label>
+                      <span>{selectedProductIds.length} Selected</span>
+                    </div>
+                  )}
+
+                  {selectedProductIds.length > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2 bg-[#2d1217] border border-red-900/40 text-xs text-red-400 font-mono animate-fadeIn">
+                      <span>Selected: <strong className="text-white bg-red-950/60 px-1 py-0.5 border border-red-900/40">{selectedProductIds.length}</strong> categories</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to delete the ${selectedProductIds.length} selected product types?`)) {
+                            const idsToDelete = [...selectedProductIds];
+                            await onDeleteProductType(idsToDelete);
+                            
+                            // If the current main productType is deleted, reset it
+                            const deletedNames = productTypes.filter(p => idsToDelete.includes(p.id)).map(p => p.name);
+                            if (deletedNames.includes(productType)) {
+                              const remaining = productTypes.filter(p => !idsToDelete.includes(p.id));
+                              setProductType(remaining[0]?.name || '');
+                            }
+                            setSelectedProductIds([]);
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-[#421A1D] hover:bg-red-700 text-white font-bold uppercase text-[10px] tracking-wider rounded-none transition-colors cursor-pointer"
+                      >
+                        🗑 Delete Selected
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden max-h-60 overflow-y-auto">
+                    {productTypes.map(prod => {
+                      const isSelected = selectedProductIds.includes(prod.id);
+                      return (
+                        <div key={prod.id} className={`px-4 py-2 flex items-center justify-between text-xs font-mono transition-colors ${isSelected ? 'bg-red-950/10' : 'hover:bg-[#1c1c1c]/40'}`}>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedProductIds(prev => [...prev, prod.id]);
+                                } else {
+                                  setSelectedProductIds(prev => prev.filter(id => id !== prod.id));
+                                }
+                              }}
+                              className="accent-[#ee317b] h-3.5 w-3.5 cursor-pointer"
+                            />
+                            <span className="font-sans text-white font-semibold">{prod.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
+                                await onDeleteProductType(prod.id);
+                                if (productType === prod.name) {
+                                  setProductType(productTypes.find(p => p.id !== prod.id)?.name || '');
+                                }
+                                setSelectedProductIds(prev => prev.filter(id => id !== prod.id));
+                              }
+                            }}
+                            className="p-1 text-gray-500 hover:text-red-400 rounded-none cursor-pointer transition-colors"
+                            title="Delete Product Type"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          </button>
+                        </div>
+                      );
+                    })}
                     {productTypes.length === 0 && (
                       <div className="p-4 text-center text-gray-500 text-xs">
                         No product types registered.
@@ -3215,7 +3287,11 @@ export default function CustomerTab({
               {/* Modal footer */}
               <div className="px-6 py-4 border-t border-[#262626] bg-[#181818]/60 flex justify-end">
                 <button
-                  onClick={() => { setShowProductManager(false); setNewManagerProductInput(''); }}
+                  onClick={() => { 
+                    setShowProductManager(false); 
+                    setNewManagerProductInput(''); 
+                    setSelectedProductIds([]);
+                  }}
                   className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
                 >
                   Done

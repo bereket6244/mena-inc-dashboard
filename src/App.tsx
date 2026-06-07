@@ -752,13 +752,15 @@ export default function App() {
     }).catch(() => {});
   };
 
-  const handleDeleteProductType = (id: string) => {
-    const updated = productTypes.filter(p => p.id !== id);
+  const handleDeleteProductType = (idOrIds: string | string[]) => {
+    const isArray = Array.isArray(idOrIds);
+    const ids = isArray ? idOrIds : [idOrIds];
+    const updated = productTypes.filter(p => !ids.includes(p.id));
     setProductTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
 
     import('./lib/dbService').then(({ deleteProductTypeDoc }) => {
-      deleteProductTypeDoc(id).catch(() => {});
+      deleteProductTypeDoc(idOrIds).catch(() => {});
     }).catch(() => {});
   };
 

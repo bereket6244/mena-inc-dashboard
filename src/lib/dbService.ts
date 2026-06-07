@@ -333,13 +333,14 @@ export async function saveProductTypeDoc(prod: ProductType): Promise<void> {
   }
 }
 
-export async function deleteProductTypeDoc(id: string): Promise<void> {
+export async function deleteProductTypeDoc(idOrIds: string | string[]): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase
-        .from('product_types')
-        .delete()
-        .eq('id', id);
+      const isArray = Array.isArray(idOrIds);
+      const query = supabase.from('product_types').delete();
+      const { error } = isArray 
+        ? await query.in('id', idOrIds)
+        : await query.eq('id', idOrIds);
       if (error) throw error;
     } catch (err) {
       console.error("Supabase deleteProductTypeDoc failed:", err);
