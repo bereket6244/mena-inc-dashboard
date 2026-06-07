@@ -21,8 +21,10 @@ import {
   Download,
   Smartphone,
   Share2,
-  Menu
+  Menu,
+  FolderDown
 } from 'lucide-react';
+import { exportAllDataToExcel } from './utils/excelExport';
 import { 
   Customer, 
   PaperStock, 
@@ -1105,10 +1107,19 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             <button
               type="button"
               onClick={triggerPwaInstall}
-              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-sans py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
+              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-sans py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5 mb-3"
             >
               <Download className="w-3.5 h-3.5" />
               Download Web App
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName)}
+              className="w-full bg-[#181818] text-[#ee317b] hover:text-white border border-[#ee317b]/30 hover:border-[#ee317b] font-bold font-sans py-2 hover:bg-[#ee317b]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
+            >
+              <FolderDown className="w-3.5 h-3.5" />
+              Export All Data (Excel)
             </button>
           </div>
 
@@ -1214,6 +1225,17 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
                  <span>UTC: {timeStr || '08:12'}</span>
                </div>
+
+               {/* Export All Data (Desktop) */}
+               <button
+                 type="button"
+                 onClick={() => exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName)}
+                 className="text-xs text-[#ee317b] font-bold hover:text-white bg-[#181818] hover:bg-[#202020] border border-[#262626] px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 uppercase"
+                 title="Export all system ledgers to Excel workbook"
+               >
+                 <FolderDown className="w-3.5 h-3.5" />
+                 <span className="hidden lg:inline">Export Excel</span>
+               </button>
 
                <button
                  type="button"
@@ -1434,6 +1456,19 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        <span>Manage Staff Settings</span>
                      </button>
                    )}
+
+                   {/* Export All Data (Mobile) */}
+                   <button
+                     type="button"
+                     onClick={() => {
+                       setIsMobileMenuOpen(false);
+                       exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                     }}
+                     className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 uppercase font-bold"
+                   >
+                     <FolderDown className="w-3.5 h-3.5 text-[#ee317b]" />
+                     <span>Export All Data (Excel)</span>
+                   </button>
                  </div>
 
                </div>
