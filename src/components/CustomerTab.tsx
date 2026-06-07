@@ -441,17 +441,7 @@ export default function CustomerTab({
     };
   }, [isFormOpen, showProformaModal]);
 
-  // Set default bank account if bankAccounts list is loaded and no bank is selected
-  useEffect(() => {
-    if (bankAccounts && bankAccounts.length > 0 && !proformaBankId) {
-      const defaultBank = bankAccounts.find(b => b.accountNumber === '1000632725896');
-      if (defaultBank) {
-        setProformaBankId(defaultBank.id);
-      } else {
-        setProformaBankId(bankAccounts[0].id);
-      }
-    }
-  }, [bankAccounts, proformaBankId]);
+  // Removed redundant useEffect that forced default bank ID on empty selection
 
   // Synchronize inline bank details text when proformaBankId changes
   useEffect(() => {
@@ -884,7 +874,32 @@ export default function CustomerTab({
         advancePayment: c.advancePayment || 0
       }));
 
-  // Reset/Initialize proforma editable states when the modal is opened
+  // Handle mobile scale down for proforma preview reliably across browsers
+  useEffect(() => {
+    if (!showProformaModal) return;
+    
+    const updateZoom = () => {
+      const container = document.getElementById('proforma-print-container');
+      if (!container) return;
+      
+      const screenWidth = window.innerWidth;
+      if (screenWidth < 850) {
+        // Calculate scale to fit the 800px document perfectly without spilling out (accounting for borders and scrollbars)
+        const scale = (screenWidth - 72) / 800;
+        container.style.zoom = scale.toString();
+      } else {
+        container.style.zoom = '1';
+      }
+    };
+
+    // Initial run and listener
+    updateZoom();
+    // Use a small timeout to ensure DOM is fully rendered for any potential reflows
+    setTimeout(updateZoom, 50);
+    window.addEventListener('resize', updateZoom);
+    
+    return () => window.removeEventListener('resize', updateZoom);
+  }, [showProformaModal]);  // Reset/Initialize proforma editable states when the modal is opened
   useEffect(() => {
     if (showProformaModal && !lastShowProformaModalRef.current) {
       setEditedProductDescriptions({});
@@ -2706,7 +2721,7 @@ export default function CustomerTab({
                       <select
                         value={proformaBankId}
                         onChange={(e) => setProformaBankId(e.target.value)}
-                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors"
+                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors max-w-[130px] md:max-w-none text-ellipsis"
                       >
                         <option value="">-- No Bank Details --</option>
                         {bankAccounts.map((b) => (
@@ -2879,7 +2894,6 @@ export default function CustomerTab({
                     width: 800px !important;
                     max-width: none !important;
                     margin: 0 auto;
-                    zoom: min(1, calc((100vw - 40px) / 800));
                   }
                   #proforma-print-container .text-gray-900,
                   #proforma-print-container strong,
@@ -3127,7 +3141,7 @@ export default function CustomerTab({
                 {/* Totals & Deductions summaries */}
                 <div className="flex flex-col md:flex-row items-stretch justify-between gap-6 mb-8 text-[11px]">
                   {/* Terms and Conditions Block */}
-                  <div className="border border-gray-300 bg-gray-50/50 p-4 font-sans text-[9px] text-gray-600 flex-1 rounded-md leading-relaxed text-left">
+                  <div className="border border-gray-300 bg-gray-50/50 p-4 font-sans text-[9px] text-gray-600 flex-1 rounded-md leading-relaxed text-left break-words">
                     <p className="font-bold text-gray-800 uppercase tracking-wider mb-1.5 text-[9.5px]">Terms &amp; General Conditions</p>
                     <p className="mb-1">1. <strong>Delivery Term:</strong> Within 7 to 10 days from order receipt validation.</p>
                     <p className="mb-1">2. <strong>Payment Term:</strong> Requires at least 50% deposit ledger record, balance due prior to packaging release.</p>
