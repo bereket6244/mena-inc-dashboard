@@ -952,6 +952,11 @@ CREATE TABLE IF NOT EXISTS public.product_types (
   name text UNIQUE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.client_types (
+  id text PRIMARY KEY,
+  name text UNIQUE NOT NULL
+);
+
 -- Disable Row Level Security (RLS) on each table so the web app can read and write records instantly
 ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
@@ -959,7 +964,8 @@ ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(bootstrapSqlText).then(() => {
