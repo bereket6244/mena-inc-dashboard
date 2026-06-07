@@ -22,7 +22,7 @@ import {
   Printer,
   Download
 } from 'lucide-react';
-import { exportCustomersCSV } from '../utils/csvExport';
+
 import { 
   Customer, 
   PaperStock, 
@@ -1085,17 +1085,7 @@ export default function CustomerTab({
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                exportCustomersCSV(customers, (id) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default');
-              }}
-              className="text-xs font-sans font-bold text-[#ee317b] hover:text-white hover:bg-[#ee317b]/10 border border-[#ee317b]/30 bg-[#ee317b]/5 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              title="Download currently loaded customer & order ledger as a CSV file"
-            >
-              <Download className="w-4 h-4" />
-              Export Orders CSV
-            </button>
+
 
             <button
               type="button"

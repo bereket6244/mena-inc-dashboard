@@ -3,12 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import { 
-  exportCustomersCSV, 
-  exportPurchasesCSV, 
-  exportTreasuryCSV, 
-  exportInventoryCSV 
-} from '../utils/csvExport';
-import { 
   TrendingUp, 
   DollarSign, 
   UserCheck, 
@@ -548,82 +542,7 @@ export default function PerformanceTab({
 
       </div>
 
-      {/* 📥 GLOBAL BUSINESS LEDGER EXPORT CENTER */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-none space-y-4">
-        <div>
-          <h3 className="font-sans font-bold text-white flex items-center gap-2 uppercase tracking-wider text-sm">
-            <Download className="w-5 h-5 text-[#ee317b]" />
-            Business Ledger Export Center (CSV)
-          </h3>
-          <p className="text-xs text-gray-400 mt-0.5 font-sans">
-            Download real-time operational datasets in highly compatible CSV formatting for Excel or Google Sheets.
-          </p>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1 font-sans">
-          {/* Export Orders */}
-          <button
-            type="button"
-            onClick={() => {
-              const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'Awash Bank / System Default';
-              exportCustomersCSV(customers, getBankName);
-            }}
-            className="flex items-center justify-between gap-3 px-4 py-3 bg-[#181818] border border-[#262626] hover:border-[#ee317b] text-gray-200 hover:text-white text-xs cursor-pointer transition-all duration-200 text-left rounded-md group"
-          >
-            <div className="space-y-0.5">
-              <span className="font-bold text-white block group-hover:text-[#ee317b] transition-colors text-xs">Customer Orders</span>
-              <span className="text-[10px] text-gray-400 block">{customers.length} business entries</span>
-            </div>
-            <Download className="w-4 h-4 text-[#ee317b] flex-shrink-0" />
-          </button>
-
-          {/* Export Material Expenses */}
-          <button
-            type="button"
-            onClick={() => {
-              const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'Awash Bank / System Default';
-              exportPurchasesCSV(purchases, getBankName);
-            }}
-            className="flex items-center justify-between gap-3 px-4 py-3 bg-[#181818] border border-[#262626] hover:border-[#71b536] text-gray-200 hover:text-white text-xs cursor-pointer transition-all duration-200 text-left rounded-md group"
-          >
-            <div className="space-y-0.5">
-              <span className="font-bold text-white block group-hover:text-[#71b536] transition-colors text-xs">Supplier Expenses</span>
-              <span className="text-[10px] text-gray-400 block">{purchases.length} registered costs</span>
-            </div>
-            <Download className="w-4 h-4 text-[#71b536] flex-shrink-0" />
-          </button>
-
-          {/* Export Treasury */}
-          <button
-            type="button"
-            onClick={() => {
-              exportTreasuryCSV(bankAccounts, customers, purchases);
-            }}
-            className="flex items-center justify-between gap-3 px-4 py-3 bg-[#181818] border border-[#262626] hover:border-amber-500 text-gray-200 hover:text-white text-xs cursor-pointer transition-all duration-200 text-left rounded-md group"
-          >
-            <div className="space-y-0.5">
-              <span className="font-bold text-white block group-hover:text-[#deb887] transition-colors text-xs">Treasury Accounts</span>
-              <span className="text-[10px] text-gray-400 block">{bankAccounts.length} payment channels</span>
-            </div>
-            <Download className="w-4 h-4 text-amber-500 flex-shrink-0" />
-          </button>
-
-          {/* Export Stock Inventory */}
-          <button
-            type="button"
-            onClick={() => {
-              exportInventoryCSV(paperStocks, customers);
-            }}
-            className="flex items-center justify-between gap-3 px-4 py-3 bg-[#181818] border border-[#262626] hover:border-cyan-500 text-gray-200 hover:text-white text-xs cursor-pointer transition-all duration-200 text-left rounded-md group"
-          >
-            <div className="space-y-0.5">
-              <span className="font-bold text-white block group-hover:text-cyan-400 transition-colors text-xs">Paper Stockpile</span>
-              <span className="text-[10px] text-gray-400 block">{paperStocks.length} tracked items</span>
-            </div>
-            <Download className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-          </button>
-        </div>
-      </div>
 
       {/* --- TREASURY DEPARTMENT & BANK ACCOUNTS MANAGER --- */}
       <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-none space-y-6" id="treasury-desk-pnl">

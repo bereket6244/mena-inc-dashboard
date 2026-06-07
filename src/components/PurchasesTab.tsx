@@ -25,7 +25,7 @@ import {
   Percent,
   Download
 } from 'lucide-react';
-import { exportPurchasesCSV } from '../utils/csvExport';
+
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -663,18 +663,7 @@ export default function PurchasesTab({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'Awash Bank / System Default';
-              exportPurchasesCSV(purchases, getBankName);
-            }}
-            className="px-3.5 py-2.5 bg-[#181818] hover:bg-[#262626] text-gray-300 hover:text-white border border-[#262626] text-xs font-sans font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-md"
-            title="Download full supplier expenses ledger as a CSV file"
-          >
-            <Download className="w-4 h-4 text-[#71b536]" />
-            Export CSV
-          </button>
+
 
           <button
             type="button"

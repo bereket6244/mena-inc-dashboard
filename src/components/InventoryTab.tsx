@@ -19,7 +19,7 @@ import {
   CheckSquare,
   Download
 } from 'lucide-react';
-import { exportInventoryCSV } from '../utils/csvExport';
+
 import { Customer, PaperStock, EmployeeUser } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
@@ -234,17 +234,7 @@ export default function InventoryTab({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => {
-              exportInventoryCSV(paperStocks, customers);
-            }}
-            className="text-xs font-sans font-bold text-cyan-400 hover:text-white hover:bg-cyan-500/10 border border-cyan-500/30 bg-cyan-500/5 rounded-md px-3.5 py-1.5 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            title="Download full stockpile inventory ledger as a CSV file"
-          >
-            <Download className="w-4 h-4" />
-            Export Inventory CSV
-          </button>
+
 
           {isAdmin ? (
             <div className="flex items-stretch sm:items-center gap-2 select-none">
