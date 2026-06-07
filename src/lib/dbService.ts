@@ -355,3 +355,52 @@ export async function deleteProductTypeDoc(idOrIds: string | string[]): Promise<
   }
 }
 
+// ============================================
+// 8. CLIENT TYPES OPERATIONS
+// ============================================
+
+export async function fetchAllClientTypes(localFallback: any[]): Promise<any[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('client_types')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []) as any[];
+    } catch (err: any) {
+      console.error("Supabase fetchAllClientTypes failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveClientTypeDoc(type: any): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('client_types')
+        .upsert(type);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase saveClientTypeDoc failed:", err);
+    }
+  }
+}
+
+export async function deleteClientTypes(ids: string[]): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('client_types')
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase deleteClientTypes failed:", err);
+    }
+  }
+}

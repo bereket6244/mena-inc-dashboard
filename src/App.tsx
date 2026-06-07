@@ -415,7 +415,9 @@ export default function App() {
           fetchAllEmployees,
           saveEmployeeDoc,
           fetchAllProductTypes,
-          saveProductTypeDoc
+          saveProductTypeDoc,
+          fetchAllClientTypes,
+          saveClientTypeDoc
         } = await import('./lib/dbService');
         
         const finalS = await fetchAllPaperStocks(initialS);
@@ -476,6 +478,15 @@ export default function App() {
           finalProd.push(...DEFAULT_PRODUCT_TYPES);
         }
 
+        const initialClientTypesForDb = clientTypes.length > 0 ? clientTypes : DEFAULT_CLIENT_TYPES;
+        const finalClientTypes = await fetchAllClientTypes(initialClientTypesForDb);
+        if (finalClientTypes.length === 0 && DEFAULT_CLIENT_TYPES.length > 0) {
+          for (const ct of DEFAULT_CLIENT_TYPES) {
+            await saveClientTypeDoc(ct).catch(() => {});
+          }
+          finalClientTypes.push(...DEFAULT_CLIENT_TYPES);
+        }
+
         if (finalEmployees.length === 0 && initialEmployees.length > 0) {
           // Empty remote table, seed with initialEmployees
           for (const emp of initialEmployees) {
@@ -491,6 +502,7 @@ export default function App() {
         setCategories(finalCat);
         setEmployees(finalEmployees);
         setProductTypes(finalProd);
+        setClientTypes(finalClientTypes);
 
         if (currentUser) {
           const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
@@ -819,9 +831,20 @@ export default function App() {
     const updated = [...clientTypes, newType];
     setClientTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
+
+    import('./lib/dbService').then(({ saveClientTypeDoc }) => {
+      saveClientTypeDoc(newType).catch(() => {});
+    }).catch(() => {});
   };
 
-  const handleDeleteClientType = (ids: string[]) => {
+  const handleDeleteClientType = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    try {
+      const { deleteClientTypes } = await import('./lib/dbService');
+      await deleteClientTypes(ids);
+    } catch (e) {
+      console.warn('DB delete client type failed, continuing local update');
+    }
     const updated = clientTypes.filter(c => !ids.includes(c.id));
     setClientTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
