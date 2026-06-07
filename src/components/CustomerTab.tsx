@@ -330,12 +330,14 @@ export default function CustomerTab({
       const originalOverflow = container.style.overflow;
       const originalHeight = container.style.height;
       const originalWidth = container.style.width;
+      const originalZoom = container.style.zoom;
 
       // Temporarily set styling to show the entire layout and keep it consistent on mobile
       container.style.maxHeight = 'none';
       container.style.overflow = 'visible';
       container.style.height = 'auto';
       container.style.width = '800px';
+      container.style.zoom = '1';
 
       // Force a reflow and give the browser a moment to repaint the 800px layout before capturing
       void container.offsetHeight;
@@ -355,6 +357,7 @@ export default function CustomerTab({
       container.style.overflow = originalOverflow;
       container.style.height = originalHeight;
       container.style.width = originalWidth;
+      container.style.zoom = originalZoom;
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
@@ -2873,6 +2876,10 @@ export default function CustomerTab({
                     color: #111827 !important;
                     border-color: #e5e7eb !important;
                     box-shadow: none !important;
+                    width: 800px !important;
+                    max-width: none !important;
+                    margin: 0 auto;
+                    zoom: min(1, calc((100vw - 40px) / 800));
                   }
                   #proforma-print-container .text-gray-900,
                   #proforma-print-container strong,
