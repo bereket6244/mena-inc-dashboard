@@ -2518,7 +2518,7 @@ export default function CustomerTab({
               </form>
 
               {/* Bottom Nav */}
-              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-between select-none">
+              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 select-none">
                 <div>
                   {formStep > 1 && (
                     <button
@@ -2531,7 +2531,7 @@ export default function CustomerTab({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 justify-end">
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}

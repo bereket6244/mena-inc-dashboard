@@ -188,16 +188,22 @@ export default function PerformanceTab({
     setEditingBankId(null);
   };
 
-  // --- CORE FINANCIALS ---
-  
+  // Dynamic filtering of customers for interval analysis
+  const filteredCustomersForInterval = customers.filter(c => {
+    const orderDate = c.advancePaymentDate || c.deliveryDate || '';
+    if (expenseStartDate && (!orderDate || orderDate < expenseStartDate)) return false;
+    if (expenseEndDate && (!orderDate || orderDate > expenseEndDate)) return false;
+    return true;
+  });
+
   // Total Gross Orders (ETB)
-  const totalGrossOrders = customers.reduce((sum, c) => sum + (c.quantity * c.unitPrice), 0);
+  const totalGrossOrders = filteredCustomersForInterval.reduce((sum, c) => sum + (c.quantity * c.unitPrice), 0);
 
   // Total customer advances paid on books
-  const totalAdvancePaid = customers.reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
+  const totalAdvancePaid = filteredCustomersForInterval.reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
 
   // Total completed client remaining balances paid on delivery
-  const totalRemainingPaid = customers
+  const totalRemainingPaid = filteredCustomersForInterval
     .filter(c => !!(c.deliveryDate && c.bankRemainingId))
     .reduce((sum, c) => {
       const base = c.quantity * c.unitPrice;
@@ -211,10 +217,10 @@ export default function PerformanceTab({
   const totalPurchaseExpenses = purchases.reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
   
   // Net liquid cash left in treasury = total customer intake - total supplier payments
-  const collectedCashInHand = totalAdvancePaid + totalRemainingPaid - totalPurchaseExpenses;
+  const collectedCashInHand = totalAdvancePaid + totalRemainingPaid - filteredExpenseSum;
 
   // Total Outstanding Debt (Active uncollected order receivables)
-  const totalOutstandingDebt = customers.reduce((sum, c) => {
+  const totalOutstandingDebt = filteredCustomersForInterval.reduce((sum, c) => {
     // If completed order, remaining is paid (0 debt). If not, full invoice minus advance is outstanding.
     if (c.deliveryDate && c.bankRemainingId) return sum;
     const base = c.quantity * c.unitPrice;

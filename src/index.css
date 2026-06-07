@@ -347,3 +347,15 @@ option {
   color: #ffffff !important;
 }
 
+
+.react-datepicker-wrapper { width: 100%; }
+.react-datepicker { font-family: inherit; border: 1px solid #262626; background-color: #121212; color: #fff; }
+.react-datepicker__header { background-color: #181815; border-bottom: 1px solid #262626; }
+.react-datepicker__current-month, .react-datepicker__day-name { color: #fff; }
+.react-datepicker__day { color: #ccc; }
+.react-datepicker__day:hover { background-color: #262626; }
+.react-datepicker__day--selected, .react-datepicker__day--in-range { background-color: #ee317b; color: white; }
+.react-datepicker__day--in-selecting-range { background-color: #ee317b80; }
+.react-datepicker__day--keyboard-selected { background-color: #ee317b; color: white; }
+.react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::before, .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::after { border-bottom-color: #181815; }
+
