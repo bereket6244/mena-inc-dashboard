@@ -3104,15 +3104,17 @@ export default function CustomerTab({
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-800 text-center">
                       {proformaItemsToRender.map((item, idx) => {
-                        const rowTotal = item.quantity * item.unitPrice;
+                        const q = Number(item.quantity) || 0;
+                        const p = Number(item.unitPrice) || 0;
+                        const rowTotal = q * p;
                         return (
                           <tr key={item.id} className="hover:bg-gray-55/50">
                             <td className="py-2 px-3 border-r border-gray-300 font-sans text-center text-gray-500">{idx + 1}</td>
                             <td className="py-2 px-3 border-r border-gray-300 text-left text-gray-800 font-sans">
                               <strong className="text-black font-semibold">{item.productType}</strong>
                             </td>
-                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-black font-semibold">{item.quantity.toLocaleString()}</td>
-                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-gray-900">{Number(item.unitPrice).toFixed(2)}</td>
+                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-black font-semibold">{q.toLocaleString()}</td>
+                            <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-gray-900">{p.toFixed(2)}</td>
                             <td className="py-2 px-3 font-sans text-right font-bold text-black">{rowTotal.toFixed(2)}</td>
                           </tr>
                         );
@@ -3157,14 +3159,14 @@ export default function CustomerTab({
                     <div className="flex justify-between text-gray-600">
                       <span>Itemized Sub-Total:</span>
                       <span className="font-bold text-gray-900">
-                        {proformaItemsToRender.reduce((acc, c) => acc + (c.quantity * c.unitPrice), 0).toFixed(2)} ETB
+                        {proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0).toFixed(2)} ETB
                       </span>
                     </div>
                     {proformaIncludeVat && (
                       <div className="flex justify-between text-gray-600">
                         <span>VAT (15.00%):</span>
                         <span className="font-bold text-gray-900">
-                          {(proformaItemsToRender.reduce((acc, c) => acc + (c.quantity * c.unitPrice), 0) * 0.15).toFixed(2)} ETB
+                          {(proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 0.15).toFixed(2)} ETB
                         </span>
                       </div>
                     )}
@@ -3172,7 +3174,7 @@ export default function CustomerTab({
                       <span>Grand Total:</span>
                       <span>
                         {(
-                          proformaItemsToRender.reduce((acc, c) => acc + (c.quantity * c.unitPrice), 0) * 
+                          proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 
                           (proformaIncludeVat ? 1.15 : 1)
                         ).toFixed(2)} ETB
                       </span>
@@ -3180,15 +3182,15 @@ export default function CustomerTab({
                     <div className="flex justify-between pt-1 text-gray-600 text-[10px] border-b pb-1.5 border-dashed">
                       <span className="text-green-700 font-bold">Total Recorded Paid (Adv):</span>
                       <span className="font-bold text-green-700">
-                        -{proformaItemsToRender.reduce((acc, c) => acc + c.advancePayment, 0).toFixed(2)} ETB
+                        -{proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0).toFixed(2)} ETB
                       </span>
                     </div>
                     <div className="flex justify-between pt-1.5 text-[11.5px] font-black text-red-700">
                       <span>Outstanding Balance Due:</span>
                       <span>
                         {Math.max(0, 
-                          (proformaItemsToRender.reduce((acc, c) => acc + (c.quantity * c.unitPrice), 0) * (proformaIncludeVat ? 1.15 : 1)) - 
-                          proformaItemsToRender.reduce((acc, c) => acc + c.advancePayment, 0)
+                          (proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * (proformaIncludeVat ? 1.15 : 1)) - 
+                          proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0)
                         ).toFixed(2)} ETB
                       </span>
                     </div>
