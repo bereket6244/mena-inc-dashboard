@@ -344,7 +344,7 @@ export default function PurchasesTab({
         baseAmount: item.baseAmount
       }));
 
-      onUpdatePurchases([...newItemsToCommit, ...purchases]);
+      onUpdatePurchases([...purchases, ...newItemsToCommit]);
       setPendingBatchItems([]);
       setIsFormOpen(false);
       return;
@@ -434,7 +434,7 @@ export default function PurchasesTab({
         withholdingAmount: calculatedWithholding,
         baseAmount: calculatedBase
       };
-      onUpdatePurchases([newPurchase, ...purchases]);
+      onUpdatePurchases([...purchases, newPurchase]);
     }
 
     setIsFormOpen(false);
