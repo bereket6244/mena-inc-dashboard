@@ -130,6 +130,7 @@ export default function CustomerTab({
   const [standaloneClientName, setStandaloneClientName] = useState('Mena Corporate Client PLC');
   const [standaloneClientPhone, setStandaloneClientPhone] = useState('+251 900 000 000');
   const [applyDigitalStamp, setApplyDigitalStamp] = useState(true);
+  const [proformaBankId, setProformaBankId] = useState<string>('');
 
   // Dynamic html2canvas + jsPDF direct file exporter (pure modern Vector text-layout based PDF engine)
   const exportDirectPDF = async () => {
@@ -380,6 +381,13 @@ export default function CustomerTab({
       document.body.style.overflow = '';
     };
   }, [isFormOpen, showProformaModal]);
+
+  // Set default bank account if bankAccounts list is loaded and no bank is selected
+  useEffect(() => {
+    if (bankAccounts && bankAccounts.length > 0 && !proformaBankId) {
+      setProformaBankId(bankAccounts[0].id);
+    }
+  }, [bankAccounts, proformaBankId]);
 
   // Form Fields State
   const [clientType, setClientType] = useState<Customer['clientType']>('Individual');
@@ -2506,7 +2514,7 @@ export default function CustomerTab({
                       {isStandaloneProformaMode ? 'STANDALONE PROFORMA WRITER' : 'PROFORMA AUTOMATION LEDGER'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* Interactive Toggle for Stamp Seal */}
                     <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs mr-3 select-none">
                       <input
@@ -2527,6 +2535,23 @@ export default function CustomerTab({
                         className="accent-[#ee317b]"
                       />
                       <span>Include 15% VAT</span>
+                    </label>
+
+                    {/* Bank Selection dropdown */}
+                    <label className="flex items-center gap-1.5 text-stone-300 text-xs mr-3 select-none">
+                      <span>Payment Bank:</span>
+                      <select
+                        value={proformaBankId}
+                        onChange={(e) => setProformaBankId(e.target.value)}
+                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-none text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors"
+                      >
+                        <option value="">-- No Bank Details --</option>
+                        {bankAccounts.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
                     </label>
 
                     {/* Export PDF Button (Instant client-generate) */}
@@ -2687,6 +2712,7 @@ export default function CustomerTab({
                     background-color: #ffffff !important;
                     color: #111827 !important;
                     border-color: #e5e7eb !important;
+                    box-shadow: none !important;
                   }
                   #proforma-print-container .text-gray-900,
                   #proforma-print-container strong,
@@ -2776,6 +2802,8 @@ export default function CustomerTab({
                   #proforma-print-container * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
+                    box-shadow: none !important;
+                    text-shadow: none !important;
                   }
                   @media print {
                     /* Strip background and borders of main visual container overlays */
@@ -2936,7 +2964,20 @@ export default function CustomerTab({
                     <p className="mb-1">1. <strong>Delivery Term:</strong> Within 7 to 10 days from order receipt validation.</p>
                     <p className="mb-1">2. <strong>Payment Term:</strong> Requires at least 50% deposit ledger record, balance due prior to packaging release.</p>
                     <p className="mb-1">3. <strong>Validity:</strong> This proforma remains valid and conversion rates locked for 10 days from the dates above.</p>
-                    <p className="text-[8.5px] text-gray-400 mt-2 lowercase">processed in real-time by digital workbook agent, securely archived.</p>
+                    
+                    {proformaBankId && (() => {
+                      const bank = bankAccounts.find(b => b.id === proformaBankId);
+                      if (!bank) return null;
+                      return (
+                        <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-gray-700">
+                          <p className="font-bold text-gray-800 uppercase tracking-wider mb-1 text-[8.5px]">Payment Details (Direct Transfer)</p>
+                          <p className="mb-0.5">Bank Name: <strong className="text-black font-semibold">{bank.name}</strong></p>
+                          {bank.accountNumber && <p>Account Number: <strong className="text-black font-semibold font-mono">{bank.accountNumber}</strong></p>}
+                        </div>
+                      );
+                    })()}
+                    
+                    <p className="text-[8.5px] text-gray-400 mt-2.5 lowercase">processed in real-time by digital workbook agent, securely archived.</p>
                   </div>
 
                   {/* Summary math table */}
