@@ -141,9 +141,49 @@ export default function CustomerTab({
     }
 
     const originalGetComputedStyle = window.getComputedStyle;
+    const originalGetPropertyValue = CSSStyleDeclaration.prototype.getPropertyValue;
+    const originalStyleDeclarationCssTextDesc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText');
+    const originalRuleCssTextDesc = Object.getOwnPropertyDescriptor(CSSRule.prototype, 'cssText');
 
     try {
-      // Temporarily patch window.getComputedStyle to translate OKLCH, OKLAB, and color-mix colors to RGB for html2canvas support
+      // 1. Patch CSSStyleDeclaration.prototype.getPropertyValue
+      CSSStyleDeclaration.prototype.getPropertyValue = function(propertyName: string) {
+        const val = originalGetPropertyValue.call(this, propertyName);
+        if (typeof val === 'string') {
+          return convertColorStringToRgb(val);
+        }
+        return val;
+      };
+
+      // 2. Patch CSSStyleDeclaration.prototype.cssText
+      if (originalStyleDeclarationCssTextDesc && originalStyleDeclarationCssTextDesc.get) {
+        Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', {
+          ...originalStyleDeclarationCssTextDesc,
+          get() {
+            const val = originalStyleDeclarationCssTextDesc.get!.call(this);
+            if (typeof val === 'string') {
+              return convertColorStringToRgb(val);
+            }
+            return val;
+          }
+        });
+      }
+
+      // 3. Patch CSSRule.prototype.cssText
+      if (originalRuleCssTextDesc && originalRuleCssTextDesc.get) {
+        Object.defineProperty(CSSRule.prototype, 'cssText', {
+          ...originalRuleCssTextDesc,
+          get() {
+            const val = originalRuleCssTextDesc.get!.call(this);
+            if (typeof val === 'string') {
+              return convertColorStringToRgb(val);
+            }
+            return val;
+          }
+        });
+      }
+
+      // 4. Temporarily patch window.getComputedStyle to translate OKLCH, OKLAB, and color-mix colors to RGB for html2canvas support
       window.getComputedStyle = function(el, pseudoElt) {
         const style = originalGetComputedStyle(el, pseudoElt);
         return new Proxy(style, {
@@ -236,6 +276,14 @@ export default function CustomerTab({
       alert(`Export Error: ${err?.message || String(err)}`);
       throw err;
     } finally {
+      // Restore all original prototypes and methods
+      CSSStyleDeclaration.prototype.getPropertyValue = originalGetPropertyValue;
+      if (originalStyleDeclarationCssTextDesc) {
+        Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', originalStyleDeclarationCssTextDesc);
+      }
+      if (originalRuleCssTextDesc) {
+        Object.defineProperty(CSSRule.prototype, 'cssText', originalRuleCssTextDesc);
+      }
       window.getComputedStyle = originalGetComputedStyle;
       if (btn) {
         btn.innerHTML = originalText;
