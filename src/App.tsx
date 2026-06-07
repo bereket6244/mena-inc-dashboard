@@ -22,7 +22,8 @@ import {
   Smartphone,
   Share2,
   Menu,
-  FolderDown
+  FolderDown,
+  Type
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
 import { 
@@ -59,6 +60,18 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('mena_inc_theme_v3') as 'dark' | 'light') || 'dark';
   });
+
+  // Font size state
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>(() => {
+    return (localStorage.getItem('mena_inc_font_size') as 'sm' | 'base' | 'lg') || 'base';
+  });
+
+  useEffect(() => {
+    if (fontSize === 'sm') document.documentElement.style.fontSize = '14px';
+    else if (fontSize === 'lg') document.documentElement.style.fontSize = '18px';
+    else document.documentElement.style.fontSize = '16px';
+    localStorage.setItem('mena_inc_font_size', fontSize);
+  }, [fontSize]);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -1216,7 +1229,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  <button
                    type="button"
                    onClick={() => setShowStaffModal(true)}
-                   className="bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-300 px-2.5 py-1.5 rounded-md font-sans flex items-center gap-1 cursor-pointer transition-colors"
+                   className={`bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] px-2.5 py-1.5 rounded-md font-sans flex items-center gap-1 cursor-pointer transition-colors ${theme === 'light' ? 'text-gray-900 font-bold' : 'text-gray-300'}`}
                    title="Manage Employee passkeys and register workers"
                  >
                    <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
@@ -1229,6 +1242,14 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                  <span>UTC: {timeStr || '08:12'}</span>
                </div>
 
+               {/* Font Size Selector (Desktop) */}
+               <div className="flex items-center gap-0.5 bg-[#181818] border border-[#262626] rounded-md px-1.5 py-1 text-xs">
+                 <Type className="w-3 h-3 text-[#ee317b] mr-1" />
+                 <button onClick={() => setFontSize('sm')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
+                 <button onClick={() => setFontSize('base')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
+                 <button onClick={() => setFontSize('lg')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
+               </div>
+
                {/* Export All Data (Desktop) */}
                <button
                  type="button"
@@ -1236,7 +1257,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                    const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
                    exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
                  }}
-                 className="text-xs text-[#ee317b] font-bold hover:text-white bg-[#181818] hover:bg-[#202020] border border-[#262626] px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 uppercase"
+                 className={`text-xs font-bold hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 uppercase ${theme === 'light' ? 'text-gray-900' : 'text-[#ee317b] hover:text-white'}`}
                  title="Export all system ledgers to Excel workbook"
                >
                  <FolderDown className="w-3.5 h-3.5" />
@@ -1289,7 +1310,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
            </div>
          </div>
 
-         {/* Mobile Dropdown Menu Drawer */}
+         {/* Universal Dropdown Menu Drawer */}
          <AnimatePresence>
            {isMobileMenuOpen && (
              <motion.div
@@ -1448,6 +1469,21 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                      </button>
                    </div>
 
+                   <div className="grid grid-cols-1 gap-2 mt-2">
+                     {/* Font Size Selector */}
+                     <div className="col-span-1 bg-[#181818] border border-[#262626] rounded-md px-3 py-2 flex flex-row items-center justify-between text-xs">
+                       <div className="flex items-center gap-1.5 text-gray-300">
+                         <Type className="w-3.5 h-3.5 text-[#ee317b]" />
+                         <span>Font Size</span>
+                       </div>
+                       <div className="flex bg-[#121212] rounded border border-[#333] p-0.5">
+                         <button onClick={() => setFontSize('sm')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
+                         <button onClick={() => setFontSize('base')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
+                         <button onClick={() => setFontSize('lg')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
+                       </div>
+                     </div>
+                   </div>
+
                    {/* Staff Settings for Admins */}
                    {currentUser.role === 'admin' && (
                      <button
@@ -1456,7 +1492,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                          setIsMobileMenuOpen(false);
                          setShowStaffModal(true);
                        }}
-                       className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2"
+                       className={`w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 ${theme === 'light' ? 'text-gray-900 font-bold' : 'text-gray-300'}`}
                      >
                        <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>Manage Staff Settings</span>
@@ -1471,7 +1507,7 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                        const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
                        exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
                      }}
-                     className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 uppercase font-bold"
+                     className={`w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 uppercase font-bold ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}
                    >
                      <FolderDown className="w-3.5 h-3.5 text-[#ee317b]" />
                      <span>Export Data</span>

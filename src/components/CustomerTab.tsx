@@ -868,6 +868,8 @@ export default function CustomerTab({
     let matchesReceipt = true;
     if (filterReceipt === 'NeedsReceipt') {
       matchesReceipt = !!c.isVatAdded;
+    } else if (filterReceipt === 'WithoutReceipt') {
+      matchesReceipt = !c.isVatAdded;
     }
 
     return matchesSearch && matchesAgent && matchesSource && matchesPayment && matchesCompletion && matchesReceipt;
@@ -1043,6 +1045,7 @@ export default function CustomerTab({
             >
               <option value="All">All Receipts</option>
               <option value="NeedsReceipt">Needs Receipts (VAT)</option>
+              <option value="WithoutReceipt">Without Receipt</option>
             </select>
           </div>
 
@@ -1567,39 +1570,65 @@ export default function CustomerTab({
                        <Phone className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>{c.phone || 'No phone record'}</span>
                     </div>
-                    <div className="flex items-center gap-2 font-sans text-xs">
-                       <span className="text-[#ee317b] font-bold text-xs">📅</span>
-                       <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
-                         Final Payment Date:
-                         <input
-                           type="date"
-                           value={c.deliveryDate || ''}
-                           onChange={(e) => {
-                             onUpdateCustomer({
-                               ...c,
-                               deliveryDate: e.target.value
-                             });
-                           }}
-                           className="bg-[#161616] text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer"
-                         />
-                         {c.deliveryDate && (
-                           <button
-                             type="button"
-                             onClick={() => {
-                               onUpdateCustomer({
-                                 ...c,
-                                 deliveryDate: '',
-                                 bankRemainingId: '' // Reset completion status
-                               });
-                             }}
-                             className="text-red-500 hover:text-red-400 font-extrabold px-1.5 py-0.5 cursor-pointer text-xs"
-                             title="Clear Final Payment Date"
-                           >
-                             ✕
-                           </button>
-                         )}
-                       </span>
-                    </div>
+                     <div className="flex flex-col gap-2">
+                       <div className="flex items-center gap-2 font-sans text-xs">
+                          <span className="text-[#ee317b] font-bold text-xs">📅</span>
+                          <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
+                            Final Payment Date:
+                            <input
+                              type="date"
+                              value={c.deliveryDate || ''}
+                              onChange={(e) => {
+                                onUpdateCustomer({
+                                  ...c,
+                                  deliveryDate: e.target.value
+                                });
+                              }}
+                              className="bg-[#161616] text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer"
+                            />
+                            {c.deliveryDate && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onUpdateCustomer({
+                                    ...c,
+                                    deliveryDate: '',
+                                    bankRemainingId: '' // Reset completion status
+                                  });
+                                }}
+                                className="text-red-500 hover:text-red-400 font-extrabold px-1.5 py-0.5 cursor-pointer text-xs"
+                                title="Clear Final Payment Date"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </span>
+                       </div>
+                       
+                       <div className="flex items-center gap-2 font-sans text-xs">
+                          <span className="text-[#ee317b] font-bold text-xs">🏦</span>
+                          <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
+                            Final Method:
+                            <select
+                              value={c.bankRemainingId || ''}
+                              onChange={(e) => {
+                                onUpdateCustomer({
+                                  ...c,
+                                  bankRemainingId: e.target.value || undefined
+                                });
+                              }}
+                              className="bg-[#161616] text-[#ee317b] hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer max-w-[150px] truncate"
+                            >
+                              <option value="">- Unpaid -</option>
+                              {bankAccounts.map(b => (
+                                <option key={b.id} value={b.id}>
+                                  {b.name.replace(/\s*\(.*\)/, '').replace('Commercial Bank of Ethiopia', 'CBE')} {b.accountNumber ? `(${b.accountNumber.slice(-4)})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                       </div>
+                     </div>
                     <div className="flex items-center gap-2">
                        <Layers className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>Product: <strong className="text-white font-sans">{c.productType} ({c.quantity} pcs)</strong></span>
