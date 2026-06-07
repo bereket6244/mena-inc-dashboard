@@ -1838,6 +1838,25 @@ export default function CustomerTab({
                               >
                                 + New
                               </button>
+                              {productType && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const prod = productTypes.find(p => p.name === productType);
+                                    if (prod) {
+                                      if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
+                                        await onDeleteProductType(prod.id);
+                                        const remaining = productTypes.filter(p => p.id !== prod.id);
+                                        setProductType(remaining[0]?.name || '');
+                                      }
+                                    }
+                                  }}
+                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 font-mono text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                  title="Delete selected Product Type"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </>
                           ) : (
                             <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] px-2 py-1">
