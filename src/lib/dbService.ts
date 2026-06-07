@@ -10,7 +10,8 @@ export async function fetchAllPaperStocks(localFallback: PaperStock[]): Promise<
     try {
       const { data, error } = await supabase
         .from('paper_stocks')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -59,7 +60,8 @@ export async function fetchAllCustomers(localFallback: Customer[]): Promise<Cust
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -108,7 +110,8 @@ export async function fetchAllBankAccounts(localFallback: BankAccount[]): Promis
     try {
       const { data, error } = await supabase
         .from('bank_accounts')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -160,7 +163,8 @@ export async function fetchAllPurchases(localFallback: Purchase[]): Promise<Purc
     try {
       const { data, error } = await supabase
         .from('purchases')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -209,7 +213,8 @@ export async function fetchAllExpenseCategories(localFallback: ExpenseCategory[]
     try {
       const { data, error } = await supabase
         .from('expense_categories')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -258,7 +263,8 @@ export async function fetchAllEmployees(localFallback: EmployeeUser[]): Promise<
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 
@@ -307,7 +313,8 @@ export async function fetchAllProductTypes(localFallback: ProductType[]): Promis
     try {
       const { data, error } = await supabase
         .from('product_types')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) throw error;
 

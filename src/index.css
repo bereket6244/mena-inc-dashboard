@@ -341,7 +341,9 @@ option {
 }
 
 /* Force specific elements to remain white in light mode */
-.keep-text-white {
+.keep-text-white,
+.light-theme .keep-text-white,
+.light-theme .text-white.keep-text-white {
   color: #ffffff !important;
 }
 

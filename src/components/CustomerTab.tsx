@@ -331,11 +331,17 @@ export default function CustomerTab({
       const originalHeight = container.style.height;
       const originalWidth = container.style.width;
       const originalZoom = container.style.zoom;
+      const originalPosition = container.style.position;
+      const originalTop = container.style.top;
+      const originalLeft = container.style.left;
 
       // Temporarily set styling to show the entire layout and keep it consistent on mobile
+      container.style.position = 'absolute';
+      container.style.top = '0';
+      container.style.left = '0';
       container.style.maxHeight = 'none';
       container.style.overflow = 'visible';
-      container.style.height = 'auto';
+      container.style.height = 'max-content';
       container.style.width = '800px';
       container.style.zoom = '1';
 
@@ -349,10 +355,15 @@ export default function CustomerTab({
         useCORS: true,
         allowTaint: false, // Prevent tainted canvas errors
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        height: container.scrollHeight,
+        windowHeight: container.scrollHeight
       });
 
       // Restore original styles immediately after capture
+      container.style.position = originalPosition;
+      container.style.top = originalTop;
+      container.style.left = originalLeft;
       container.style.maxHeight = originalMaxHeight;
       container.style.overflow = originalOverflow;
       container.style.height = originalHeight;
@@ -656,7 +667,7 @@ export default function CustomerTab({
     setDeliveryDate(customer.deliveryDate);
 
     setAdvancePaymentDate(customer.advancePaymentDate || customer.deliveryDate);
-    setBankRemainingId(customer.bankRemainingId || 'b1');
+    setBankRemainingId(customer.bankRemainingId || '');
     setIncompletionReason(customer.incompletionReason || '');
     setIsVatAdded(customer.isVatAdded || false);
     setBaseUnitPriceInput((customer.baseUnitPrice !== undefined ? customer.baseUnitPrice : customer.unitPrice).toString());
@@ -1332,7 +1343,7 @@ export default function CustomerTab({
 
                       {/* Deposit Account (Advance) */}
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
-                        {bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia'}
+                        {c.paymentMethodId === '' ? 'None / Free' : (bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia')}
                       </td>
                       
                       {/* Paper 1 */}
@@ -1689,13 +1700,13 @@ export default function CustomerTab({
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
                       <span className="text-gray-300 font-medium truncate max-w-[180px]">
-                        {bankAccounts.find(ac => ac.id === (c.paymentMethodId || 'b1'))?.name || 'CBE'}
+                        {c.paymentMethodId === '' ? 'None / Free' : (bankAccounts.find(ac => ac.id === (c.paymentMethodId || 'b1'))?.name || 'CBE')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">A/C for Remaining Due</span>
                       <span className="text-[#ee317b] font-medium truncate max-w-[180px]">
-                        {bankAccounts.find(ac => ac.id === (c.bankRemainingId || 'b1'))?.name || 'CBE'}
+                        {c.bankRemainingId === '' ? 'Unpaid / Pending' : (bankAccounts.find(ac => ac.id === (c.bankRemainingId || 'b1'))?.name || 'CBE')}
                       </span>
                     </div>
                     {c.incompletionReason && (
@@ -1819,7 +1830,7 @@ export default function CustomerTab({
                   <div className="space-y-4">
                     <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">1. Client Billing &amp; Pricing Metadata</h4>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-type">Client Type</label>
                         <select
@@ -1923,7 +1934,7 @@ export default function CustomerTab({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-phone">Phone / Contact</label>
                         <input
@@ -1955,7 +1966,7 @@ export default function CustomerTab({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="flex justify-between items-center mb-1">
                           <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
@@ -2110,7 +2121,7 @@ export default function CustomerTab({
                           </label>
 
                           {isVatAdded && (
-                            <div className="grid grid-cols-2 gap-3 pt-1 border-t border-[#262626]/60">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#262626]/60">
                               <div>
                                 <label className="block text-[10px] text-gray-400 uppercase tracking-wider font-sans mb-1">Item Price BEFORE VAT (ETB)</label>
                                 <input
@@ -2191,7 +2202,7 @@ export default function CustomerTab({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div>
                           <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance-date">Advance Payment Date</label>
                           <input
@@ -2212,6 +2223,7 @@ export default function CustomerTab({
                             onChange={(e) => setPaymentMethodId(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
                           >
+                            <option value="">-- None / Free --</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.name} {b.accountNumber ? `(A/C: ${b.accountNumber})` : ''}
@@ -2221,7 +2233,7 @@ export default function CustomerTab({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 pb-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1">
                         <div>
                           <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Bank for Remaining Balance (Final)</label>
                           <select
@@ -2230,6 +2242,7 @@ export default function CustomerTab({
                             onChange={(e) => setBankRemainingId(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer animate-pulse"
                           >
+                            <option value="">-- Unpaid / Pending --</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.name} {b.accountNumber ? `(A/C: ${b.accountNumber})` : ''}
@@ -2251,7 +2264,7 @@ export default function CustomerTab({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#262626] text-xs font-sans">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[#262626] text-xs font-sans">
                         <div>
                           <span className="text-gray-500 block text-[9px] uppercase font-sans">Full Payment</span>
                           <span className="text-sm font-semibold text-[#ee317b]">
@@ -2279,7 +2292,7 @@ export default function CustomerTab({
                     {/* Paper Type 1 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-[#ee317b] tracking-wider uppercase font-bold block">First Layout Stock Deduction</span>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 1</label>
                           <select
@@ -2316,7 +2329,7 @@ export default function CustomerTab({
                     {/* Paper Type 2 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Second Layout Stock</span>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 2</label>
                           <select
@@ -2357,7 +2370,7 @@ export default function CustomerTab({
                     {/* Paper Type 3 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Third Layout Stock</span>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 3</label>
                           <select
@@ -2411,7 +2424,7 @@ export default function CustomerTab({
                         <span className="text-[9px] bg-[#112233]/40 border border-sky-900 text-sky-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 16</span>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Entrance Stock</label>
                           <select
@@ -2459,7 +2472,7 @@ export default function CustomerTab({
                         <span className="text-[9px] bg-pink-900/20 border border-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 9</span>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Ajabi Stock</label>
                           <select
