@@ -132,14 +132,23 @@ export default function App() {
   // Native/custom download helper function for Android & iOS PWA triggering
   const triggerPwaInstall = async () => {
     if (deferredPrompt) {
+      // Must execute prompt() synchronously in the exact call stack of the user gesture
       try {
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User installation outcome: ${outcome}`);
-        setDeferredPrompt(null);
       } catch (err) {
         console.error("Installation prompting failed:", err);
         setShowInstallGuideModal(true);
+        return;
+      }
+      
+      // Await outcome separately after prompt has been shown
+      try {
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User installation outcome: ${outcome}`);
+        setDeferredPrompt(null);
+        setShowInstallGuideModal(false);
+      } catch (err) {
+        console.error("Failed to read userChoice:", err);
       }
     } else {
       setShowInstallGuideModal(true);
@@ -2123,9 +2132,9 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                         </p>
                         <button
                           type="button"
-                          onClick={async () => {
-                            setShowInstallGuideModal(false);
-                            await triggerPwaInstall();
+                          onClick={() => {
+                            // Call synchronously to satisfy browser user gesture requirements
+                            triggerPwaInstall();
                           }}
                           className="w-full bg-[#71b536] hover:bg-[#5f9c2d] text-black text-xs font-bold uppercase py-2.5 transition-colors cursor-pointer text-center rounded-md"
                         >
