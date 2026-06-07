@@ -1115,11 +1115,14 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
             
             <button
               type="button"
-              onClick={() => exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName)}
+              onClick={() => {
+                const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+                exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+              }}
               className="w-full bg-[#181818] text-[#ee317b] hover:text-white border border-[#ee317b]/30 hover:border-[#ee317b] font-bold font-sans py-2 hover:bg-[#ee317b]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
             >
               <FolderDown className="w-3.5 h-3.5" />
-              Export All Data (Excel)
+              Export Data
             </button>
           </div>
 
@@ -1229,12 +1232,15 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                {/* Export All Data (Desktop) */}
                <button
                  type="button"
-                 onClick={() => exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName)}
+                 onClick={() => {
+                   const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+                   exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                 }}
                  className="text-xs text-[#ee317b] font-bold hover:text-white bg-[#181818] hover:bg-[#202020] border border-[#262626] px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 uppercase"
                  title="Export all system ledgers to Excel workbook"
                >
                  <FolderDown className="w-3.5 h-3.5" />
-                 <span className="hidden lg:inline">Export Excel</span>
+                 <span className="hidden lg:inline">Export Data</span>
                </button>
 
                <button
@@ -1462,12 +1468,13 @@ ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
                      type="button"
                      onClick={() => {
                        setIsMobileMenuOpen(false);
+                       const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
                        exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
                      }}
                      className="w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] text-gray-250 py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 uppercase font-bold"
                    >
                      <FolderDown className="w-3.5 h-3.5 text-[#ee317b]" />
-                     <span>Export All Data (Excel)</span>
+                     <span>Export Data</span>
                    </button>
                  </div>
 
