@@ -27,7 +27,6 @@ interface InventoryTabProps {
   paperStocks: PaperStock[];
   customers: Customer[];
   onUpdateStocks: (stocks: PaperStock[]) => void;
-  onResetStocks: () => void;
   currentUser: EmployeeUser | null;
 }
 
@@ -35,7 +34,6 @@ export default function InventoryTab({
   paperStocks, 
   customers, 
   onUpdateStocks,
-  onResetStocks,
   currentUser
 }: InventoryTabProps) {
   
@@ -250,16 +248,6 @@ export default function InventoryTab({
 
           {isAdmin ? (
             <div className="flex items-stretch sm:items-center gap-2 select-none">
-              <button
-                type="button"
-                onClick={onResetStocks}
-                className="text-xs font-mono text-gray-400 bg-[#121212] hover:bg-[#1C1C1C] border border-[#262626] rounded-none px-3 py-1.5 flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                title="Reset Stock to default system values"
-              >
-                <RefreshCw className="w-3 h-3 text-[#ee317b]" />
-                Reset Defaults
-              </button>
-              
               <button
                 type="button"
                 onClick={() => setShowAddForm(true)}

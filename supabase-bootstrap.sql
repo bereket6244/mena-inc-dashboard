@@ -85,3 +85,10 @@ CREATE TABLE IF NOT EXISTS public.employees (
 
 ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.product_types (
+  id text PRIMARY KEY,
+  name text UNIQUE NOT NULL
+);
+
+ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
+

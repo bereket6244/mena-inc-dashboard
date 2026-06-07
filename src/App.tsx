@@ -35,7 +35,9 @@ import {
   Purchase,
   ExpenseCategory,
   INITIAL_EXPENSE_CATEGORIES,
-  INITIAL_PURCHASES
+  INITIAL_PURCHASES,
+  ProductType,
+  DEFAULT_PRODUCT_TYPES
 } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import InventoryTab from './components/InventoryTab';
@@ -48,6 +50,7 @@ const LOCAL_STORAGE_CUSTOMERS_KEY = 'mena_inc_customers_v3';
 const LOCAL_STORAGE_BANKS_KEY = 'mena_inc_bank_accounts_v4';
 const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
+const LOCAL_STORAGE_PRODUCT_TYPES_KEY = 'mena_inc_product_types_v3';
 
 export default function App() {
   // Theme state
@@ -73,10 +76,10 @@ export default function App() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [showResetOverlay, setShowResetOverlay] = useState<false | 'demo' | 'stocks'>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
@@ -320,12 +323,14 @@ export default function App() {
         const savedBanks = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
         const savedPurchases = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
         const savedCategories = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+        const savedProductTypes = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
         
         let initialS = DEFAULT_PAPER_STOCKS;
         let initialC = INITIAL_CUSTOMERS;
         let initialB = DEFAULT_BANK_ACCOUNTS;
         let initialP = INITIAL_PURCHASES;
         let initialCat = INITIAL_EXPENSE_CATEGORIES;
+        let initialProd = DEFAULT_PRODUCT_TYPES;
         
         if (savedStocks) {
           try {
@@ -352,6 +357,11 @@ export default function App() {
             initialCat = JSON.parse(savedCategories);
           } catch (_) {}
         }
+        if (savedProductTypes) {
+          try {
+            initialProd = JSON.parse(savedProductTypes);
+          } catch (_) {}
+        }
 
         const { isSupabaseConfigured } = await import('./lib/supabase');
         setLiveDbLinked(isSupabaseConfigured);
@@ -363,7 +373,9 @@ export default function App() {
           fetchAllPurchases,
           fetchAllExpenseCategories,
           fetchAllEmployees,
-          saveEmployeeDoc
+          saveEmployeeDoc,
+          fetchAllProductTypes,
+          saveProductTypeDoc
         } = await import('./lib/dbService');
         
         const finalS = await fetchAllPaperStocks(initialS);
@@ -404,8 +416,16 @@ export default function App() {
         const finalP = await fetchAllPurchases(initialP);
         const finalCat = await fetchAllExpenseCategories(initialCat);
         const finalEmployees = await fetchAllEmployees(initialEmployees);
+        
+        const finalProd = await fetchAllProductTypes(initialProd);
+        if (finalProd.length === 0 && DEFAULT_PRODUCT_TYPES.length > 0) {
+          for (const prod of DEFAULT_PRODUCT_TYPES) {
+            await saveProductTypeDoc(prod).catch(() => {});
+          }
+          finalProd.push(...DEFAULT_PRODUCT_TYPES);
+        }
 
-        if (finalEmployees.length === 0) {
+        if (finalEmployees.length === 0 && initialEmployees.length > 0) {
           // Empty remote table, seed with initialEmployees
           for (const emp of initialEmployees) {
             await saveEmployeeDoc(emp);
@@ -419,6 +439,7 @@ export default function App() {
         setPurchases(finalP);
         setCategories(finalCat);
         setEmployees(finalEmployees);
+        setProductTypes(finalProd);
 
         if (currentUser) {
           const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
@@ -439,6 +460,7 @@ export default function App() {
         localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(finalB));
         localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(finalP));
         localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(finalCat));
+        localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(finalProd));
         localStorage.setItem('mena_inc_employees_v3', JSON.stringify(finalEmployees));
       } catch (err) {
         // Fallback
@@ -602,21 +624,22 @@ export default function App() {
     }
   };
 
-  const handleDeleteBankAccount = async (id: string) => {
+  const handleDeleteBankAccount = async (ids: string | string[]) => {
     setIsBuffering(true);
-    const target = bankAccounts.find(item => item.id === id);
-    if (target) {
+    const idList = Array.isArray(ids) ? ids : [ids];
+    const firstTarget = bankAccounts.find(item => idList.includes(item.id));
+    if (firstTarget) {
       setDeletedHistory({
         type: 'bank',
-        data: target,
+        data: firstTarget,
         timestamp: Date.now()
       });
     }
-    const updated = bankAccounts.filter(item => item.id !== id);
+    const updated = bankAccounts.filter(item => !idList.includes(item.id));
     handleUpdateBankAccountsLocal(updated);
     try {
       const { deleteBankAccountDoc } = await import('./lib/dbService');
-      await deleteBankAccountDoc(id);
+      await deleteBankAccountDoc(ids);
     } catch (_) {} finally {
       setTimeout(() => setIsBuffering(false), 400);
     }
@@ -719,27 +742,24 @@ export default function App() {
     }
   };
 
-  // Safe non-blocking visual implementation of database overwrite
-  const executeResetToDemo = async () => {
-    setShowResetOverlay(false);
-    setIsBuffering(true);
-    try {
-      setPaperStocks(DEFAULT_PAPER_STOCKS);
-      setCustomers(INITIAL_CUSTOMERS);
-      setBankAccounts(DEFAULT_BANK_ACCOUNTS);
-      localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(DEFAULT_PAPER_STOCKS));
-      localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(INITIAL_CUSTOMERS));
-      localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(DEFAULT_BANK_ACCOUNTS));
+  const handleAddProductType = (newProd: ProductType) => {
+    const updated = [...productTypes, newProd];
+    setProductTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
+    
+    import('./lib/dbService').then(({ saveProductTypeDoc }) => {
+      saveProductTypeDoc(newProd).catch(() => {});
+    }).catch(() => {});
+  };
 
-      const { savePaperStockDoc, saveCustomerDoc, saveBankAccountDoc } = await import('./lib/dbService');
-      const stockPromises = DEFAULT_PAPER_STOCKS.map(stock => savePaperStockDoc(stock).catch(() => {}));
-      const custPromises = INITIAL_CUSTOMERS.map(cust => saveCustomerDoc(cust).catch(() => {}));
-      const bankPromises = DEFAULT_BANK_ACCOUNTS.map(acct => saveBankAccountDoc(acct).catch(() => {}));
-      
-      await Promise.allSettled([...stockPromises, ...custPromises, ...bankPromises]);
-    } catch (_) {} finally {
-      setTimeout(() => setIsBuffering(false), 600);
-    }
+  const handleDeleteProductType = (id: string) => {
+    const updated = productTypes.filter(p => p.id !== id);
+    setProductTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
+
+    import('./lib/dbService').then(({ deleteProductTypeDoc }) => {
+      deleteProductTypeDoc(id).catch(() => {});
+    }).catch(() => {});
   };
 
   // Staff and Authentication mutators
@@ -839,13 +859,19 @@ CREATE TABLE IF NOT EXISTS public.employees (
   role text NOT NULL CHECK (role IN ('admin', 'employee'))
 );
 
+CREATE TABLE IF NOT EXISTS public.product_types (
+  id text PRIMARY KEY,
+  name text UNIQUE NOT NULL
+);
+
 -- Disable Row Level Security (RLS) on each table so the web app can read and write records instantly
 ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;`;
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(bootstrapSqlText).then(() => {
@@ -879,7 +905,7 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
   useEffect(() => {
     if (!liveDbLinked || !isOnline) return;
 
-    const intervalId = setInterval(async () => {
+    const syncDatabase = async () => {
       // Skip sync if the browser tab is in the background
       if (document.hidden) return;
 
@@ -956,7 +982,12 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
       } catch (err) {
         console.warn("Background database synchronization failed:", err);
       }
-    }, 10000); // Sync check every 10 seconds
+    };
+
+    // Execute immediately on reconnection or mount
+    syncDatabase();
+
+    const intervalId = setInterval(syncDatabase, 10000); // Sync check every 10 seconds
 
     return () => clearInterval(intervalId);
   }, [liveDbLinked, isOnline, currentUser]);
@@ -1495,7 +1526,7 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
                       • IMPORTANT: The script contains commands to disable Row Level Security (RLS) on each table (e.g. <code>ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;</code>). Supabase enables RLS by default, which blocks insertions unless disabled!
                     </li>
                     <li>
-                      Once the SQL statement successfully completes, **reload this page**! The app will automatically connect, sync, and seed the default database.
+                      Once the SQL statement successfully completes, **reload this page**! The app will automatically connect and sync with the database.
                     </li>
                   </ol>
                 </div>
@@ -1508,7 +1539,6 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
               paperStocks={paperStocks}
               customers={customers}
               onUpdateStocks={handleUpdateStocks}
-              onResetStocks={() => setShowResetOverlay('stocks')}
               currentUser={currentUser}
             />
           )}
@@ -1531,6 +1561,9 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
               customers={customers}
               paperStocks={paperStocks}
               bankAccounts={bankAccounts}
+              productTypes={productTypes}
+              onAddProductType={handleAddProductType}
+              onDeleteProductType={handleDeleteProductType}
               onAddCustomer={handleAddCustomer}
               onUpdateCustomer={handleEditCustomer}
               onDeleteCustomer={handleDeleteCustomer}
@@ -1789,7 +1822,7 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
                   </div>
                 </div>
 
-                {/* System Admin Settings (Seed Defaults & Database Override) */}
+                {/* System Admin Settings (Database Link & Configurations) */}
                 <div className="border-t border-[#262626] pt-5 space-y-3 font-mono">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Administrative Controls</span>
                   <div className="flex flex-wrap gap-2.5">
@@ -1810,18 +1843,6 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
                       <span>Configure Relational Database Link</span>
                     </button>
 
-                    {/* Seed Defaults Trigger */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowStaffModal(false);
-                        setShowResetOverlay('demo');
-                      }}
-                      className="text-xs text-[#ee317b] hover:bg-[#ee317b] hover:text-white border border-[#ee317b]/30 font-medium px-3 py-2 rounded-none flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Seed Demo Defaults</span>
-                    </button>
                   </div>
                 </div>
 
@@ -1878,11 +1899,11 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
                   </p>
                   
                   <div className="bg-[#1E1215] border border-[#ee317b]/15 p-4 font-mono text-[11px] text-gray-300 space-y-2 leading-relaxed">
-                    <span className="text-[#ee317b] font-bold uppercase block">⚡ Setup Checklist (How to Seed Successfully):</span>
+                     <span className="text-[#ee317b] font-bold uppercase block">⚡ Setup Checklist (How to Link Database Successfully):</span>
                     <div>1. Log into your **Supabase Dashboard** for the project.</div>
                     <div>2. Open the **SQL Editor** in the left menu.</div>
                     <div>3. Click **New query**, paste the complete SQL script shown below, and hit **Run**.</div>
-                    <div className="text-yellow-400 font-semibold">• IMPORTANT: The script disables Row Level Security (RLS) on each table. This lets the web app initialize and write seed records instantly! If you already created tables earlier but got errors, running this script now will disable RLS and fix the issue immediately.</div>
+                    <div className="text-yellow-400 font-semibold">• IMPORTANT: The script disables Row Level Security (RLS) on each table. This lets the web app initialize and sync records instantly! If you already created tables earlier but got errors, running this script now will disable RLS and fix the issue immediately.</div>
                   </div>
 
                   {dbValidationError && (
@@ -1963,61 +1984,6 @@ ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;`;
         )}
       </AnimatePresence>
 
-      {/* ⚠️ CUSTOM CONFIRM OVERLAYS FOR THE SYSTEM SENSITIVE TRANSACTIONS */}
-      <AnimatePresence>
-        {showResetOverlay && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-mono select-none"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-5"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="text-[#ee317b] text-3xl">⚠️</div>
-                <div className="space-y-1.5 font-semibold text-white">
-                  <h3 className="text-white text-sm font-bold uppercase tracking-wider">
-                    {showResetOverlay === 'demo' ? 'System Database Overwrite Request' : 'Initial Paper Stockroom Reset'}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-sans font-normal leading-relaxed">
-                    {showResetOverlay === 'demo' 
-                      ? "You are requesting to overwrite Mena Inc.'s live database ledger with the default seed logs. This will flush your current customer logs, initial stockpiles, and treasury balances back to standard factory settings."
-                      : "You are requesting to reset all paper stockroom variant sheet balances back to their factory startup quantities. This will modify historical inventory room status."
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
-                <button
-                  onClick={() => setShowResetOverlay(false)}
-                  className="px-3.5 py-1.5 text-xs text-gray-400 hover:text-white border border-[#262626] bg-[#181818] uppercase tracking-wider cursor-pointer"
-                >
-                  No, Abort
-                </button>
-                <button
-                  onClick={() => {
-                    if (showResetOverlay === 'demo') {
-                      executeResetToDemo();
-                    } else {
-                      setShowResetOverlay(false);
-                      handleUpdateStocks(DEFAULT_PAPER_STOCKS);
-                    }
-                  }}
-                  className="px-4 py-1.5 text-xs bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold uppercase tracking-widest cursor-pointer"
-                >
-                  Yes, Apply
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 📱 PWA DOWNLOAD & MOBILE INSTALLATION GUIDE MODAL */}
       <AnimatePresence>

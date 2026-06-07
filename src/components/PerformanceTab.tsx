@@ -35,7 +35,7 @@ interface PerformanceTabProps {
   bankAccounts: BankAccount[];
   onAddBankAccount: (account: BankAccount) => void;
   onUpdateBankAccount: (account: BankAccount) => void;
-  onDeleteBankAccount: (id: string) => void;
+  onDeleteBankAccount: (idOrIds: string | string[]) => void;
   purchases?: Purchase[];
   categories?: ExpenseCategory[];
   paperStocks?: PaperStock[];
@@ -649,9 +649,20 @@ export default function PerformanceTab({
                     setSelectedBankIds(bankAccounts.map(b => b.id));
                   }
                 }}
-                className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 font-mono text-xs cursor-pointer hover:border-gray-500 transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 font-mono text-xs cursor-pointer hover:border-gray-500 transition-all select-none"
               >
-                {selectedBankIds.length === bankAccounts.length ? 'Deselect All' : 'Select All Accounts'}
+                <input
+                  type="checkbox"
+                  checked={selectedBankIds.length === bankAccounts.length && bankAccounts.length > 0}
+                  ref={el => {
+                    if (el) {
+                      el.indeterminate = selectedBankIds.length > 0 && selectedBankIds.length < bankAccounts.length;
+                    }
+                  }}
+                  readOnly
+                  className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer rounded-none pointer-events-none"
+                />
+                <span>{selectedBankIds.length === bankAccounts.length ? 'Deselect All' : 'Select All'}</span>
               </button>
             )}
             <button
@@ -804,7 +815,7 @@ export default function PerformanceTab({
                 {/* Account Details Header */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={selectedBankIds.includes(b.id)}
@@ -823,12 +834,12 @@ export default function PerformanceTab({
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs font-semibold rounded-none outline-none w-28"
+                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs font-semibold rounded-none outline-none w-full min-w-0"
                         />
                       ) : (
-                        <span className="font-bold text-white text-[13px] tracking-tight flex items-center gap-1 uppercase truncate max-w-[130px] keep-text-white" title={b.name}>
+                        <span className="font-bold text-white text-[13px] tracking-tight flex items-center gap-1 uppercase keep-text-white break-words min-w-0 flex-1" title={b.name}>
                           <Building className="w-3.5 h-3.5 text-[#71b536] flex-shrink-0" />
-                          {b.name}
+                          <span className="break-all">{b.name}</span>
                         </span>
                       )}
                     </div>
@@ -1210,9 +1221,7 @@ export default function PerformanceTab({
                 <button
                   type="button"
                   onClick={() => {
-                    selectedBankIds.forEach(id => {
-                      onDeleteBankAccount(id);
-                    });
+                    onDeleteBankAccount(selectedBankIds);
                     setSelectedBankIds([]);
                     setShowBulkDeleteConfirm(false);
                   }}

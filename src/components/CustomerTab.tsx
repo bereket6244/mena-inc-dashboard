@@ -29,9 +29,9 @@ import {
   CLIENT_TYPES, 
   ACQUISITION_SOURCES, 
   AGENTS, 
-  PRODUCT_TYPES,
   EmployeeUser,
-  BankAccount
+  BankAccount,
+  ProductType
 } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
@@ -92,11 +92,61 @@ function convertOklchStringToRgb(str: string): string {
   });
 }
 
+function oklabToRgb(lStr: string, aStr: string, bStr: string, alphaStr?: string): string {
+  let L = lStr.endsWith('%') ? parseFloat(lStr) / 100 : parseFloat(lStr);
+  let lab_a = aStr.endsWith('%') ? parseFloat(aStr) / 100 : parseFloat(aStr);
+  let lab_b = bStr.endsWith('%') ? parseFloat(bStr) / 100 : parseFloat(bStr);
+
+  let l_lms = L + 0.3963377774 * lab_a + 0.2158037573 * lab_b;
+  let m_lms = L - 0.1055613458 * lab_a - 0.0638541728 * lab_b;
+  let s_lms = L - 0.0894841775 * lab_a - 1.2914855480 * lab_b;
+
+  let l3 = l_lms * l_lms * l_lms;
+  let m3 = m_lms * m_lms * m_lms;
+  let s3 = s_lms * s_lms * s_lms;
+
+  let r_lin = +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+  let g_lin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+  let b_lin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+
+  const toSRGB = (c: number) => {
+    if (c <= 0.0031308) return 12.92 * c;
+    return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  };
+
+  let r = Math.max(0, Math.min(255, Math.round(toSRGB(r_lin) * 255)));
+  let g = Math.max(0, Math.min(255, Math.round(toSRGB(g_lin) * 255)));
+  let b = Math.max(0, Math.min(255, Math.round(toSRGB(b_lin) * 255)));
+
+  if (alphaStr) {
+    let alpha = alphaStr.endsWith('%') ? parseFloat(alphaStr) / 100 : parseFloat(alphaStr);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function convertOklabStringToRgb(str: string): string {
+  return str.replace(/oklab\(([^)]+)\)/g, (match, content) => {
+    try {
+      const parts = content.trim().split(/[\s/]+/).filter(Boolean);
+      if (parts.length >= 3) {
+        return oklabToRgb(parts[0], parts[1], parts[2], parts[3]);
+      }
+    } catch (e) {
+      console.warn("Failed to parse oklab content:", content, e);
+    }
+    return match;
+  });
+}
+
 
 interface CustomerTabProps {
   customers: Customer[];
   paperStocks: PaperStock[];
   bankAccounts: BankAccount[];
+  productTypes: ProductType[];
+  onAddProductType: (prod: ProductType) => Promise<void> | void;
+  onDeleteProductType: (id: string) => Promise<void> | void;
   onAddCustomer: (customer: Customer) => void;
   onUpdateCustomer: (customer: Customer) => void;
   onDeleteCustomer: (id: string) => void;
@@ -109,6 +159,9 @@ export default function CustomerTab({
   customers, 
   paperStocks, 
   bankAccounts,
+  productTypes,
+  onAddProductType,
+  onDeleteProductType,
   onAddCustomer, 
   onUpdateCustomer, 
   onDeleteCustomer,
@@ -148,23 +201,25 @@ export default function CustomerTab({
     const originalGetComputedStyle = window.getComputedStyle;
 
     try {
-      // Temporarily patch window.getComputedStyle to translate OKLCH colors to RGB for html2canvas support
+      // Temporarily patch window.getComputedStyle to translate OKLCH and OKLAB colors to RGB for html2canvas support
       window.getComputedStyle = function(el, pseudoElt) {
         const style = originalGetComputedStyle(el, pseudoElt);
         return new Proxy(style, {
-          get(target, prop, receiver) {
+          get(target, prop) {
             if (prop === 'getPropertyValue') {
               return function(propertyName: string) {
-                const val = target.getPropertyValue(propertyName);
-                if (typeof val === 'string' && val.includes('oklch')) {
-                  return convertOklchStringToRgb(val);
+                let val = target.getPropertyValue(propertyName);
+                if (typeof val === 'string') {
+                  if (val.includes('oklch')) val = convertOklchStringToRgb(val);
+                  if (val.includes('oklab')) val = convertOklabStringToRgb(val);
                 }
                 return val;
               };
             }
-            const val = Reflect.get(target, prop, receiver);
-            if (typeof val === 'string' && val.includes('oklch')) {
-              return convertOklchStringToRgb(val);
+            let val = Reflect.get(target, prop);
+            if (typeof val === 'string') {
+              if (val.includes('oklch')) val = convertOklchStringToRgb(val);
+              if (val.includes('oklab')) val = convertOklabStringToRgb(val);
             }
             if (typeof val === 'function') {
               return val.bind(target);
@@ -274,7 +329,11 @@ export default function CustomerTab({
   const [phone, setPhone] = useState('');
   const [acquisitionSource, setAcquisitionSource] = useState<Customer['acquisitionSource']>('Repeat');
    const [orderTakenBy, setOrderTakenBy] = useState<Customer['orderTakenBy']>(currentUser?.name || 'Bereket');
-  const [productType, setProductType] = useState(PRODUCT_TYPES[0]);
+  const [productType, setProductType] = useState(productTypes[0]?.name || '');
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [newProductInput, setNewProductInput] = useState('');
+  const [showProductManager, setShowProductManager] = useState(false);
+  const [newManagerProductInput, setNewManagerProductInput] = useState('');
   const [quantity, setQuantity] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
@@ -330,6 +389,25 @@ export default function CustomerTab({
 
   const [formError, setFormError] = useState('');
 
+  const handleAddProductInline = async () => {
+    const cleaned = newProductInput.trim();
+    if (cleaned) {
+      const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
+      if (existing) {
+        setProductType(existing.name);
+      } else {
+        const newProd: ProductType = {
+          id: 'pt_' + Date.now(),
+          name: cleaned
+        };
+        await onAddProductType(newProd);
+        setProductType(cleaned);
+      }
+    }
+    setNewProductInput('');
+    setIsAddingProduct(false);
+  };
+
   // Open form for Create
   const handleOpenCreate = () => {
     setEditingCustomer(null);
@@ -339,7 +417,7 @@ export default function CustomerTab({
     setPhone('');
     setAcquisitionSource('Repeat');
     setOrderTakenBy(currentUser?.name || 'Bereket');
-    setProductType(PRODUCT_TYPES[0]);
+    setProductType(productTypes[0]?.name || '');
     setQuantity(0);
     setUnitPrice(0);
     setAdvancePayment(0);
@@ -1664,15 +1742,71 @@ export default function CustomerTab({
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider mb-1" htmlFor="field-client-product">Product Type</label>
-                        <select
-                          id="field-client-product"
-                          value={productType}
-                          onChange={(e) => setProductType(e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer font-sans"
-                        >
-                          {PRODUCT_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-medium text-gray-400 font-mono uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowProductManager(true)}
+                            className="text-[10px] text-[#ee317b] hover:underline uppercase font-mono font-bold cursor-pointer"
+                          >
+                            Manage
+                          </button>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {!isAddingProduct ? (
+                            <>
+                              <select
+                                id="field-client-product"
+                                value={productType}
+                                onChange={(e) => setProductType(e.target.value)}
+                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-none outline-none cursor-pointer font-sans"
+                              >
+                                {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setIsAddingProduct(true)}
+                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-mono text-xs font-bold cursor-pointer transition-colors"
+                                title="Add custom Product Type"
+                              >
+                                + New
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] px-2 py-1">
+                              <input
+                                type="text"
+                                placeholder="Product name..."
+                                value={newProductInput}
+                                onChange={(e) => setNewProductInput(e.target.value)}
+                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans"
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    await handleAddProductInline();
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddProductInline}
+                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-mono"
+                              >
+                                Add
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewProductInput('');
+                                  setIsAddingProduct(false);
+                                }}
+                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-mono"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {editingCustomer && (
@@ -2773,6 +2907,133 @@ export default function CustomerTab({
               </div>
 
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 📦 PRODUCT TYPES MANAGER MODAL */}
+      <AnimatePresence>
+        {showProductManager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#121212] border border-[#262626] w-full max-w-md overflow-hidden shadow-2xl flex flex-col relative font-mono"
+            >
+              <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#ee317b] to-[#71b536]" />
+              
+              {/* Modal header */}
+              <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#ee317b]" />
+                  <h3 className="text-sm font-bold font-mono tracking-wider uppercase text-white">Manage Product Types</h3>
+                </div>
+                <button
+                  onClick={() => { 
+                    setShowProductManager(false); 
+                    setNewManagerProductInput('');
+                  }}
+                  className="text-gray-400 hover:text-white cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5 flex-shrink-0" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4">
+                
+                {/* Add product type form */}
+                <div className="bg-[#181818] border border-[#262626] p-4 space-y-3 font-mono">
+                  <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">
+                    Add Product Type
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. Laser Cut Invitation"
+                      value={newManagerProductInput}
+                      onChange={(e) => setNewManagerProductInput(e.target.value)}
+                      className="flex-1 bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans"
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (newManagerProductInput.trim()) {
+                            const cleaned = newManagerProductInput.trim();
+                            const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
+                            if (!existing) {
+                              await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
+                            }
+                            setNewManagerProductInput('');
+                          }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (newManagerProductInput.trim()) {
+                          const cleaned = newManagerProductInput.trim();
+                          const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
+                          if (!existing) {
+                            await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
+                          }
+                          setNewManagerProductInput('');
+                        }
+                      }}
+                      className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-none transition-colors cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Product Types List */}
+                <div className="space-y-2 font-mono">
+                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Active Product Categories ({productTypes.length})</span>
+                  
+                  <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden max-h-60 overflow-y-auto">
+                    {productTypes.map(prod => (
+                      <div key={prod.id} className="px-4 py-2 flex items-center justify-between text-xs font-mono">
+                        <span className="font-sans text-white font-semibold">{prod.name}</span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
+                              await onDeleteProductType(prod.id);
+                              if (productType === prod.name) {
+                                setProductType(productTypes.find(p => p.id !== prod.id)?.name || '');
+                              }
+                            }
+                          }}
+                          className="p-1 text-gray-500 hover:text-red-400 rounded-none cursor-pointer transition-colors"
+                          title="Delete Product Type"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </button>
+                      </div>
+                    ))}
+                    {productTypes.length === 0 && (
+                      <div className="p-4 text-center text-gray-500 text-xs">
+                        No product types registered.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal footer */}
+              <div className="px-6 py-4 border-t border-[#262626] bg-[#181818]/60 flex justify-end">
+                <button
+                  onClick={() => { setShowProductManager(false); setNewManagerProductInput(''); }}
+                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-mono font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-none"
+                >
+                  Done
+                </button>
+              </div>
+
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
-import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser } from '../types';
+import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType } from '../types';
 
 // ============================================
 // 1. PAPER STOCKS OPERATIONS
@@ -134,13 +134,16 @@ export async function saveBankAccountDoc(account: BankAccount): Promise<void> {
   }
 }
 
-export async function deleteBankAccountDoc(id: string): Promise<void> {
+export async function deleteBankAccountDoc(idOrIds: string | string[]): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .delete()
-        .eq('id', id);
+      let query = supabase.from('bank_accounts').delete();
+      if (Array.isArray(idOrIds)) {
+        query = query.in('id', idOrIds);
+      } else {
+        query = query.eq('id', idOrIds);
+      }
+      const { error } = await query;
       if (error) throw error;
     } catch (err) {
       console.error("Supabase deleteBankAccountDoc failed:", err);
@@ -291,6 +294,55 @@ export async function deleteEmployeeDoc(username: string): Promise<void> {
       if (error) throw error;
     } catch (err) {
       console.error("Supabase deleteEmployeeDoc failed:", err);
+    }
+  }
+}
+
+// ============================================
+// 7. PRODUCT TYPES OPERATIONS
+// ============================================
+
+export async function fetchAllProductTypes(localFallback: ProductType[]): Promise<ProductType[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('product_types')
+        .select('*');
+
+      if (error) throw error;
+
+      return (data || []) as ProductType[];
+    } catch (err: any) {
+      console.error("Supabase fetchAllProductTypes failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveProductTypeDoc(prod: ProductType): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('product_types')
+        .upsert(prod);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase saveProductTypeDoc failed:", err);
+    }
+  }
+}
+
+export async function deleteProductTypeDoc(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('product_types')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase deleteProductTypeDoc failed:", err);
     }
   }
 }
