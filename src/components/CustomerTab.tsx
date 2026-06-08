@@ -496,9 +496,9 @@ export default function CustomerTab({
   const [paymentMethodId, setPaymentMethodId] = useState<string>('b1');
 
   // Math expression string inputs for the numerical editing fields
-  const [qtyInput, setQtyInput] = useState<string>('0');
-  const [priceInput, setPriceInput] = useState<string>('0');
-  const [advanceInput, setAdvanceInput] = useState<string>('0');
+  const [qtyInput, setQtyInput] = useState<string>('');
+  const [priceInput, setPriceInput] = useState<string>('');
+  const [advanceInput, setAdvanceInput] = useState<string>('');
 
   // Dynamic Acquisition Channels State
   const [acquisitionChannels, setAcquisitionChannels] = useState<string[]>(() => {
@@ -624,14 +624,14 @@ export default function CustomerTab({
     setQuantity(0);
     setUnitPrice(0);
     setAdvancePayment(0);
-    setQtyInput('0');
-    setPriceInput('0');
-    setAdvanceInput('0');
+    setQtyInput('');
+    setPriceInput('');
+    setAdvanceInput('');
     setPaymentMethodId('b1');
     setPaperType1(paperStocks[0]?.name || 'Big flower');
-    setAmount1('0');
+    setAmount1('');
     setPaperType2('None');
-    setAmount2('0');
+    setAmount2('');
     setPaperType3('None');
     setAmount3('0');
     setEntrancePaper('None');
@@ -647,7 +647,7 @@ export default function CustomerTab({
     setBankRemainingId('');
     setIncompletionReason('');
     setIsVatAdded(false);
-    setBaseUnitPriceInput('0');
+    setBaseUnitPriceInput('');
     
     setFormError('');
     setIsFormOpen(true);
@@ -837,23 +837,23 @@ export default function CustomerTab({
     setProductType('Pocket Card');
     setQuantity(0);
     setUnitPrice(85);
-    setQtyInput('0');
+    setQtyInput('');
     setPriceInput('85');
     setDeliveryDate('');
     
     // Reset standard layout deductions
     setPaperType1(paperStocks[0]?.name || 'Big flower');
-    setAmount1('0');
+    setAmount1('');
     setPaperType2('None');
-    setAmount2('0');
+    setAmount2('');
     setPaperType3('None');
-    setAmount3('0');
+    setAmount3('');
     
     // Reset auxiliary layouts
     setEntrancePaper('None');
-    setAmount16('0');
+    setAmount16('');
     setAjabiPaper('None');
-    setAmount9('0');
+    setAmount9('');
     
     setIncompletionReason('');
     setIsVatAdded(false);
@@ -1248,9 +1248,9 @@ export default function CustomerTab({
                     setStandaloneProformaItems(selectedLedgerItems.map(c => ({
                       id: c.id,
                       productType: c.productType || '',
-                      quantity: c.quantity?.toString() || '0',
-                      unitPrice: c.unitPrice?.toString() || '0',
-                      advancePayment: c.advancePayment?.toString() || '0'
+                      quantity: c.quantity?.toString() || '',
+                      unitPrice: c.unitPrice?.toString() || '',
+                      advancePayment: c.advancePayment?.toString() || ''
                     })));
                     setIsStandaloneProformaMode(true);
                     setShowProformaModal(true);
@@ -2044,17 +2044,19 @@ export default function CustomerTab({
                               >
                                 + New
                               </button>
-                              {!['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'].includes(acquisitionSource) && (
+                              {acquisitionSource && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
-                                    setAcquisitionChannels(updated);
-                                    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                    setAcquisitionSource(updated[0] || 'Word of Mouth');
+                                    if (window.confirm(`Are you sure you want to delete lead channel "${acquisitionSource}"?`)) {
+                                      const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
+                                      setAcquisitionChannels(updated);
+                                      localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+                                      setAcquisitionSource(updated[0] || '');
+                                    }
                                   }}
-                                  className="px-2.5 bg-rose-950/20 text-rose-500 hover:bg-rose-900/50 hover:text-white border border-rose-900/30 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors"
-                                  title="Delete custom Lead Option"
+                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                  title="Delete selected Lead Channel"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -3065,9 +3067,26 @@ export default function CustomerTab({
                 {/* Client Info Section */}
                     {/* Client Info Section */}
                     <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-3">
-                      <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] border-b border-[#2d2024] pb-2 mb-1 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
-                        Client Info
+                      <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] border-b border-[#2d2024] pb-2 mb-1 flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
+                          Client Info
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStandaloneClientName('');
+                            setStandaloneClientPhone('');
+                            setStandaloneProformaItems([
+                              { id: `temp-${Date.now()}`, productType: '', quantity: '', unitPrice: '', advancePayment: '' }
+                            ]);
+                          }}
+                          className="text-gray-400 hover:text-[#ee317b] bg-transparent border border-[#262626] hover:border-[#ee317b]/50 hover:bg-[#ee317b]/10 px-2 py-1 rounded-[4px] text-[9px] tracking-wider transition-all uppercase flex items-center gap-1"
+                          title="Clear all client info and product rows"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                          Clear All Data
+                        </button>
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
@@ -4069,9 +4088,9 @@ export default function CustomerTab({
                   setStandaloneProformaItems(selectedLedgerItems.map(c => ({
                     id: c.id,
                     productType: c.productType || '',
-                    quantity: c.quantity?.toString() || '0',
-                    unitPrice: c.unitPrice?.toString() || '0',
-                    advancePayment: c.advancePayment?.toString() || '0'
+                    quantity: c.quantity?.toString() || '',
+                    unitPrice: c.unitPrice?.toString() || '',
+                    advancePayment: c.advancePayment?.toString() || ''
                   })));
                   setIsStandaloneProformaMode(true);
                   setShowProformaModal(true);

@@ -48,7 +48,7 @@ export default function PerformanceTab({
   // New Bank dynamic form states
   const [bankName, setBankName] = useState('');
   const [bankNumber, setBankNumber] = useState('');
-  const [bankInitial, setBankInitial] = useState<string>('0');
+  const [bankInitial, setBankInitial] = useState<string>('');
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [bankError, setBankError] = useState('');
 
@@ -56,7 +56,7 @@ export default function PerformanceTab({
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
-  const [editInitial, setEditInitial] = useState<string>('0');
+  const [editInitial, setEditInitial] = useState<string>('');
 
   // Deletion tracking state
   const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function PerformanceTab({
     onAddBankAccount(newAcct);
     setBankName('');
     setBankNumber('');
-    setBankInitial('0');
+    setBankInitial('');
     setIsAddingBank(false);
     setBankError('');
   };
