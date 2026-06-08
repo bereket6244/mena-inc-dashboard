@@ -978,6 +978,9 @@ CREATE TABLE IF NOT EXISTS public.client_types (
   name text UNIQUE NOT NULL
 );
 
+-- Safely migrate existing tables by adding any new columns
+ALTER TABLE IF EXISTS public.employees ADD COLUMN IF NOT EXISTS "allowedTabs" jsonb DEFAULT '[]'::jsonb;
+
 -- Disable Row Level Security (RLS) on each table so the web app can read and write records instantly
 ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
