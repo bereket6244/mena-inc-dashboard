@@ -1724,7 +1724,7 @@ export default function CustomerTab({
                     <span className="font-sans text-[10px] text-gray-500 uppercase tracking-wider block font-bold">STOCK ROOM DEDUCTIONS</span>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 font-sans">
                       {c.paperType1 !== 'None' && (() => {
-                        const raw = Number((c.amount1 * c.quantity).toFixed(2));
+                        const raw = Math.ceil(c.amount1 * c.quantity);
                         const ceiled = Math.ceil(c.amount1 * c.quantity);
                         return (
                           <div>
@@ -1737,7 +1737,7 @@ export default function CustomerTab({
                       })()}
 
                       {c.paperType2 !== 'None' && (() => {
-                        const raw = Number((c.amount2 * c.quantity).toFixed(2));
+                        const raw = Math.ceil(c.amount2 * c.quantity);
                         const ceiled = Math.ceil(c.amount2 * c.quantity);
                         return (
                           <div>
@@ -1750,7 +1750,7 @@ export default function CustomerTab({
                       })()}
 
                       {c.paperType3 !== 'None' && (() => {
-                        const raw = Number((c.amount3 * c.quantity).toFixed(2));
+                        const raw = Math.ceil(c.amount3 * c.quantity);
                         const ceiled = Math.ceil(c.amount3 * c.quantity);
                         return (
                           <div>
@@ -1763,7 +1763,7 @@ export default function CustomerTab({
                       })()}
 
                       {c.entrancePaper !== 'None' && (() => {
-                        const raw = Number((c.amount16 / 16).toFixed(2));
+                        const raw = Math.ceil(c.amount16 / 16);
                         const ceiled = Math.ceil(c.amount16 / 16);
                         return (
                           <div>
@@ -1776,7 +1776,7 @@ export default function CustomerTab({
                       })()}
 
                       {c.ajabiPaper !== 'None' && (() => {
-                        const raw = Number((c.amount9 / 9).toFixed(2));
+                        const raw = Math.ceil(c.amount9 / 9);
                         const ceiled = Math.ceil(c.amount9 / 9);
                         return (
                           <div>
@@ -2522,7 +2522,7 @@ export default function CustomerTab({
                               if (!amount1 || paperType1 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType1);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const consumed = Number((parseFractionOrExpression(amount1) * quantity).toFixed(2));
+                              const consumed = Math.ceil(parseFractionOrExpression(amount1) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
@@ -2532,7 +2532,7 @@ export default function CustomerTab({
                           />
                           {paperType1 !== 'None' && amount1 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Number((parseFractionOrExpression(amount1) * quantity).toFixed(2))} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount1) * quantity)} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2581,7 +2581,7 @@ export default function CustomerTab({
                               if (!amount2 || paperType2 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType2);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const consumed = Number((parseFractionOrExpression(amount2) * quantity).toFixed(2));
+                              const consumed = Math.ceil(parseFractionOrExpression(amount2) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
@@ -2591,7 +2591,7 @@ export default function CustomerTab({
                           />
                           {paperType2 !== 'None' && amount2 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Number((parseFractionOrExpression(amount2) * quantity).toFixed(2))} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount2) * quantity)} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2640,7 +2640,7 @@ export default function CustomerTab({
                               if (!amount3 || paperType3 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType3);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const consumed = Number((parseFractionOrExpression(amount3) * quantity).toFixed(2));
+                              const consumed = Math.ceil(parseFractionOrExpression(amount3) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
@@ -2650,7 +2650,7 @@ export default function CustomerTab({
                           />
                           {paperType3 !== 'None' && amount3 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Number((parseFractionOrExpression(amount3) * quantity).toFixed(2))} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount3) * quantity)} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2709,7 +2709,7 @@ export default function CustomerTab({
                               if (!amount16 || entrancePaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === entrancePaper);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const consumed = Number((parseFractionOrExpression(amount16) / 16).toFixed(2));
+                              const consumed = Math.ceil(parseFractionOrExpression(amount16) / 16);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
@@ -2719,7 +2719,7 @@ export default function CustomerTab({
                           />
                           {entrancePaper !== 'None' && amount16 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Number((parseFractionOrExpression(amount16) / 16).toFixed(2))} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount16) / 16)} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2773,7 +2773,7 @@ export default function CustomerTab({
                               if (!amount9 || ajabiPaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === ajabiPaper);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const consumed = Number((parseFractionOrExpression(amount9) / 9).toFixed(2));
+                              const consumed = Math.ceil(parseFractionOrExpression(amount9) / 9);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
@@ -2783,7 +2783,7 @@ export default function CustomerTab({
                           />
                           {ajabiPaper !== 'None' && amount9 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Number((parseFractionOrExpression(amount9) / 9).toFixed(2))} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount9) / 9)} sheets consumed
                             </div>
                           )}
                         </div>
