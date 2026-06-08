@@ -1281,7 +1281,7 @@ export default function CustomerTab({
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none`}>
+      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none mb-28 md:mb-0`}>
         <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
@@ -1359,7 +1359,7 @@ export default function CustomerTab({
                       }`}
                     >
                       {/* Grid Row Index */}
-                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 2}</td>
+                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
                       
                       {/* Grid Row Checkbox Column */}
                       <td className="py-2 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
@@ -1587,7 +1587,7 @@ export default function CustomerTab({
         </div>
 
       {/* RESPONSIVE CARDS VIEW */}
-      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none`}>
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mb-28 md:mb-0`}>
         {filteredCustomers.map((c) => {
             const fullVal = c.quantity * c.unitPrice;
             const remainingVal = fullVal - c.advancePayment;
