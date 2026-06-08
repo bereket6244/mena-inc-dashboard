@@ -1306,7 +1306,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           <motion.div
             key="initial-loader"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeInOut" } }}
             className="fixed inset-0 z-[99999] bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden"
           >
             {/* Glowing Background Orbs */}
@@ -1325,34 +1325,25 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <div className="relative z-10 flex flex-col items-center">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="w-24 h-24 border-t-2 border-r-2 border-[#ee317b] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(238,49,123,0.3)] mb-8"
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 border-t-2 border-r-2 border-[#ee317b] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(238,49,123,0.3)] mb-4"
               >
                 <motion.div
                   animate={{ rotate: -360 }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="w-16 h-16 border-b-2 border-l-2 border-[#71b536] rounded-full shadow-[0_0_20px_rgba(113,181,54,0.3)]"
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="w-10 h-10 border-b-2 border-l-2 border-[#71b536] rounded-full shadow-[0_0_15px_rgba(113,181,54,0.3)]"
                 />
               </motion.div>
 
-              <motion.h1 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.8 }}
-                className="text-3xl font-extrabold tracking-[0.2em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#ee317b] to-[#71b536] mb-3 drop-shadow-[0_0_10px_rgba(238,49,123,0.3)]"
-              >
-                Mena Ledger
-              </motion.h1>
-              
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.8 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
                 className="text-xs text-gray-400 font-mono tracking-widest uppercase flex items-center gap-2"
               >
-                <span className="w-2 h-2 rounded-full bg-[#71b536] animate-pulse" />
-                Connecting & Synchronizing
-                <span className="w-2 h-2 rounded-full bg-[#ee317b] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#71b536] animate-pulse" />
+                Loading...
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b] animate-pulse" />
               </motion.p>
             </div>
           </motion.div>
