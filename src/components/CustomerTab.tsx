@@ -2646,8 +2646,8 @@ export default function CustomerTab({
                     {/* Entrance Aux (Divided by 16) */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-sky-400 tracking-wider uppercase font-bold block">Entrance Sheets Spec</span>
-                        <span className="text-[9px] bg-[#112233]/40 border border-sky-900 text-sky-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 16</span>
+                        <span className="text-[10px] text-gray-300 tracking-wider uppercase font-bold block">Entrance Sheets Spec</span>
+                        <span className="text-[9px] bg-[#262626] border border-[#3a3a3a] text-gray-300 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 16</span>
                       </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2710,8 +2710,8 @@ export default function CustomerTab({
                     {/* Ajabi Aux (Divided by 9) */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-pink-400 tracking-wider uppercase font-bold block">Ajabi Sheets Spec</span>
-                        <span className="text-[9px] bg-pink-900/20 border border-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 9</span>
+                        <span className="text-[10px] text-gray-300 tracking-wider uppercase font-bold block">Ajabi Sheets Spec</span>
+                        <span className="text-[9px] bg-[#262626] border border-[#3a3a3a] text-gray-300 px-1.5 py-0.5 rounded-md font-sans">DIVIDED BY 9</span>
                       </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
