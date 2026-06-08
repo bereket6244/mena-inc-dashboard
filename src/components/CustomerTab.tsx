@@ -1877,7 +1877,10 @@ export default function CustomerTab({
       {/* DYNAMIC BACKDROP DRAWER/MODAL WIZARD */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs  overscroll-contain">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs  overscroll-contain"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsFormOpen(false); }}
+          >
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
@@ -2983,7 +2986,10 @@ export default function CustomerTab({
 
       <AnimatePresence>
         {showProformaModal && (
-          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs overscroll-contain">
+          <div 
+            className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs overscroll-contain"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowProformaModal(false); }}
+          >
             <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-md my-8 max-h-[90vh] overscroll-contain">
               
               {/* Controller Bar */}
@@ -3606,7 +3612,10 @@ export default function CustomerTab({
       {/* 📦 PRODUCT TYPES MANAGER MODAL */}
       <AnimatePresence>
         {showProductManager && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm "
+            onClick={(e) => { if (e.target === e.currentTarget) setShowProductManager(false); }}
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

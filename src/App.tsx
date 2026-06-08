@@ -1356,12 +1356,14 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 
                 <AnimatePresence>
                   {isMobileMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-[#181818] border border-[#262626] rounded-md shadow-2xl z-50 py-2 font-sans overflow-hidden"
-                    >
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsMobileMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        className="absolute right-0 top-full mt-2 w-64 bg-[#181818] border border-[#262626] rounded-md shadow-2xl z-50 py-2 font-sans overflow-hidden"
+                      >
                       {/* Account Section */}
                       <div className="px-4 py-3 bg-[#121212] border-b border-[#262626] mb-2">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block mb-1">Account</span>
@@ -1449,7 +1451,8 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                         <LogOut className="w-4 h-4" />
                         Sign Out
                       </button>
-                    </motion.div>
+                      </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
               </div>
