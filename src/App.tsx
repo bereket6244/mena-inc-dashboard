@@ -102,6 +102,7 @@ export default function App() {
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
@@ -572,6 +573,7 @@ export default function App() {
         // Fallback
       } finally {
         setTimeout(() => setIsBuffering(false), 500);
+        setTimeout(() => setIsInitialLoad(false), 1500); // Aesthetic minimum loading time
       }
     };
 
@@ -1296,7 +1298,68 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans  antialiased" style={{ lineSpacing: "1.15" }}>
+    <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans antialiased" style={{ lineSpacing: "1.15" }}>
+      
+      {/* 🚀 INITIAL STARTUP LOADING SCREEN */}
+      <AnimatePresence>
+        {isInitialLoad && (
+          <motion.div
+            key="initial-loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+            className="fixed inset-0 z-[99999] bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden"
+          >
+            {/* Glowing Background Orbs */}
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} 
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-1/3 left-1/4 w-96 h-96 bg-[#ee317b]/20 rounded-full blur-[100px]"
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0.4, 0.2] }} 
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-[#71b536]/20 rounded-full blur-[100px]"
+            />
+
+            {/* Central Animated Logo/Spinner */}
+            <div className="relative z-10 flex flex-col items-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="w-24 h-24 border-t-2 border-r-2 border-[#ee317b] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(238,49,123,0.3)] mb-8"
+              >
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="w-16 h-16 border-b-2 border-l-2 border-[#71b536] rounded-full shadow-[0_0_20px_rgba(113,181,54,0.3)]"
+                />
+              </motion.div>
+
+              <motion.h1 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="text-3xl font-extrabold tracking-[0.2em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#ee317b] to-[#71b536] mb-3 drop-shadow-[0_0_10px_rgba(238,49,123,0.3)]"
+              >
+                Mena Ledger
+              </motion.h1>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+                className="text-xs text-gray-400 font-mono tracking-widest uppercase flex items-center gap-2"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#71b536] animate-pulse" />
+                Connecting & Synchronizing
+                <span className="w-2 h-2 rounded-full bg-[#ee317b] animate-pulse" />
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
 
       {/* Sticky Top Navigation Container */}
       <div className="sticky top-[env(safe-area-inset-top)] z-40">
