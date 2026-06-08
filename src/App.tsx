@@ -1293,7 +1293,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans select-none antialiased" style={{ lineSpacing: "1.15" }}>
+    <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans  antialiased" style={{ lineSpacing: "1.15" }}>
 
       {/* Sticky Top Navigation Container */}
       <div className="sticky top-[env(safe-area-inset-top)] z-40">
@@ -1335,7 +1335,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             </div>
 
               {/* Utility Status, Clock & Reset */}
-             <div className="hidden md:flex items-center gap-2 sm:gap-4 select-none flex-wrap py-2">
+             <div className="hidden md:flex items-center gap-2 sm:gap-4  flex-wrap py-2">
                
                {/* Logged in User Tag */}
                <div className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2.5 py-1 text-xs">
@@ -1850,7 +1850,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
       {/* Corporate Footnotes */}
       <footer className="bg-[#121212] border-t border-[#262626] mt-auto py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-gray-500 text-xs font-sans gap-4 select-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-gray-500 text-xs font-sans gap-4 ">
           <p>© 2026 Mena Inc. All Rights Reserved. Fully integrated v2 paper ledger engine.</p>
           <div className="flex gap-4">
             <span className="flex items-center gap-1">
@@ -1868,7 +1868,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full font-sans text-xs select-none overscroll-contain"
+            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#121212] border border-[#ee317b] text-white p-4 shadow-2xl flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full font-sans text-xs  overscroll-contain"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -1919,7 +1919,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
       {/* 👤 STAFF SETTINGS MODAL */}
       <AnimatePresence>
         {showStaffModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2019,7 +2019,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       <label className="block text-[10px] uppercase text-gray-500 mb-2">Module Access Permissions</label>
                       <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
                         {(['customers', 'inventory', 'purchases', 'performance'] as const).map((tab) => (
-                          <label key={tab} className="flex items-center gap-2 cursor-pointer select-none">
+                          <label key={tab} className="flex items-center gap-2 cursor-pointer ">
                             <input
                               type="checkbox"
                               className="accent-[#ee317b]"
@@ -2151,7 +2151,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
       {/* 🔮 SUPABASE DATABASE CONFIGURATION MODAL */}
       <AnimatePresence>
         {showDbConfigModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2252,7 +2252,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between sm:justify-start gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-sans text-xs select-none max-w-[calc(100vw-2rem)] sm:max-w-xs w-full sm:w-auto overscroll-contain"
+            className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between sm:justify-start gap-3 bg-[#121212]/95 border border-[#ee317b] text-white px-4 py-2.5 shadow-2xl font-sans text-xs  max-w-[calc(100vw-2rem)] sm:max-w-xs w-full sm:w-auto overscroll-contain"
           >
             <div className="relative flex items-center justify-center">
               <svg className="animate-spin h-4 w-4 text-[#ee317b]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -2273,7 +2273,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
       {/* 📱 PWA DOWNLOAD & MOBILE INSTALLATION GUIDE MODAL */}
       <AnimatePresence>
         {showInstallGuideModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

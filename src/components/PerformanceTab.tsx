@@ -272,7 +272,7 @@ export default function PerformanceTab({
   const maxEmployeeGross = Math.max(...employeeLeaderboard.map(e => e.totalGross), 1);
 
   return (
-    <div className="space-y-8 select-none" id="performance-tab-pnl">
+    <div className="space-y-8 " id="performance-tab-pnl">
 
       {/* 📅 EXPENSE PERIOD INTERVAL & CATEGORY ANALYTICS DESK */}
       <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-none space-y-4" id="expense-analytics-filter-desk">
@@ -574,7 +574,7 @@ export default function PerformanceTab({
                     setSelectedBankIds(bankAccounts.map(b => b.id));
                   }
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 font-sans text-xs cursor-pointer hover:border-gray-500 transition-all select-none"
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 font-sans text-xs cursor-pointer hover:border-gray-500 transition-all "
               >
                 <input
                   type="checkbox"
@@ -1066,7 +1066,7 @@ export default function PerformanceTab({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans "
             >
               <motion.div 
                 initial={{ scale: 0.95, y: 20 }}
@@ -1114,7 +1114,7 @@ export default function PerformanceTab({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans "
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}

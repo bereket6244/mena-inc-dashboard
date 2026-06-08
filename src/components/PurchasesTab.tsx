@@ -642,7 +642,7 @@ export default function PurchasesTab({
   const totalExpenseAmount = filteredPurchases.reduce((sum, p) => sum + p.totalPrice, 0);
 
   return (
-    <div className="space-y-6 select-none animate-fadeIn" id="purchases-tab-pnl">
+    <div className="space-y-6  animate-fadeIn" id="purchases-tab-pnl">
       
       {/* Dynamic Summary Ribbon */}
       <div className="bg-[#121212] border border-[#262626] rounded-md p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -964,7 +964,7 @@ export default function PurchasesTab({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
-                  <tr className="border-b border-[#262626] bg-[#181818] text-[10px] text-gray-400 font-sans uppercase tracking-wider select-none">
+                  <tr className="border-b border-[#262626] bg-[#181818] text-[10px] text-gray-400 font-sans uppercase tracking-wider ">
                     <th className="py-3 px-3 text-center w-12">
                       <input
                         type="checkbox"
@@ -1049,7 +1049,7 @@ export default function PurchasesTab({
                           <td className="py-3 px-4 text-[#E2E8F0] select-all font-semibold font-sans">
                             <div className="flex flex-col gap-0.5">
                               <span>{p.itemOrService}</span>
-                              <div className="flex flex-wrap gap-1 mt-0.5 select-none">
+                              <div className="flex flex-wrap gap-1 mt-0.5 ">
                                 {p.hasVat && (
                                   <span className="text-[8px] tracking-wider uppercase bg-[#182318] text-emerald-400 border border-emerald-900/50 px-1 font-sans font-bold">
                                     +15% VAT
@@ -1176,7 +1176,7 @@ export default function PurchasesTab({
       {/* Non-blocking bulk delete confirmation modal for Purchases */}
       <AnimatePresence>
         {showBulkDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1221,7 +1221,7 @@ export default function PurchasesTab({
         {deletingCategory && (() => {
           const isBound = purchases.some(p => p.expenseCategory === deletingCategory.name);
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -1267,7 +1267,7 @@ export default function PurchasesTab({
       {/* Drawer / Right Sliding Form Modal for Add (Batch Enabled) / Edit Purchase */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end select-none overscroll-contain">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end  overscroll-contain">
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
@@ -1477,7 +1477,7 @@ export default function PurchasesTab({
 
                     {/* Tax Options: VAT & Withholding Toggles */}
                     <div className="grid grid-cols-2 gap-4 pt-1">
-                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer select-none">
+                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer ">
                         <input
                           type="checkbox"
                           checked={hasVat}
@@ -1490,7 +1490,7 @@ export default function PurchasesTab({
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer select-none">
+                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer ">
                         <input
                           type="checkbox"
                           checked={hasWithholding}
@@ -1652,18 +1652,18 @@ export default function PurchasesTab({
                 </div>
 
               {/* Bottom confirmation tools */}
-              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-end gap-3 select-none flex-shrink-0">
+              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-end gap-3  flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans select-none cursor-pointer border border-[#262626] hover:bg-[#202020] rounded-md"
+                  className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans  cursor-pointer border border-[#262626] hover:bg-[#202020] rounded-md"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSavePurchase}
-                  className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer select-none rounded-md"
+                  className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer  rounded-md"
                 >
                   {editingPurchase 
                     ? 'Update Single Ledger Row' 

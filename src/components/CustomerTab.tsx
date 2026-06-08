@@ -1007,7 +1007,7 @@ export default function CustomerTab({
     <div className="space-y-6" id="customers-tab-pnl">
       
       {/* Search and Filters Strip - Optimized for Mobile Screen limits */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col gap-4 select-none">
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col gap-4 ">
         
         {/* Row 1: Selectors and buttons */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
@@ -1519,7 +1519,7 @@ export default function CustomerTab({
         </div>
       ) : (
         /* RESPONSIVE CARDS VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none animate-none">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  animate-none">
           {filteredCustomers.map((c) => {
             const fullVal = c.quantity * c.unitPrice;
             const remainingVal = fullVal - c.advancePayment;
@@ -1809,7 +1809,7 @@ export default function CustomerTab({
       {/* DYNAMIC BACKDROP DRAWER/MODAL WIZARD */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs select-none overscroll-contain">
+          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs  overscroll-contain">
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
@@ -1839,7 +1839,7 @@ export default function CustomerTab({
                 </div>
 
                 {/* Wizard Tab buttons */}
-                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-sans font-semibold text-[11px] select-none bg-[#181818]">
+                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-sans font-semibold text-[11px]  bg-[#181818]">
                   <button
                     type="button"
                     onClick={() => setFormStep(1)}
@@ -2211,7 +2211,7 @@ export default function CustomerTab({
                         </div>
 
                         <div className="border border-[#262626] bg-[#121212] p-3 space-y-3 col-span-3">
-                          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                          <label className="flex items-center gap-2.5 cursor-pointer ">
                             <input
                               type="checkbox"
                               checked={isVatAdded}
@@ -2633,13 +2633,13 @@ export default function CustomerTab({
               </form>
 
               {/* Bottom Nav */}
-              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 select-none">
+              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 ">
                 <div>
                   {formStep > 1 && (
                     <button
                       type="button"
                       onClick={() => setFormStep((prev) => (prev - 1) as 1 | 2 | 3)}
-                      className="px-4 py-2 bg-transparent text-gray-300 hover:text-white border border-[#262626] select-none text-xs font-sans font-bold cursor-pointer"
+                      className="px-4 py-2 bg-transparent text-gray-300 hover:text-white border border-[#262626]  text-xs font-sans font-bold cursor-pointer"
                     >
                       Back
                     </button>
@@ -2650,7 +2650,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans select-none cursor-pointer"
+                    className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans  cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -2660,7 +2660,7 @@ export default function CustomerTab({
                     <button
                       type="button"
                       onClick={handleSaveAndAddAnother}
-                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer select-none"
+                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
                       title="Save this order, and immediately start another order for this same customer"
                     >
                       Save &amp; Add Another Order
@@ -2670,7 +2670,7 @@ export default function CustomerTab({
                   <button
                     type="button"
                     onClick={handleFormSubmit}
-                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer select-none"
+                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
                   >
                     {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
                   </button>
@@ -2686,7 +2686,7 @@ export default function CustomerTab({
                         setFormError('');
                         setFormStep((prev) => (prev + 1) as 1 | 2 | 3);
                       }}
-                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer select-none"
+                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer "
                     >
                       <span>Next Page</span>
                       <ChevronRight className="w-4 h-4" />
@@ -2709,7 +2709,7 @@ export default function CustomerTab({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans "
             >
               <motion.div 
                 initial={{ scale: 0.95, y: 20 }}
@@ -2756,7 +2756,7 @@ export default function CustomerTab({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans select-none"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans "
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
@@ -2832,7 +2832,7 @@ export default function CustomerTab({
                 </div>
 
                 {/* PROFORMA SETTINGS ROW */}
-                <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs select-none">
+                <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs ">
                   <div className="bg-[#110b0d] p-3 border border-[#2d2024] mb-1 flex flex-col gap-3">
                     {isStandaloneProformaMode && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-[#2d2024] pb-3">
@@ -2860,7 +2860,7 @@ export default function CustomerTab({
                     )}
                     <div className="flex flex-wrap items-center gap-4">
                       {/* Bank Selection dropdown */}
-                      <label className="flex items-center gap-1.5 text-stone-300 text-xs select-none">
+                      <label className="flex items-center gap-1.5 text-stone-300 text-xs ">
                         <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank:</span>
                         <select
                           value={proformaBankId}
@@ -2877,7 +2877,7 @@ export default function CustomerTab({
                       </label>
 
                       {/* Interactive Toggle for Stamp Seal */}
-                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs select-none">
+                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs ">
                         <input
                           type="checkbox"
                           checked={applyDigitalStamp}
@@ -2888,7 +2888,7 @@ export default function CustomerTab({
                       </label>
 
                       {/* Interactive Toggle for VAT */}
-                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs select-none">
+                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs ">
                         <input
                           type="checkbox"
                           checked={proformaIncludeVat}
@@ -3362,7 +3362,7 @@ export default function CustomerTab({
 
                     {/* SVG Rounded Double Circle Stamp overlapping signature or Premium Real Stamp Photo overlay */}
                     {applyDigitalStamp && (
-                      <div className="transform rotate-8 absolute right-2 z-10 bottom-0 select-none pb-2">
+                      <div className="transform rotate-8 absolute right-2 z-10 bottom-0  pb-2">
                         <img 
                           src="https://lh3.googleusercontent.com/d/1CbGimATXHfhwtx7aKcQivzxp8bDi1kZt" 
                           alt="Company Stamp Seal" 
@@ -3421,7 +3421,7 @@ export default function CustomerTab({
       {/* 📦 PRODUCT TYPES MANAGER MODAL */}
       <AnimatePresence>
         {showProductManager && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -3502,7 +3502,7 @@ export default function CustomerTab({
                   
                   {productTypes.length > 0 && (
                     <div className="flex items-center justify-between px-3 py-1.5 bg-[#181818] border border-[#262626] border-b-0 text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <label className="flex items-center gap-2 cursor-pointer ">
                         <input
                           type="checkbox"
                           checked={selectedProductIds.length === productTypes.length && productTypes.length > 0}

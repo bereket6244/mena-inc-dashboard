@@ -189,7 +189,7 @@ export default function InventoryTab({
   const totalRemainingSheets = calculatedStocks.reduce((sum, s) => sum + Math.max(0, s.remaining), 0);
 
   return (
-    <div className="space-y-6 select-none" id="inventory-tab-pnl">
+    <div className="space-y-6 " id="inventory-tab-pnl">
 
       {/* Control Bar & Selection Bar */}
       <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -235,7 +235,7 @@ export default function InventoryTab({
 
 
           {isAdmin ? (
-            <div className="flex items-stretch sm:items-center gap-2 select-none">
+            <div className="flex items-stretch sm:items-center gap-2 ">
               <button
                 type="button"
                 onClick={() => setShowAddForm(true)}
@@ -289,7 +289,7 @@ export default function InventoryTab({
             exit={{ opacity: 0, y: -15 }}
             className="bg-[#121212] border border-[#ee317b]/50 rounded-md p-4 shadow-none mb-6"
           >
-            <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
+            <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 ">
               <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                 <Plus className="w-4 h-4 text-[#ee317b]" />
                 Register New Paper
@@ -339,7 +339,7 @@ export default function InventoryTab({
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-2 select-none items-center">
+              <div className="flex gap-2 justify-end pt-2  items-center">
                 <span className="text-gray-500 italic mr-auto">Form remains open after adding for multiple entries.</span>
                 <button
                   type="button"
@@ -518,7 +518,7 @@ export default function InventoryTab({
                 exit={{ opacity: 0, y: 15 }}
                 className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none"
               >
-                <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
+                <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 ">
                   <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-[#ee317b]" />
                     Adjust Initial Stock
@@ -565,7 +565,7 @@ export default function InventoryTab({
                     </div>
                   </div>
 
-                  <div className="flex gap-2 justify-end pt-2 select-none">
+                  <div className="flex gap-2 justify-end pt-2 ">
                     <button
                       type="button"
                       onClick={() => setEditingStock(null)}
@@ -597,7 +597,7 @@ export default function InventoryTab({
                   exit={{ opacity: 0, y: 15 }}
                   className="bg-[#121212] border border-[#71b536]/30 rounded-md p-4 shadow-none space-y-4"
                 >
-                  <div className="flex justify-between items-center border-b border-[#262626] pb-3 select-none">
+                  <div className="flex justify-between items-center border-b border-[#262626] pb-3 ">
                     <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
                       <Plus className="w-3.5 h-3.5" />
                       Add More Sheets to Stock
@@ -678,7 +678,7 @@ export default function InventoryTab({
           const targetStock = paperStocks.find(s => s.id === deletingStockId);
           if (!targetStock) return null;
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -725,7 +725,7 @@ export default function InventoryTab({
       {/* Non-blocking bulk delete confirmation modal for inventory paper stocks */}
       <AnimatePresence>
         {showBulkDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm select-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
