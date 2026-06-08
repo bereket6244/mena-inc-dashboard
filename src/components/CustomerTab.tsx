@@ -633,11 +633,11 @@ export default function CustomerTab({
     setPaperType2('None');
     setAmount2('');
     setPaperType3('None');
-    setAmount3('0');
+    setAmount3('');
     setEntrancePaper('None');
-    setAmount16('0');
+    setAmount16('');
     setAjabiPaper('None');
-    setAmount9('0');
+    setAmount9('');
     
     setDeliveryDate('');
 
@@ -2527,8 +2527,8 @@ export default function CustomerTab({
                               if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
                               const consumed = Number((parseFractionOrExpression(amount1) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
-                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#ee317b]';
                             })()}`}
                             placeholder="e.g. 1/4 or 0.5"
@@ -2586,8 +2586,8 @@ export default function CustomerTab({
                               if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
                               const consumed = Number((parseFractionOrExpression(amount2) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
-                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#ee317b]';
                             })()}`}
                             placeholder="e.g. 1/2"
@@ -2645,8 +2645,8 @@ export default function CustomerTab({
                               if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
                               const consumed = Number((parseFractionOrExpression(amount3) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
-                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#ee317b]';
                             })()}`}
                             placeholder="e.g. 1/4"
@@ -2717,8 +2717,8 @@ export default function CustomerTab({
                               if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
                               const consumed = Number((parseFractionOrExpression(amount16) / 16).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
-                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#ee317b]';
                             })()}`}
                             placeholder="e.g. 160 or 16 * 10"
@@ -2783,8 +2783,8 @@ export default function CustomerTab({
                               if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
                               const consumed = Number((parseFractionOrExpression(amount9) / 9).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
-                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#ee317b]';
                             })()}`}
                             placeholder="e.g. 90 or 9 * 10"
@@ -2820,7 +2820,25 @@ export default function CustomerTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 justify-end">
-                  {formStep < 3 ? (
+                  {!editingCustomer && (
+                    <button
+                      type="button"
+                      onClick={handleSaveAndAddAnother}
+                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
+                      title="Save this order, and immediately start another order for this same customer"
+                    >
+                      Save & Add Another Order
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleFormSubmit}
+                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
+                  >
+                    {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
+                  </button>
+
+                  {formStep < 3 && (
                     <button
                       type="button"
                       onClick={() => {
@@ -2836,26 +2854,6 @@ export default function CustomerTab({
                       <span>Next Page</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <>
-                      {!editingCustomer && (
-                        <button
-                          type="button"
-                          onClick={handleSaveAndAddAnother}
-                          className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
-                          title="Save this order, and immediately start another order for this same customer"
-                        >
-                          Save & Add Another Order
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleFormSubmit}
-                        className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
-                      >
-                        {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
-                      </button>
-                    </>
                   )}
                 </div>
               </div>
