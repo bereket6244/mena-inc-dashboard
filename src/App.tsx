@@ -1188,7 +1188,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           <div className="text-center mb-8">
             <div className="relative inline-block mb-3">
               <img 
-                src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
+                src="/mena-logo.png"
                 alt="Mena Logo" 
                 className="w-16 h-16 object-contain bg-[#181818] border border-[#262626] p-1 mx-auto"
                 referrerPolicy="no-referrer"
@@ -1320,7 +1320,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               {/* Branding Logo - Utilizing the Premium Custom Logo */}
               <div className="flex items-center gap-3">
                 <img 
-                  src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
+                  src="/mena-logo.png"
                 alt="Mena Logo" 
                 className="w-10 h-10 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
                 referrerPolicy="no-referrer"

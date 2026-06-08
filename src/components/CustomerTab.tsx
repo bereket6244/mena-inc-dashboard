@@ -3378,7 +3378,7 @@ export default function CustomerTab({
                   <div className="flex items-start gap-4 text-left">
                     {/* Premium App Logo image replacement */}
                     <img 
-                      src="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" 
+                      src="/mena-logo.png" 
                       alt="Mena Logo" 
                       className="w-12 h-12 object-contain bg-white border border-gray-250 p-1 mt-1"
                       referrerPolicy="no-referrer"
