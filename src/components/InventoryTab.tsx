@@ -401,7 +401,7 @@ export default function InventoryTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300 font-sans">
-                {calculatedStocks.map((stock) => {
+                {calculatedStocks.filter(stock => stock.name.toLowerCase().includes(searchQuery.toLowerCase())).map((stock) => {
                   const status = getStatus(stock.remaining);
                   const isSelected = selectedStockIds.includes(stock.id);
                   const isOutOfStock = stock.remaining <= 0;
