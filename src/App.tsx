@@ -1341,181 +1341,118 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               </div>
             </div>
 
-              {/* Utility Status, Clock & Reset */}
-             <div className="hidden md:flex items-center gap-2 sm:gap-4  flex-wrap py-2">
-               
-               {/* Logged in User Tag */}
-               <div className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2.5 py-1 text-xs">
-                 {currentUser.role === 'admin' ? (
-                   <Shield className="w-3.5 h-3.5 text-[#ee317b]" />
-                 ) : (
-                   <User className="w-3.5 h-3.5 text-[#71b536]" />
-                 )}
-                 <span className="text-gray-200 font-sans tracking-wide font-medium">{currentUser.name}</span>
-                 <span className={`text-[8px] uppercase tracking-wider px-1 border font-bold font-sans py-0.5 ml-1 hidden xs:inline ${
-                   currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
-                 }`}>
-                   {currentUser.role}
-                 </span>
-               </div>
+              {/* Unified Profile Menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="w-10 h-10 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
+                  title="Profile Menu"
+                >
+                  <span className="text-white font-bold font-sans uppercase">
+                    {currentUser.name.charAt(0)}
+                  </span>
+                </button>
+                
+                <AnimatePresence>
+                  {isMobileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute right-0 top-full mt-2 w-64 bg-[#181818] border border-[#262626] rounded-md shadow-2xl z-50 py-2 font-sans overflow-hidden"
+                    >
+                      {/* Account Section */}
+                      <div className="px-4 py-3 bg-[#121212] border-b border-[#262626] mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block mb-1">Account</span>
+                        <div className="flex flex-col">
+                          <span className="text-white font-bold text-sm truncate">{currentUser.name}</span>
+                          <span className="text-gray-400 text-xs truncate">@{currentUser.username}</span>
+                          <div className="mt-1">
+                            <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 border font-bold rounded-sm ${
+                              currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/20' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/20'
+                            }`}>
+                              {currentUser.role}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-               {/* Staff Settings Trigger for Admins */}
-               {currentUser.role === 'admin' && (
-                 <button
-                   type="button"
-                   onClick={() => setShowStaffModal(true)}
-                   className={`bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] px-2.5 py-1.5 rounded-md font-sans flex items-center gap-1 cursor-pointer transition-colors ${theme === 'light' ? 'text-gray-900 font-bold' : 'text-gray-300'}`}
-                   title="Manage Employee passkeys and register workers"
-                 >
-                   <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
-                   <span className="hidden md:inline">Staff Settings</span>
-                 </button>
-               )}
+                      {/* Appearance Section */}
+                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold px-4 pt-1 block mb-1">Appearance</span>
+                      <button
+                        type="button"
+                        onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                        className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-450" />}
+                          Theme
+                        </div>
+                        <span className="text-gray-500">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                      </button>
+                      
+                      <div className="px-4 py-2.5 text-xs text-gray-300 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Type className="w-4 h-4 text-[#ee317b]" />
+                          <span>Text Size</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-[#121212] rounded p-0.5 border border-[#262626]">
+                          <button onClick={() => setFontSize('sm')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>A-</button>
+                          <button onClick={() => setFontSize('base')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>A</button>
+                          <button onClick={() => setFontSize('lg')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>A+</button>
+                        </div>
+                      </div>
+                      
+                      <div className="border-t border-[#262626] my-2"></div>
 
-               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 font-sans bg-[#181818] border border-[#262626] px-2.5 py-1 rounded-md">
-                 <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
-                 <span>UTC: {timeStr || '08:12'}</span>
-               </div>
+                      {/* Data / Admin Section */}
+                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold px-4 pt-1 block mb-1">Data / Admin</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+                          exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                      >
+                        <FolderDown className="w-4 h-4 text-sky-400" />
+                        Export All Data
+                      </button>
 
-               {/* Font Size Selector (Desktop) */}
-               <div className="flex items-center gap-0.5 bg-[#181818] border border-[#262626] rounded-md px-1.5 py-1 text-xs">
-                 <Type className="w-3 h-3 text-[#ee317b] mr-1" />
-                 <button onClick={() => setFontSize('sm')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
-                 <button onClick={() => setFontSize('base')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
-                 <button onClick={() => setFontSize('lg')} className={`px-1.5 py-0.5 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
-               </div>
+                      {currentUser.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            setShowStaffModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                        >
+                          <UserPlus className="w-4 h-4 text-[#ee317b]" />
+                          Manage Staff Settings
+                        </button>
+                      )}
 
-               {/* Export All Data (Desktop) */}
-               <button
-                 type="button"
-                 onClick={() => {
-                   const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                   exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
-                 }}
-                 className={`text-xs font-bold hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 uppercase ${theme === 'light' ? 'text-gray-900' : 'text-[#ee317b] hover:text-white'}`}
-                 title="Export all system ledgers to Excel workbook"
-               >
-                 <FolderDown className="w-3.5 h-3.5" />
-                 <span className="hidden lg:inline">Export Data</span>
-               </button>
+                      <div className="border-t border-[#262626] my-2"></div>
 
-               <button
-                 type="button"
-                 onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                 className="text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5"
-                 title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-               >
-                 {theme === 'dark' ? (
-                   <>
-                     <Sun className="w-3.5 h-3.5 text-amber-400" />
-                     <span className="hidden md:inline">Light</span>
-                   </>
-                 ) : (
-                   <>
-                     <Moon className="w-3.5 h-3.5 text-sky-450" />
-                     <span className="hidden md:inline">Dark</span>
-                   </>
-                 )}
-               </button>
-
-               <button
-                 type="button"
-                 onClick={handleLogout}
-                 className="text-xs text-gray-400 hover:text-[#ee317b] bg-[#181818] hover:bg-[#202020] border border-[#262626] p-1.5 rounded-md transition-all cursor-pointer"
-                 title="Log Out Operator"
-               >
-                 <LogOut className="w-3.5 h-3.5" />
-               </button>
-             </div>
-
-             {/* Mobile Settings Dropdown */}
-             <div className="md:hidden relative">
-               <button
-                 type="button"
-                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                 className="p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-md focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
-                 aria-label="Toggle Navigation Menu"
-               >
-                 <MoreVertical className="w-5 h-5 text-white" />
-               </button>
-               <AnimatePresence>
-                 {isMobileMenuOpen && (
-                   <motion.div
-                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                     className="absolute right-0 top-full mt-2 w-56 bg-[#181818] border border-[#262626] rounded-md shadow-2xl z-50 py-2 font-sans"
-                   >
-                     {/* Theme Toggle */}
-                     <button
-                       type="button"
-                       onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                       className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-[#ee317b] hover:bg-[#202020] transition-colors flex items-center gap-2"
-                     >
-                       {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-450" />}
-                       {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                     </button>
-                     
-                     {/* Text Size Adjustment (Mobile) */}
-                     <div className="px-4 py-2.5 text-xs text-gray-300 flex items-center justify-between">
-                       <div className="flex items-center gap-2">
-                         <Type className="w-4 h-4 text-[#ee317b]" />
-                         <span>Text Size</span>
-                       </div>
-                       <div className="flex items-center gap-1 bg-[#121212] rounded p-0.5">
-                         <button onClick={() => setFontSize('sm')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
-                         <button onClick={() => setFontSize('base')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
-                         <button onClick={() => setFontSize('lg')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
-                       </div>
-                     </div>
-                     
-                     {/* Export All */}
-                     <button
-                       type="button"
-                       onClick={() => {
-                         setIsMobileMenuOpen(false);
-                         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                         exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
-                       }}
-                       className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
-                     >
-                       <FolderDown className="w-4 h-4 text-sky-400" />
-                       Export All Data
-                     </button>
-
-                     {/* Staff Settings */}
-                     {currentUser.role === 'admin' && (
-                       <button
-                         type="button"
-                         onClick={() => {
-                           setIsMobileMenuOpen(false);
-                           setShowStaffModal(true);
-                         }}
-                         className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-[#ee317b] hover:bg-[#202020] transition-colors flex items-center gap-2"
-                       >
-                         <UserPlus className="w-4 h-4 text-[#ee317b]" />
-                         Manage Staff Settings
-                       </button>
-                     )}
-
-                     <div className="border-t border-[#262626] my-1"></div>
-
-                     {/* Logout */}
-                     <button
-                       type="button"
-                       onClick={() => {
-                         setIsMobileMenuOpen(false);
-                         handleLogout();
-                       }}
-                       className="w-full text-left px-4 py-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-[#202020] transition-colors flex items-center gap-2"
-                     >
-                       <LogOut className="w-4 h-4" />
-                       Log Out
-                     </button>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-             </div>
+                      {/* Logout */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-[#202020]/50 transition-colors flex items-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
            </div>
          </div>
