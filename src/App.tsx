@@ -1245,7 +1245,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               type="submit"
               className="w-full bg-[#ee317b] text-black font-bold font-sans py-2.5 hover:bg-white hover:text-black transition-all cursor-pointer text-xs uppercase rounded-md"
             >
-              Verify &amp; Unlock Space
+              Sign in
             </button>
           </form>
 
