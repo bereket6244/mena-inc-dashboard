@@ -3013,6 +3013,7 @@ export default function CustomerTab({
                   </div>
                 )}
               </div>
+              </div>
               
               {/* Printable Area - Rendered using White-Paper Theme */}
               <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-md flex-1 font-sans overscroll-contain" id="proforma-print-container">
