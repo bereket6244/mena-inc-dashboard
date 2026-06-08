@@ -141,7 +141,6 @@ export default function InventoryTab({
       
       setNewStockName('');
       setNewStockInitial('');
-      setShowAddForm(false);
       return;
     }
 
@@ -154,7 +153,6 @@ export default function InventoryTab({
     onUpdateStocks([...paperStocks, newStock]);
     setNewStockName('');
     setNewStockInitial('');
-    setShowAddForm(false);
   };
 
   const handleEditStockSubmit = (e: React.FormEvent) => {
@@ -281,6 +279,86 @@ export default function InventoryTab({
           </div>
         </div>
       )}
+
+      {/* Quick Create New Stock Variant */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="bg-[#121212] border border-[#ee317b]/50 rounded-md p-4 shadow-none mb-6"
+          >
+            <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
+              <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-[#ee317b]" />
+                Register New Paper
+              </span>
+              <button 
+                onClick={() => setShowAddForm(false)} 
+                className="text-gray-500 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
+              <div>
+                <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
+                <input
+                  id="field-new-stock-name"
+                  type="text"
+                  required
+                  placeholder="e.g. Bronze wave"
+                  value={newStockName}
+                  onChange={(e) => setNewStockName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial Sheets on Hand (expression enabled)</label>
+                <input
+                  id="field-new-stock-initial"
+                  type="text"
+                  required
+                  placeholder="e.g. 500 or 100 * 5"
+                  value={newStockInitial}
+                  onChange={(e) => setNewStockInitial(cleanLeadingZeros(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = parseFractionOrExpression(newStockInitial);
+                      setNewStockInitial(val.toString());
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                />
+                <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                  Parsed: {parseFractionOrExpression(newStockInitial)} sheets
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 select-none items-center">
+                <span className="text-gray-500 italic mr-auto">Form remains open after adding for multiple entries.</span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer"
+                >
+                  Add Stock
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Inventory Board Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -577,84 +655,7 @@ export default function InventoryTab({
             })()}
           </AnimatePresence>
 
-          {/* Quick Create New Stock Variant */}
-          <AnimatePresence>
-            {showAddForm && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 15 }}
-                className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none"
-              >
-                <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 select-none">
-                  <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
-                    <Plus className="w-4 h-4 text-[#ee317b]" />
-                    Register New Paper
-                  </span>
-                  <button 
-                    onClick={() => setShowAddForm(false)} 
-                    className="text-gray-500 hover:text-white cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
 
-                <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
-                  <div>
-                    <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
-                    <input
-                      id="field-new-stock-name"
-                      type="text"
-                      required
-                      placeholder="e.g. Bronze wave"
-                      value={newStockName}
-                      onChange={(e) => setNewStockName(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial Sheets on Hand (expression enabled)</label>
-                    <input
-                      id="field-new-stock-initial"
-                      type="text"
-                      required
-                      placeholder="e.g. 500 or 100 * 5"
-                      value={newStockInitial}
-                      onChange={(e) => setNewStockInitial(cleanLeadingZeros(e.target.value))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = parseFractionOrExpression(newStockInitial);
-                          setNewStockInitial(val.toString());
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
-                    />
-                    <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                      Parsed: {parseFractionOrExpression(newStockInitial)} sheets
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-2 select-none">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddForm(false)}
-                      className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer"
-                    >
-                      Add Stock
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Guidelines info card helper */}
           <div className="bg-[#121212] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
