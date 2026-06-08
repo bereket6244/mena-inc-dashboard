@@ -341,10 +341,10 @@ export default function CustomerTab({
       const originalTop = container.style.top;
       const originalLeft = container.style.left;
 
-      // Temporarily set styling to show the entire layout and keep it consistent on mobile
+      // Temporarily set styling to show the entire layout and keep it consistent on mobile without flashing on screen
       container.style.position = 'absolute';
-      container.style.top = '0';
-      container.style.left = '0';
+      container.style.top = '-9999px';
+      container.style.left = '-9999px';
       container.style.maxHeight = 'none';
       container.style.overflow = 'visible';
       container.style.height = 'max-content';
