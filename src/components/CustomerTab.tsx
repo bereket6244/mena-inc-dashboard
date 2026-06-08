@@ -1890,14 +1890,15 @@ export default function CustomerTab({
                     <h3 className="font-sans font-bold text-white text-base flex items-center gap-1.5 uppercase">
                       {editingCustomer ? `Edit Order #${editingCustomer.id.slice(-4)}` : 'Create New Customer Order'}
                     </h3>
+                    <p className="text-xs text-gray-400 mt-1 font-sans">Step {formStep} of 3</p>
                   </div>
                   
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -1936,7 +1937,7 @@ export default function CustomerTab({
               )}
 
               {/* Step Forms */}
-              <form onSubmit={handleFormSubmit} className="flex-1 px-6 py-5 overflow-y-auto space-y-6 overscroll-contain">
+              <form onSubmit={handleFormSubmit} className="flex-1 px-6 pt-5 pb-2 overflow-y-auto space-y-6 overscroll-contain">
                 
                 {formStep === 1 && (
                   <div className="space-y-4">
@@ -2805,7 +2806,7 @@ export default function CustomerTab({
               </form>
 
               {/* Bottom Nav */}
-              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 ">
+              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 sticky bottom-0 z-10">
                 <div>
                   {formStep > 1 && (
                     <button
@@ -2819,35 +2820,7 @@ export default function CustomerTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans  cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  
-                  {/* Save and Add Another visible on all steps for convenience when Aux/Special page is not needed */}
-                  {!editingCustomer && (
-                    <button
-                      type="button"
-                      onClick={handleSaveAndAddAnother}
-                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
-                      title="Save this order, and immediately start another order for this same customer"
-                    >
-                      Save &amp; Add Another Order
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleFormSubmit}
-                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
-                  >
-                    {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
-                  </button>
-
-                  {formStep < 3 && (
+                  {formStep < 3 ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -2858,15 +2831,34 @@ export default function CustomerTab({
                         setFormError('');
                         setFormStep((prev) => (prev + 1) as 1 | 2 | 3);
                       }}
-                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer "
+                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer"
                     >
                       <span>Next Page</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
+                  ) : (
+                    <>
+                      {!editingCustomer && (
+                        <button
+                          type="button"
+                          onClick={handleSaveAndAddAnother}
+                          className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
+                          title="Save this order, and immediately start another order for this same customer"
+                        >
+                          Save & Add Another Order
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleFormSubmit}
+                        className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
+                      >
+                        {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
-
             </motion.div>
           </div>
         )}
