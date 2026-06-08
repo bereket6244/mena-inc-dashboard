@@ -1939,138 +1939,179 @@ export default function CustomerTab({
               <form onSubmit={handleFormSubmit} className="flex-1 px-6 pt-5 pb-2 overflow-y-auto space-y-6 overscroll-contain">
                 
                 {formStep === 1 && (
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">1. Client Billing &amp; Pricing Metadata</h4>
+                  <div className="space-y-5 font-sans">
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-type">Client Type</label>
-                        <div className="flex gap-1.5">
-                          {!isAddingClientType ? (
-                            <>
-                              <SearchableSelect
-                                id="field-client-type"
-                                value={clientType}
-                                onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
-                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
-                              >
-                                {clientTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                              </SearchableSelect>
-                              <button
-                                type="button"
-                                onClick={() => setIsAddingClientType(true)}
-                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] rounded-md font-sans text-xs font-bold cursor-pointer transition-colors"
-                                title="Add custom Client Type"
-                              >
-                                + New
-                              </button>
-                              {clientType && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const ct = clientTypes.find(c => c.name === clientType);
-                                    if (ct) {
-                                      if (window.confirm(`Are you sure you want to delete client type "${ct.name}"?`)) {
-                                        onDeleteClientType([ct.id]);
-                                        const remaining = clientTypes.filter(c => c.id !== ct.id);
-                                        setClientType(remaining[0]?.name || '');
-                                      }
-                                    }
-                                  }}
-                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
-                                  title="Delete selected Client Type"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] rounded-md px-2 py-1">
-                              <input
-                                type="text"
-                                placeholder="Client type..."
-                                value={newClientTypeInput}
-                                onChange={(e) => setNewClientTypeInput(e.target.value)}
-                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans w-full"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddClientTypeInline();
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={handleAddClientTypeInline}
-                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-sans"
-                              >
-                                Add
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewClientTypeInput('');
-                                  setIsAddingClientType(false);
-                                }}
-                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-sans"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
+                    {/* Card 1: Client Info */}
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-4">
+                      <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Client Info</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-name">
+                            Client Name <span className="text-[#F87171]">*</span>
+                          </label>
+                          <input
+                            id="field-client-name"
+                            type="text"
+                            required
+                            placeholder="e.g. Almaz Tekle"
+                            value={clientName}
+                            onChange={(e) => setClientName(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-phone">
+                            Phone / Contact
+                          </label>
+                          <input
+                            id="field-client-phone"
+                            type="text"
+                             placeholder="e.g. +251 911..."
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none"
+                          />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-source">Lead Channel</label>
-                        <div className="flex gap-1.5">
-                          {!isAddingChannel ? (
-                            <>
-                              <SearchableSelect
-                                id="field-client-source"
-                                value={acquisitionSource}
-                                onChange={(e) => setAcquisitionSource(e.target.value as Customer['acquisitionSource'])}
-                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
-                              >
-                                {acquisitionChannels.map(s => <option key={s} value={s}>{s}</option>)}
-                              </SearchableSelect>
-                              <button
-                                type="button"
-                                onClick={() => setIsAddingChannel(true)}
-                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-sans text-xs font-bold cursor-pointer transition-colors"
-                                title="Add custom Lead Option"
-                              >
-                                + New
-                              </button>
-                              {acquisitionSource && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider" htmlFor="field-client-type">Client Type</label>
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingClientType(!isAddingClientType)}
+                              className="text-[10px] text-[#ee317b] hover:text-pink-400 uppercase font-bold cursor-pointer"
+                            >
+                              {isAddingClientType ? 'Cancel' : 'Manage'}
+                            </button>
+                          </div>
+                          <div className="flex gap-1.5">
+                            {!isAddingClientType ? (
+                              <div className="flex-1 flex gap-1.5">
+                                <SearchableSelect
+                                  id="field-client-type"
+                                  value={clientType}
+                                  onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
+                                  className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                                >
+                                  {clientTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                </SearchableSelect>
+                                {clientType && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ct = clientTypes.find(c => c.name === clientType);
+                                      if (ct) {
+                                        if (window.confirm(`Are you sure you want to delete client type "${ct.name}"?`)) {
+                                          onDeleteClientType([ct.id]);
+                                          const remaining = clientTypes.filter(c => c.id !== ct.id);
+                                          setClientType(remaining[0]?.name || '');
+                                        }
+                                      }
+                                    }}
+                                    className="px-2.5 bg-[#121212] text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                    title="Delete selected Client Type"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
+                                <input
+                                  type="text"
+                                  placeholder="New client type..."
+                                  value={newClientTypeInput}
+                                  onChange={(e) => setNewClientTypeInput(e.target.value)}
+                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans w-full"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddClientTypeInline();
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddClientTypeInline}
+                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider" htmlFor="field-client-source">Lead Channel</label>
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingChannel(!isAddingChannel)}
+                              className="text-[10px] text-[#ee317b] hover:text-pink-400 uppercase font-bold cursor-pointer"
+                            >
+                              {isAddingChannel ? 'Cancel' : 'Manage'}
+                            </button>
+                          </div>
+                          <div className="flex gap-1.5">
+                            {!isAddingChannel ? (
+                              <div className="flex-1 flex gap-1.5">
+                                <SearchableSelect
+                                  id="field-client-source"
+                                  value={acquisitionSource}
+                                  onChange={(e) => setAcquisitionSource(e.target.value as Customer['acquisitionSource'])}
+                                  className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                                >
+                                  {acquisitionChannels.map(s => <option key={s} value={s}>{s}</option>)}
+                                </SearchableSelect>
+                                {acquisitionSource && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`Are you sure you want to delete lead channel "${acquisitionSource}"?`)) {
+                                        const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
+                                        setAcquisitionChannels(updated);
+                                        localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+                                        setAcquisitionSource(updated[0] || '');
+                                      }
+                                    }}
+                                    className="px-2.5 bg-[#121212] text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                    title="Delete selected Lead Channel"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
+                                <input
+                                  type="text"
+                                  placeholder="New channel..."
+                                  value={newChannelInput}
+                                  onChange={(e) => setNewChannelInput(e.target.value)}
+                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const cleaned = newChannelInput.trim();
+                                      if (cleaned && !acquisitionChannels.includes(cleaned)) {
+                                        const updated = [...acquisitionChannels, cleaned];
+                                        setAcquisitionChannels(updated);
+                                        localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+                                        setAcquisitionSource(cleaned);
+                                      }
+                                      setNewChannelInput('');
+                                      setIsAddingChannel(false);
+                                    }
+                                  }}
+                                />
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (window.confirm(`Are you sure you want to delete lead channel "${acquisitionSource}"?`)) {
-                                      const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
-                                      setAcquisitionChannels(updated);
-                                      localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                      setAcquisitionSource(updated[0] || '');
-                                    }
-                                  }}
-                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
-                                  title="Delete selected Lead Channel"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] px-2 py-1">
-                              <input
-                                type="text"
-                                placeholder="Channel name..."
-                                value={newChannelInput}
-                                onChange={(e) => setNewChannelInput(e.target.value)}
-                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
                                     const cleaned = newChannelInput.trim();
                                     if (cleaned && !acquisitionChannels.includes(cleaned)) {
                                       const updated = [...acquisitionChannels, cleaned];
@@ -2080,194 +2121,134 @@ export default function CustomerTab({
                                     }
                                     setNewChannelInput('');
                                     setIsAddingChannel(false);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const cleaned = newChannelInput.trim();
-                                  if (cleaned && !acquisitionChannels.includes(cleaned)) {
-                                    const updated = [...acquisitionChannels, cleaned];
-                                    setAcquisitionChannels(updated);
-                                    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                    setAcquisitionSource(cleaned);
-                                  }
-                                  setNewChannelInput('');
-                                  setIsAddingChannel(false);
-                                }}
-                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs"
-                              >
-                                Add
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewChannelInput('');
-                                  setIsAddingChannel(false);
-                                }}
-                                className="text-gray-500 hover:text-gray-300 px-1 text-xs"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
+                                  }}
+                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-name">Client Name <span className="text-[#F87171]">*</span></label>
-                      <input
-                        id="field-client-name"
-                        type="text"
-                        required
-                        placeholder="e.g. Almaz Tekle"
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-phone">Phone / Contact</label>
-                        <input
-                          id="field-client-phone"
-                          type="text"
-                           placeholder="e.g. +251 911..."
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1 flex items-center gap-1" htmlFor="field-client-agent">
-                          Taken By <span className="text-[#F87171]">*</span>
-                          <Lock className="w-3 h-3 text-[#ee317b]" />
-                        </label>
-                        <SearchableSelect
-                          id="field-client-agent"
-                          disabled={true}
-                          value={orderTakenBy}
-                          onChange={(e) => setOrderTakenBy(e.target.value as Customer['orderTakenBy'])}
-                          className="w-full px-3 py-2 text-sm border font-sans rounded-md outline-none bg-[#181818]/60 border-[#222222] text-zinc-500 cursor-not-allowed"
-                        >
-                          {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
-                            <option key={a} value={a}>{a}</option>
-                          ))}
-                        </SearchableSelect>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
-                          <button
-                            type="button"
-                            onClick={() => setShowProductManager(true)}
-                            className="text-[10px] text-[#ee317b] hover:underline uppercase font-sans font-bold cursor-pointer"
-                          >
-                            Manage
-                          </button>
-                        </div>
-                        <div className="flex gap-1.5">
-                          {!isAddingProduct ? (
-                            <>
-                              <SearchableSelect
-                                id="field-client-product"
-                                value={productType}
-                                onChange={(e) => setProductType(e.target.value)}
-                                className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
-                              >
-                                {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                              </SearchableSelect>
-                              <button
-                                type="button"
-                                onClick={() => setIsAddingProduct(true)}
-                                className="px-2.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] font-sans text-xs font-bold cursor-pointer transition-colors"
-                                title="Add custom Product Type"
-                              >
-                                + New
-                              </button>
-                              {productType && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    const prod = productTypes.find(p => p.name === productType);
-                                    if (prod) {
-                                      if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
-                                        await onDeleteProductType(prod.id);
-                                        const remaining = productTypes.filter(p => p.id !== prod.id);
-                                        setProductType(remaining[0]?.name || '');
+                    {/* Card 2: Product Info */}
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-4">
+                      <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Product Info</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider" htmlFor="field-client-product">Product Type</label>
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingProduct(!isAddingProduct)}
+                              className="text-[10px] text-[#ee317b] hover:text-pink-400 uppercase font-bold cursor-pointer"
+                            >
+                              {isAddingProduct ? 'Cancel' : 'Manage'}
+                            </button>
+                          </div>
+                          <div className="flex gap-1.5">
+                            {!isAddingProduct ? (
+                              <div className="flex-1 flex gap-1.5">
+                                <SearchableSelect
+                                  id="field-client-product"
+                                  value={productType}
+                                  onChange={(e) => setProductType(e.target.value)}
+                                  className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                                >
+                                  {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                </SearchableSelect>
+                                {productType && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const prod = productTypes.find(p => p.name === productType);
+                                      if (prod) {
+                                        if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
+                                          await onDeleteProductType(prod.id);
+                                          const remaining = productTypes.filter(p => p.id !== prod.id);
+                                          setProductType(remaining[0]?.name || '');
+                                        }
                                       }
+                                    }}
+                                    className="px-2.5 bg-[#121212] text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 font-sans rounded-md text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
+                                    title="Delete selected Product Type"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
+                                <input
+                                  type="text"
+                                  placeholder="New product..."
+                                  value={newProductInput}
+                                  onChange={(e) => setNewProductInput(e.target.value)}
+                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      await handleAddProductInline();
                                     }
                                   }}
-                                  className="px-2.5 bg-[#421A1D]/20 text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
-                                  title="Delete selected Product Type"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddProductInline}
+                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Add
                                 </button>
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] px-2 py-1">
-                              <input
-                                type="text"
-                                placeholder="Product name..."
-                                value={newProductInput}
-                                onChange={(e) => setNewProductInput(e.target.value)}
-                                className="flex-1 bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-[#ee317b] font-sans"
-                                onKeyDown={async (e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    await handleAddProductInline();
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={handleAddProductInline}
-                                className="text-[#ee317b] hover:text-pink-400 font-bold px-1 text-xs font-sans"
-                              >
-                                Add
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewProductInput('');
-                                  setIsAddingProduct(false);
-                                }}
-                                className="text-gray-500 hover:text-gray-300 px-1 text-xs font-sans"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {editingCustomer && (
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 font-sans uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
-                          <input
-                            id="field-client-delivery"
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
-                          />
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1" htmlFor="field-client-agent">
+                            Taken By <span className="text-[#F87171]">*</span>
+                            <Lock className="w-3 h-3 text-gray-500" />
+                          </label>
+                          <SearchableSelect
+                            id="field-client-agent"
+                            disabled={true}
+                            value={orderTakenBy}
+                            onChange={(e) => setOrderTakenBy(e.target.value as Customer['orderTakenBy'])}
+                            className="w-full px-3 py-2 text-sm border font-sans rounded-md outline-none bg-[#121212] border-[#262626] text-gray-500 cursor-not-allowed opacity-80"
+                          >
+                            {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
+                              <option key={a} value={a}>{a}</option>
+                            ))}
+                          </SearchableSelect>
                         </div>
-                      )}
+
+                        {editingCustomer && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
+                            <input
+                              id="field-client-delivery"
+                              type="date"
+                              value={deliveryDate}
+                              onChange={(e) => setDeliveryDate(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 mt-6 space-y-4">
-                      <span className="text-[10px] text-gray-500 font-sans uppercase tracking-wider font-bold block">Live Automated Financial Calculations</span>
-                      <div className="grid grid-cols-3 gap-3">
+                    {/* Card 3: Payment Info */}
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-4">
+                      <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Payment Info</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-qty">Quantity</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-qty">
+                            Quantity <span className="text-[#F87171]">*</span>
+                          </label>
                           <input
                             id="field-client-qty"
                             type="text"
@@ -2286,65 +2267,37 @@ export default function CustomerTab({
                                 setQuantity(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
+                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                           />
                         </div>
 
-                        <div className="border border-[#262626] bg-[#121212] p-3 space-y-3 col-span-3">
-                          <label className="flex items-center gap-2.5 cursor-pointer ">
-                            <input
-                              type="checkbox"
-                              checked={isVatAdded}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setIsVatAdded(checked);
-                                if (checked) {
-                                  // compute VAT from current base unit price
-                                  const baseVal = parseFractionOrExpression(baseUnitPriceInput);
-                                  const withVat = Math.round(baseVal * 1.15 * 100) / 100;
-                                  setPriceInput(withVat.toString());
-                                  setUnitPrice(withVat);
-                                } else {
-                                  // revert back to original
-                                  setPriceInput(baseUnitPriceInput);
-                                  setUnitPrice(parseFractionOrExpression(baseUnitPriceInput));
-                                }
-                              }}
-                              className="accent-[#ee317b]"
-                            />
-                            <span className="text-xs text-white uppercase tracking-wider font-bold">Needs Receipt? (Add 15% VAT)</span>
-                          </label>
-
-                          {isVatAdded && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#262626]/60">
-                              <div>
-                                <label className="block text-[10px] text-gray-400 uppercase tracking-wider font-sans mb-1">Item Price BEFORE VAT (ETB)</label>
-                                <input
-                                  type="text"
-                                  value={baseUnitPriceInput}
-                                  onChange={(e) => {
-                                    const cleaned = cleanLeadingZeros(e.target.value);
-                                    setBaseUnitPriceInput(cleaned);
-                                    // auto-calc dynamic with-vat price
-                                    const baseVal = parseFractionOrExpression(cleaned);
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider" htmlFor="field-client-price">
+                              Unit Price (ETB) <span className="text-[#F87171]">*</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isVatAdded}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setIsVatAdded(checked);
+                                  if (checked) {
+                                    const baseVal = parseFractionOrExpression(baseUnitPriceInput);
                                     const withVat = Math.round(baseVal * 1.15 * 100) / 100;
                                     setPriceInput(withVat.toString());
                                     setUnitPrice(withVat);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-xs bg-[#181818] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
-                                  placeholder="e.g. 100"
-                                />
-                              </div>
-                              <div className="text-xs font-sans flex flex-col justify-center text-gray-500 pl-1">
-                                <p>15% VAT Rate Added</p>
-                                <p className="text-white">VAT: <span className="text-[#ee317b] font-bold">{(parseFractionOrExpression(baseUnitPriceInput) * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB</span></p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-price">Unit Price (ETB)</label>
+                                  } else {
+                                    setPriceInput(baseUnitPriceInput);
+                                    setUnitPrice(parseFractionOrExpression(baseUnitPriceInput));
+                                  }
+                                }}
+                                className="accent-[#ee317b] w-3 h-3"
+                              />
+                              <span className="text-[10px] text-gray-300 uppercase tracking-wider font-bold">Add 15% VAT</span>
+                            </label>
+                          </div>
                           <input
                             id="field-client-price"
                             type="text"
@@ -2355,7 +2308,6 @@ export default function CustomerTab({
                               const v = cleanLeadingZeros(e.target.value);
                               setPriceInput(v);
                               setUnitPrice(parseFractionOrExpression(v));
-                              // if not vat added, keep base price input in sync too
                               if (!isVatAdded) {
                                 setBaseUnitPriceInput(v);
                               }
@@ -2368,12 +2320,12 @@ export default function CustomerTab({
                                 setUnitPrice(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] disabled:opacity-65"
+                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance (ETB)</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance (ETB)</label>
                           <input
                             id="field-client-advance"
                             type="text"
@@ -2392,50 +2344,48 @@ export default function CustomerTab({
                                 setAdvancePayment(res);
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
+                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                           />
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance-date">Advance Payment Date</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance-date">Advance Payment Date</label>
                           <input
                             id="field-client-advance-date"
                             type="date"
                             required
                             value={advancePaymentDate}
                             onChange={(e) => setAdvancePaymentDate(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
+                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                           />
                         </div>
 
-                        <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Bank Account for Advance (Deposit)</label>
-                          <SearchableSelect
-                            id="field-client-bank"
-                            value={paymentMethodId}
-                            onChange={(e) => setPaymentMethodId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer"
-                          >
-                            <option value="">-- None --</option>
-                            {bankAccounts.map(b => (
-                              <option key={b.id} value={b.id}>
-                                {b.name}
-                              </option>
-                            ))}
-                          </SearchableSelect>
-                        </div>
-                      </div>
+                        {(parseFractionOrExpression(advanceInput) > 0) && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Advance Deposit Account</label>
+                            <SearchableSelect
+                              id="field-client-bank"
+                              value={paymentMethodId}
+                              onChange={(e) => setPaymentMethodId(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
+                            >
+                              <option value="">-- None --</option>
+                              {bankAccounts.map(b => (
+                                <option key={b.id} value={b.id}>
+                                  {b.name}
+                                </option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1">
                         <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Bank for Remaining Balance (Final)</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Final Payment Method</label>
                           <SearchableSelect
                             id="field-client-bank-remaining"
                             value={bankRemainingId}
                             onChange={(e) => setBankRemainingId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b] cursor-pointer animate-pulse"
+                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                           >
                             <option value="">-- Unpaid / Pending --</option>
                             {bankAccounts.map(b => (
@@ -2446,34 +2396,64 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
 
-                        <div>
-                          <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-incompletion-reason">Incompletion Reason / Notes</label>
-                          <input
-                            id="field-incompletion-reason"
-                            type="text"
-                            placeholder="e.g. Awaiting design finalization or None"
-                            value={incompletionReason}
-                            onChange={(e) => setIncompletionReason(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
-                          />
-                        </div>
-                      </div>
+                        {(computedRemainingBalance > 0) && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-incompletion-reason">Incompletion Reason / Notes</label>
+                            <input
+                              id="field-incompletion-reason"
+                              type="text"
+                              placeholder="e.g. Awaiting design finalization or None"
+                              value={incompletionReason}
+                              onChange={(e) => setIncompletionReason(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                            />
+                          </div>
+                        )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[#262626] text-xs font-sans">
-                        <div>
-                          <span className="text-gray-500 block text-[9px] uppercase font-sans">Full Payment</span>
-                          <span className="text-sm font-semibold text-[#ee317b]">
-                            {computedFullPayment.toLocaleString()} ETB
-                          </span>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Order Summary */}
+                    <div className="bg-[#121212] border border-[#262626] rounded-md p-4 space-y-3">
+                      <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5 flex justify-between items-center">
+                        Order Summary
+                        <span className="text-[10px] text-[#ee317b] animate-pulse">Live Calc</span>
+                      </h4>
+                      
+                      <div className="grid grid-cols-2 gap-y-2 text-xs font-sans">
+                        <div className="text-gray-400">Subtotal</div>
+                        <div className="text-right text-gray-200">
+                          {isVatAdded 
+                            ? (parseFractionOrExpression(baseUnitPriceInput) * quantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                            : computedFullPayment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB
                         </div>
-                        <div>
-                          <span className="text-gray-500 block text-[9px] uppercase font-sans">Remaining Due</span>
-                          <span className={`text-sm font-semibold ${computedRemainingBalance > 0 ? 'text-[#F87171]' : 'text-[#71b536]'}`}>
-                            {computedRemainingBalance <= 0 ? 'Paid (0 ETB)' : `${computedRemainingBalance.toLocaleString()} ETB`}
-                          </span>
+
+                        {isVatAdded && (
+                          <>
+                            <div className="text-gray-400">VAT (15%)</div>
+                            <div className="text-right text-[#ee317b]">
+                              + {(parseFractionOrExpression(baseUnitPriceInput) * quantity * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB
+                            </div>
+                          </>
+                        )}
+
+                        <div className="text-gray-400 font-bold pt-2 border-t border-[#262626]">Total Output Price</div>
+                        <div className="text-right text-white font-bold pt-2 border-t border-[#262626]">
+                          {computedFullPayment.toLocaleString()} ETB
+                        </div>
+
+                        <div className="text-gray-400">Advance Paid</div>
+                        <div className="text-right text-gray-200">
+                          - {(parseFractionOrExpression(advanceInput) || 0).toLocaleString()} ETB
+                        </div>
+
+                        <div className="text-gray-400 font-bold pt-2 border-t border-[#262626]">Remaining Due</div>
+                        <div className={`text-right font-bold pt-2 border-t border-[#262626] ${computedRemainingBalance > 0 ? 'text-[#F87171]' : 'text-[#71b536]'}`}>
+                          {computedRemainingBalance <= 0 ? 'Paid (0 ETB)' : `${computedRemainingBalance.toLocaleString()} ETB`}
                         </div>
                       </div>
                     </div>
+
                   </div>
                 )}
 
