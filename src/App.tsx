@@ -573,7 +573,7 @@ export default function App() {
         // Fallback
       } finally {
         setTimeout(() => setIsBuffering(false), 500);
-        setTimeout(() => setIsInitialLoad(false), 100);
+        setIsInitialLoad(false);
       }
     };
 
@@ -1306,7 +1306,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           <motion.div
             key="initial-loader"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeInOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0 } }}
             className="fixed inset-0 z-[99999] bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden"
           >
             {/* Glowing Background Orbs */}
