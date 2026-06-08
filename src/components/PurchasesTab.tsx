@@ -1667,9 +1667,10 @@ export default function PurchasesTab({
                 >
                   {editingPurchase 
                     ? 'Update Single Ledger Row' 
-                    : pendingBatchItems.length > 0 
-                      ? `Commit Batch of ${pendingBatchItems.length} Purchases`
-                      : 'Commit Single Purchase'}
+                    : pendingBatchItems.length > 0 || itemOrServiceInput.trim() !== ''
+                      ? `Complete (${pendingBatchItems.length + (itemOrServiceInput.trim() !== '' ? 1 : 0)} items)`
+                      : 'Save Purchase To Ledger'
+                  }
                 </button>
               </div>
 
