@@ -33,6 +33,7 @@ import {
   ProductType
 } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+import SearchableSelect from './SearchableSelect';
 
 // Helper functions to translate modern color strings (oklch, oklab, color-mix) to standard RGB/RGBA colors for html2canvas compatibility
 let canvasCtxCache: CanvasRenderingContext2D | null = null;
@@ -1013,7 +1014,7 @@ export default function CustomerTab({
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 font-sans w-full lg:w-auto text-xs">
             {/* Filter Agent */}
-            <select
+            <SearchableSelect
               value={filterAgent}
               onChange={(e) => setFilterAgent(e.target.value)}
               className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
@@ -1022,20 +1023,20 @@ export default function CustomerTab({
               {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
                 <option key={agent} value={agent}>{agent}</option>
               ))}
-            </select>
+            </SearchableSelect>
 
             {/* Filter Lead Channel */}
-            <select
+            <SearchableSelect
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
               className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
             >
               <option value="All">All Leads</option>
               {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
-            </select>
+            </SearchableSelect>
 
             {/* Filter Debt Status */}
-            <select
+            <SearchableSelect
               value={filterPayment}
               onChange={(e) => setFilterPayment(e.target.value)}
               className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
@@ -1043,10 +1044,10 @@ export default function CustomerTab({
               <option value="All">Any Payment</option>
               <option value="Debt">Outstanding Debt</option>
               <option value="Paid">Paid in Full</option>
-            </select>
+            </SearchableSelect>
 
             {/* Filter Completion Status */}
-            <select
+            <SearchableSelect
               value={filterCompletion}
               onChange={(e) => setFilterCompletion(e.target.value)}
               className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
@@ -1055,10 +1056,10 @@ export default function CustomerTab({
               <option value="Completed">Completed Only</option>
               <option value="Pending">Pending Only</option>
               <option value="Incomplete">Incomplete / Problematic</option>
-            </select>
+            </SearchableSelect>
 
             {/* Filter Receipt Needed */}
-            <select
+            <SearchableSelect
               value={filterReceipt}
               onChange={(e) => setFilterReceipt(e.target.value)}
               className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
@@ -1066,7 +1067,7 @@ export default function CustomerTab({
               <option value="All">All Receipts</option>
               <option value="NeedsReceipt">Needs Receipts (VAT)</option>
               <option value="WithoutReceipt">Without Receipt</option>
-            </select>
+            </SearchableSelect>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
@@ -1438,7 +1439,7 @@ export default function CustomerTab({
  
                       {/* Inline Dropdown for Remaining Bank account (Col Y) */}
                       <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
-                        <select
+                        <SearchableSelect
                           value={c.bankRemainingId || ''}
                           onChange={(e) => {
                             onUpdateCustomer({
@@ -1454,7 +1455,7 @@ export default function CustomerTab({
                               {b.name}
                             </option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </td>
  
                       {/* Inline Input for Incompletion Reason (Col Z) */}
@@ -1629,7 +1630,7 @@ export default function CustomerTab({
                           <span className="text-[#ee317b] font-bold text-xs">🏦</span>
                           <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
                             Final Method:
-                            <select
+                            <SearchableSelect
                               value={c.bankRemainingId || ''}
                               onChange={(e) => {
                                 onUpdateCustomer({
@@ -1645,7 +1646,7 @@ export default function CustomerTab({
                                   {b.name}
                                 </option>
                               ))}
-                            </select>
+                            </SearchableSelect>
                           </span>
                        </div>
                      </div>
@@ -1885,14 +1886,14 @@ export default function CustomerTab({
                         <div className="flex gap-1.5">
                           {!isAddingClientType ? (
                             <>
-                              <select
+                              <SearchableSelect
                                 id="field-client-type"
                                 value={clientType}
                                 onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
                                 className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                               >
                                 {clientTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                              </select>
+                              </SearchableSelect>
                               <button
                                 type="button"
                                 onClick={() => setIsAddingClientType(true)}
@@ -1963,14 +1964,14 @@ export default function CustomerTab({
                         <div className="flex gap-1.5">
                           {!isAddingChannel ? (
                             <>
-                              <select
+                              <SearchableSelect
                                 id="field-client-source"
                                 value={acquisitionSource}
                                 onChange={(e) => setAcquisitionSource(e.target.value as Customer['acquisitionSource'])}
                                 className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                               >
                                 {acquisitionChannels.map(s => <option key={s} value={s}>{s}</option>)}
-                              </select>
+                              </SearchableSelect>
                               <button
                                 type="button"
                                 onClick={() => setIsAddingChannel(true)}
@@ -2067,7 +2068,7 @@ export default function CustomerTab({
                           Taken By <span className="text-[#F87171]">*</span>
                           <Lock className="w-3 h-3 text-[#ee317b]" />
                         </label>
-                        <select
+                        <SearchableSelect
                           id="field-client-agent"
                           disabled={true}
                           value={orderTakenBy}
@@ -2077,7 +2078,7 @@ export default function CustomerTab({
                           {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
                             <option key={a} value={a}>{a}</option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </div>
                     </div>
 
@@ -2096,14 +2097,14 @@ export default function CustomerTab({
                         <div className="flex gap-1.5">
                           {!isAddingProduct ? (
                             <>
-                              <select
+                              <SearchableSelect
                                 id="field-client-product"
                                 value={productType}
                                 onChange={(e) => setProductType(e.target.value)}
                                 className="flex-1 px-3 py-2 text-sm bg-[#181818] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer font-sans"
                               >
                                 {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                              </select>
+                              </SearchableSelect>
                               <button
                                 type="button"
                                 onClick={() => setIsAddingProduct(true)}
@@ -2332,7 +2333,7 @@ export default function CustomerTab({
 
                         <div>
                           <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Bank Account for Advance (Deposit)</label>
-                          <select
+                          <SearchableSelect
                             id="field-client-bank"
                             value={paymentMethodId}
                             onChange={(e) => setPaymentMethodId(e.target.value)}
@@ -2344,14 +2345,14 @@ export default function CustomerTab({
                                 {b.name}
                               </option>
                             ))}
-                          </select>
+                          </SearchableSelect>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1">
                         <div>
                           <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Bank for Remaining Balance (Final)</label>
-                          <select
+                          <SearchableSelect
                             id="field-client-bank-remaining"
                             value={bankRemainingId}
                             onChange={(e) => setBankRemainingId(e.target.value)}
@@ -2363,7 +2364,7 @@ export default function CustomerTab({
                                 {b.name}
                               </option>
                             ))}
-                          </select>
+                          </SearchableSelect>
                         </div>
 
                         <div>
@@ -2410,13 +2411,13 @@ export default function CustomerTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 1</label>
-                          <select
+                          <SearchableSelect
                             value={paperType1}
                             onChange={(e) => setPaperType1(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
@@ -2447,14 +2448,14 @@ export default function CustomerTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 2</label>
-                          <select
+                          <SearchableSelect
                             value={paperType2}
                             onChange={(e) => setPaperType2(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
@@ -2488,14 +2489,14 @@ export default function CustomerTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 3</label>
-                          <select
+                          <SearchableSelect
                             value={paperType3}
                             onChange={(e) => setPaperType3(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
@@ -2542,14 +2543,14 @@ export default function CustomerTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Entrance Stock</label>
-                          <select
+                          <SearchableSelect
                             value={entrancePaper}
                             onChange={(e) => setEntrancePaper(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Deducted sheets (expression enabled)</label>
@@ -2590,14 +2591,14 @@ export default function CustomerTab({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Ajabi Stock</label>
-                          <select
+                          <SearchableSelect
                             value={ajabiPaper}
                             onChange={(e) => setAjabiPaper(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div>
                           <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Deducted sheets (expression enabled)</label>
@@ -2862,7 +2863,7 @@ export default function CustomerTab({
                       {/* Bank Selection dropdown */}
                       <label className="flex items-center gap-1.5 text-stone-300 text-xs ">
                         <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank:</span>
-                        <select
+                        <SearchableSelect
                           value={proformaBankId}
                           onChange={(e) => setProformaBankId(e.target.value)}
                           className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors max-w-[150px] md:max-w-none text-ellipsis"
@@ -2873,7 +2874,7 @@ export default function CustomerTab({
                               {b.name}
                             </option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </label>
 
                       {/* Interactive Toggle for Stamp Seal */}

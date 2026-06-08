@@ -26,6 +26,9 @@ import {
   Type
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
+import { generateReportPdf } from './utils/pdfExport';
+import { exportDashboardDataToExcel } from './utils/excelExport';
+import SearchableSelect from './components/SearchableSelect';
 import { 
   Customer, 
   PaperStock, 
@@ -2004,14 +2007,14 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
                     <div>
                       <label className="block text-[10px] uppercase text-gray-500 mb-1">System clearance Role</label>
-                      <select
+                      <SearchableSelect
                         value={newStaffRole}
-                        onChange={(e) => setNewStaffRole(e.target.value as 'admin' | 'employee')}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans cursor-pointer"
-                      >
-                        <option value="employee">Employee - Read/Write, NO Deletes</option>
-                        <option value="admin">Admin - Full access</option>
-                      </select>
+                        onChange={(val) => setNewStaffRole(val as 'admin' | 'employee')}
+                        options={[
+                          { value: 'employee', label: 'Employee - Read/Write, NO Deletes' },
+                          { value: 'admin', label: 'Admin - Full access' }
+                        ]}
+                      />
                     </div>
                   </div>
                   {newStaffRole === 'employee' && (

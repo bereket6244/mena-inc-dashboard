@@ -28,6 +28,7 @@ import {
 
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import SearchableSelect from './SearchableSelect';
 
 interface PurchasesTabProps {
   purchases: Purchase[];
@@ -889,19 +890,19 @@ export default function PurchasesTab({
 
               {/* Category Filter */}
               <div>
-                <select
+                <SearchableSelect
                   value={selectedCategoryFilter}
                   onChange={(e) => setSelectedCategoryFilter(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
                 >
                   <option value="All">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+                </SearchableSelect>
               </div>
 
               {/* Bank Balance Filter */}
               <div>
-                <select
+                <SearchableSelect
                   value={selectedBankFilter}
                   onChange={(e) => setSelectedBankFilter(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
@@ -910,7 +911,7 @@ export default function PurchasesTab({
                   {bankAccounts.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
             </div>
 
@@ -1320,7 +1321,7 @@ export default function PurchasesTab({
 
                       <div>
                         <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5">Charge Ledger Bank/Cash</label>
-                        <select
+                        <SearchableSelect
                           value={paymentMethodId}
                           onChange={(e) => setPaymentMethodId(e.target.value)}
                           className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
@@ -1328,7 +1329,7 @@ export default function PurchasesTab({
                           {bankAccounts.map((b) => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </div>
                     </div>
 
@@ -1369,7 +1370,7 @@ export default function PurchasesTab({
                         Expense Category
                         {isExactItemMatchedFromCatalog && <Lock className="w-3 h-3 text-[#ee317b]" title="Locked to catalog item category" />}
                       </label>
-                      <select
+                      <SearchableSelect
                         value={expenseCategory}
                         disabled={isExactItemMatchedFromCatalog}
                         onChange={(e) => setExpenseCategory(e.target.value)}
@@ -1382,7 +1383,7 @@ export default function PurchasesTab({
                         {categories.map((c) => (
                           <option key={c.id} value={c.name}>{c.name}</option>
                         ))}
-                      </select>
+                      </SearchableSelect>
                     </div>
 
                     {/* Search Suggestive Autocompleting Item Name Input */}
@@ -1725,7 +1726,7 @@ export default function PurchasesTab({
                 {!isNewCategoryModeInModal ? (
                   <div>
                     <label className="block text-[10px] text-stone-505 dark:text-gray-400 uppercase tracking-widest mb-1.5 font-bold">Select Category</label>
-                    <select
+                    <SearchableSelect
                       value={newItemTargetCategory}
                       onChange={(e) => setNewItemTargetCategory(e.target.value)}
                       className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
@@ -1733,7 +1734,7 @@ export default function PurchasesTab({
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
-                    </select>
+                    </SearchableSelect>
                   </div>
                 ) : (
                   <div>
