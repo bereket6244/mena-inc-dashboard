@@ -102,7 +102,7 @@ export default function App() {
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
@@ -370,6 +370,7 @@ export default function App() {
   // Load from LocalStorage and synchronizing with Real Cloud Firestore if configured
   useEffect(() => {
     const loadData = async () => {
+      const loaderTimer = setTimeout(() => setIsInitialLoad(true), 150);
       setIsBuffering(true);
       try {
         // Load and seed employees
@@ -572,6 +573,7 @@ export default function App() {
       } catch (err) {
         // Fallback
       } finally {
+        clearTimeout(loaderTimer);
         setTimeout(() => setIsBuffering(false), 500);
         setIsInitialLoad(false);
       }
