@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
@@ -138,6 +139,8 @@ export default function CustomerTab({
 
   // Proforma VAT State variables inside modal scope integration
   const [proformaIncludeVat, setProformaIncludeVat] = useState(true);
+  const [proformaMobileTab, setProformaMobileTab] = useState<'edit' | 'preview'>('edit');
+  const [proformaZoom, setProformaZoom] = useState(1);
   const [standaloneClientName, setStandaloneClientName] = useState('');
   const [standaloneClientPhone, setStandaloneClientPhone] = useState('');
   const [applyDigitalStamp, setApplyDigitalStamp] = useState(true);
@@ -336,50 +339,41 @@ export default function CustomerTab({
         throw new Error('Proforma container element not found.');
       }
 
-      // Save original styles to restore later
-      const originalMaxHeight = container.style.maxHeight;
-      const originalOverflow = container.style.overflow;
-      const originalHeight = container.style.height;
-      const originalWidth = container.style.width;
-      const originalZoom = container.style.zoom;
-      const originalPosition = container.style.position;
-      const originalTop = container.style.top;
-      const originalLeft = container.style.left;
+      // Clone the container to completely escape ancestor CSS transforms (like mobile scaling) which cause severe text squishing
+      const clone = container.cloneNode(true) as HTMLElement;
+      
+      // Place clone off-screen in body
+      clone.style.position = 'absolute';
+      clone.style.top = '-9999px';
+      clone.style.left = '-9999px';
+      clone.style.maxHeight = 'none';
+      clone.style.overflow = 'visible';
+      clone.style.height = 'max-content';
+      clone.style.width = '800px';
+      clone.style.maxWidth = 'none';
+      clone.style.margin = '0';
+      clone.style.transform = 'none'; // Force 1:1 scale
+      
+      document.body.appendChild(clone);
 
-      // Temporarily set styling to show the entire layout and keep it consistent on mobile without flashing on screen
-      container.style.position = 'absolute';
-      container.style.top = '-9999px';
-      container.style.left = '-9999px';
-      container.style.maxHeight = 'none';
-      container.style.overflow = 'visible';
-      container.style.height = 'max-content';
-      container.style.width = '800px';
-      container.style.zoom = '1';
-
-      // Force a reflow and give the browser a moment to repaint the 800px layout before capturing
-      void container.offsetHeight;
+      // Force a reflow and give the browser a moment to render the unscaled clone
+      void clone.offsetHeight;
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Render the container to a canvas with high scale for high resolution print quality
-      const canvas = await html2canvas(container, {
+      // Render the clone to a canvas with high scale for high resolution print quality
+      const canvas = await html2canvas(clone, {
         scale: 2.5, // High resolution scale for clear vector text output
         useCORS: true,
         allowTaint: false, // Prevent tainted canvas errors
         backgroundColor: '#ffffff',
         logging: false,
-        height: container.scrollHeight,
-        windowHeight: container.scrollHeight
+        height: clone.scrollHeight,
+        windowWidth: 800, // Force desktop viewport size
+        windowHeight: clone.scrollHeight
       });
 
-      // Restore original styles immediately after capture
-      container.style.position = originalPosition;
-      container.style.top = originalTop;
-      container.style.left = originalLeft;
-      container.style.maxHeight = originalMaxHeight;
-      container.style.overflow = originalOverflow;
-      container.style.height = originalHeight;
-      container.style.width = originalWidth;
-      container.style.zoom = originalZoom;
+      // Clean up clone
+      document.body.removeChild(clone);
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
@@ -391,7 +385,13 @@ export default function CustomerTab({
 
       const imgWidth = 210; // A4 width in mm
       const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // If the generated image height is very close to A4 height, stretch it to completely eliminate the white gap at the bottom
+      if (imgHeight < 297 && imgHeight > 280) {
+        imgHeight = 297;
+      }
+      
       let heightLeft = imgHeight;
       let position = 0;
 
@@ -399,7 +399,7 @@ export default function CustomerTab({
       heightLeft -= pageHeight;
 
       // Handle multi-page if the proforma extends beyond one A4 page
-      while (heightLeft >= 0) {
+      while (heightLeft > 1) { // Require more than 1mm overflow to trigger a new page
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
@@ -952,32 +952,6 @@ export default function CustomerTab({
         advancePayment: c.advancePayment || 0
       }));
 
-  // Handle mobile scale down for proforma preview reliably across browsers
-  useEffect(() => {
-    if (!showProformaModal) return;
-    
-    const updateZoom = () => {
-      const container = document.getElementById('proforma-print-container');
-      if (!container) return;
-      
-      const screenWidth = window.innerWidth;
-      if (screenWidth < 850) {
-        // Calculate scale to fit the 800px document perfectly without spilling out (accounting for borders and scrollbars)
-        const scale = (screenWidth - 72) / 800;
-        container.style.zoom = scale.toString();
-      } else {
-        container.style.zoom = '1';
-      }
-    };
-
-    // Initial run and listener
-    updateZoom();
-    // Use a small timeout to ensure DOM is fully rendered for any potential reflows
-    setTimeout(updateZoom, 50);
-    window.addEventListener('resize', updateZoom);
-    
-    return () => window.removeEventListener('resize', updateZoom);
-  }, [showProformaModal]);  // Reset/Initialize proforma editable states when the modal is opened
   useEffect(() => {
     if (showProformaModal && !lastShowProformaModalRef.current) {
       setEditedProductDescriptions({});
@@ -990,6 +964,16 @@ export default function CustomerTab({
         setProformaClientName(firstCust?.clientName || 'Valued Corporate Client');
         setProformaClientPhone(firstCust?.phone || '+251 (Customer Record)');
       }
+
+      // Auto-fit PDF width when opened
+      setTimeout(() => {
+        const container = document.getElementById('pdf-preview-scroller');
+        if (container) {
+          const padding = window.innerWidth >= 1300 ? 80 : 24;
+          const ratio = (container.clientWidth - padding) / 800;
+          setProformaZoom(Math.min(1.5, Math.max(0.2, ratio)));
+        }
+      }, 50);
 
       setProformaLogoMain('mena');
       setProformaLogoSuffix('inc');
@@ -1258,7 +1242,17 @@ export default function CustomerTab({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsStandaloneProformaMode(false);
+                    const selectedLedgerItems = customers.filter(c => selectedCustomerIds.includes(c.id));
+                    setStandaloneClientName(selectedLedgerItems[0]?.clientName || '');
+                    setStandaloneClientPhone(selectedLedgerItems[0]?.phone || '');
+                    setStandaloneProformaItems(selectedLedgerItems.map(c => ({
+                      id: c.id,
+                      productType: c.productType || '',
+                      quantity: c.quantity?.toString() || '0',
+                      unitPrice: c.unitPrice?.toString() || '0',
+                      advancePayment: c.advancePayment?.toString() || '0'
+                    })));
+                    setIsStandaloneProformaMode(true);
                     setShowProformaModal(true);
                   }}
                   className="px-3 py-1 bg-[#181818] hover:bg-[#202020] border border-[#262626] text-white font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
@@ -2999,230 +2993,343 @@ export default function CustomerTab({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showProformaModal && (
-          <div 
-            className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto font-sans text-xs overscroll-contain"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowProformaModal(false); }}
-          >
-            <div className="max-w-4xl w-full bg-[#181818] border border-[#262626] p-6 relative flex flex-col gap-4 rounded-md my-8 max-h-[90vh] overscroll-contain">
-              
-              {/* Controller Bar */}
-              <div className="flex flex-col gap-3 border-b pb-3 border-[#262626] font-sans text-xs print-hidden-stamp-toggle">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-gray-300 font-semibold uppercase">
-                      {isStandaloneProformaMode ? 'STANDALONE PROFORMA WRITER' : 'PROFORMA AUTOMATION LEDGER'}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Export PDF Button (Instant client-generate) */}
-                    <button
-                      id="export-pdf-direct-btn"
-                      type="button"
-                      onClick={exportDirectPDF}
-                      className="px-4 py-1.5 bg-[#71b536] hover:bg-[#5ea126] text-black font-bold cursor-pointer rounded-md uppercase text-[10px] tracking-wider transition-colors flex items-center gap-1"
-                    >
-                      <span>📥 Export PDF</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowProformaModal(false)}
-                      className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 font-bold cursor-pointer rounded-md uppercase text-[10px] tracking-wider transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showProformaModal && (
+            <motion.div 
+              key="proforma-writer"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex flex-col font-sans text-xs overflow-hidden" id="proforma-writer-modal">
+            {/* Controller Bar - Sticky Top Header */}
+            <div className="flex flex-col p-3 md:p-4 bg-[#141414] border-b border-[#262626] shrink-0 z-20 print-hidden-stamp-toggle shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-gray-300 font-semibold uppercase tracking-widest text-[10px] md:text-xs">
+                    {isStandaloneProformaMode ? 'PROFORMA WRITER' : 'PROFORMA LEDGER'}
+                  </span>
                 </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    id="export-pdf-direct-btn"
+                    type="button"
+                    onClick={exportDirectPDF}
+                    className="px-3 md:px-4 py-1.5 bg-[#71b536] hover:bg-[#5ea126] text-black font-bold cursor-pointer rounded-md uppercase text-[9px] md:text-[10px] tracking-wider transition-colors flex items-center gap-1"
+                  >
+                    <span>📥 Export</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowProformaModal(false)}
+                    className="px-3 md:px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-gray-300 font-bold cursor-pointer rounded-md uppercase text-[9px] md:text-[10px] tracking-wider transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              
+              {/* Mobile Tabs Toggle */}
+              <div className="flex min-[1300px]:hidden bg-[#1f1f1f] p-0.5 rounded-md border border-[#2d2226] mt-3">
+                <button 
+                  onClick={() => setProformaMobileTab('edit')} 
+                  className={`flex-1 py-1.5 rounded-sm text-[10px] font-bold uppercase transition-colors ${proformaMobileTab === 'edit' ? 'bg-[#ee317b] text-white' : 'text-gray-400'}`}
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => {
+                    setProformaMobileTab('preview');
+                    setTimeout(() => {
+                      const container = document.getElementById('pdf-preview-scroller');
+                      if(container && window.innerWidth < 1300) {
+                        const ratio = (window.innerWidth - 24) / 800; // 24px padding
+                        setProformaZoom(Math.min(1.5, Math.max(0.2, ratio)));
+                      }
+                    }, 10);
+                  }} 
+                  className={`flex-1 py-1.5 rounded-sm text-[10px] font-bold uppercase transition-colors ${proformaMobileTab === 'preview' ? 'bg-[#71b536] text-white' : 'text-gray-400'}`}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
 
-                {/* PROFORMA SETTINGS ROW */}
-                <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs ">
-                  <div className="bg-[#110b0d] p-3 border border-[#2d2024] mb-1 flex flex-col gap-3">
-                    {isStandaloneProformaMode && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-[#2d2024] pb-3">
+            {/* Split Pane Workspace */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* LEFT SIDEBAR (EDITOR) */}
+              <div className={`w-full min-[1300px]:w-[40%] bg-[#121212] overflow-y-auto p-4 md:p-6 flex-col gap-6 custom-scrollbar border-r border-[#262626] ${proformaMobileTab === 'preview' ? 'hidden min-[1300px]:flex' : 'flex'}`}>
+                
+                {/* Client Info Section */}
+                    {/* Client Info Section */}
+                    <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-3">
+                      <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] border-b border-[#2d2024] pb-2 mb-1 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
+                        Client Info
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT NAME</label>
+                          <label className="block text-[9px] uppercase text-gray-500 font-bold mb-1">PROFORMA CLIENT NAME</label>
                           <input 
                             type="text" 
                             value={standaloneClientName} 
                             onChange={(e) => setStandaloneClientName(e.target.value)} 
-                            className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
+                            className="w-full bg-[#121212] border border-[#262626] px-2.5 py-1.5 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white rounded-sm"
                             placeholder="Mena Corporate Client PLC"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT PHONE</label>
+                          <label className="block text-[9px] uppercase text-gray-500 font-bold mb-1">PROFORMA CLIENT PHONE</label>
                           <input 
                             type="text" 
                             value={standaloneClientPhone} 
                             onChange={(e) => setStandaloneClientPhone(e.target.value)} 
-                            className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
+                            className="w-full bg-[#121212] border border-[#262626] px-2.5 py-1.5 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white rounded-sm"
                             placeholder="+251 900 000 000"
                           />
                         </div>
                       </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4">
-                      {/* Bank Selection dropdown */}
-                      <label className="flex items-center gap-1.5 text-stone-300 text-xs ">
-                        <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank:</span>
-                        <SearchableSelect
-                          value={proformaBankId}
-                          onChange={(e) => setProformaBankId(e.target.value)}
-                          className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors max-w-[150px] md:max-w-none text-ellipsis"
-                        >
-                          <option value="">-- No Bank Details --</option>
-                          {bankAccounts.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))}
-                        </SearchableSelect>
-                      </label>
-
-                      {/* Interactive Toggle for Stamp Seal */}
-                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs ">
-                        <input
-                          type="checkbox"
-                          checked={applyDigitalStamp}
-                          onChange={(e) => setApplyDigitalStamp(e.target.checked)}
-                          className="accent-[#71b536]"
-                        />
-                        <span className="font-bold text-gray-400 uppercase text-[9px]">Apply PLC Stamp Seal</span>
-                      </label>
-
-                      {/* Interactive Toggle for VAT */}
-                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs ">
-                        <input
-                          type="checkbox"
-                          checked={proformaIncludeVat}
-                          onChange={(e) => setProformaIncludeVat(e.target.checked)}
-                          className="accent-[#ee317b]"
-                        />
-                        <span className="font-bold text-gray-400 uppercase text-[9px]">Include 15% VAT</span>
-                      </label>
                     </div>
-                  </div>
 
-                  {/* STANDALONE PROFORMA FORM WRITER CONTROLS ROW */}
-                  {isStandaloneProformaMode && (
-                    <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#2d2024] pb-2">
-                      <span className="text-[#ee317b] font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                        ✨ Quick Draft Editor
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStandaloneProformaItems(prev => [
-                            ...prev,
-                            {
-                              id: `temp-${Date.now()}`,
-                              productType: '',
-                              quantity: '',
-                              unitPrice: '',
-                              advancePayment: ''
-                            }
-                          ]);
-                          setTimeout(() => {
-                            const container = document.getElementById('standalone-proforma-list');
-                            if (container) {
-                              container.scrollTop = container.scrollHeight;
-                            }
-                          }, 50);
-                        }}
-                        className="bg-[#ee317b] hover:bg-[#d61e63] text-white px-2.5 py-1 text-[10px] font-bold uppercase cursor-pointer"
+
+                {/* Payment Settings Section (Always visible) */}
+                <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-3">
+                  <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] border-b border-[#2d2024] pb-2 mb-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
+                    Payment Settings
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    <label className="flex items-center justify-between text-stone-300 text-xs w-full">
+                      <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank</span>
+                      <SearchableSelect
+                        value={proformaBankId}
+                        onChange={(e) => setProformaBankId(e.target.value)}
+                        className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
                       >
-                        + Add Custom Row
-                      </button>
+                        <option value="">-- No Bank Details --</option>
+                        {bankAccounts.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </SearchableSelect>
+                    </label>
+                    <label className="flex items-center justify-between text-stone-300 cursor-pointer text-xs w-full hover:bg-[#1a1215] p-1.5 rounded transition-colors -mx-1.5 px-1.5">
+                      <span className="font-bold text-gray-400 uppercase text-[9px]">Apply PLC Stamp Seal</span>
+                      <input
+                        type="checkbox"
+                        checked={applyDigitalStamp}
+                        onChange={(e) => setApplyDigitalStamp(e.target.checked)}
+                        className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between text-stone-300 cursor-pointer text-xs w-full hover:bg-[#1a1215] p-1.5 rounded transition-colors -mx-1.5 px-1.5">
+                      <span className="font-bold text-gray-400 uppercase text-[9px]">Include 15% VAT</span>
+                      <input
+                        type="checkbox"
+                        checked={proformaIncludeVat}
+                        onChange={(e) => setProformaIncludeVat(e.target.checked)}
+                        className="accent-[#ee317b] w-3.5 h-3.5 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Product Rows Section */}
+                    <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-3 flex-1 flex flex-col min-h-[300px]">
+                      <div className="flex items-center justify-between border-b border-[#2d2024] pb-2 mb-1">
+                        <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
+                          Product Rows
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStandaloneProformaItems(prev => [
+                              ...prev,
+                              {
+                                id: `temp-${Date.now()}`,
+                                productType: '',
+                                quantity: '',
+                                unitPrice: '',
+                                advancePayment: ''
+                              }
+                            ]);
+                            setTimeout(() => {
+                              const container = document.getElementById('standalone-proforma-list');
+                              if (container) {
+                                container.scrollTop = container.scrollHeight;
+                              }
+                            }, 50);
+                          }}
+                          className="bg-[#ee317b] hover:bg-[#d61e63] text-white px-2.5 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-sm transition-colors"
+                        >
+                          + Add Row
+                        </button>
+                      </div>
+
+                      {standaloneProformaItems.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center border border-dashed border-[#2d2024] rounded-md bg-[#121212] p-6 text-center">
+                          <p className="text-gray-500 text-[11px]">No items drafted. Click "+ Add Row" to start designing your proforma.</p>
+                        </div>
+                      ) : (
+                        <div id="standalone-proforma-list" className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-1 -mr-1">
+                          {standaloneProformaItems.map((item, index) => (
+                            <div key={item.id} className="bg-[#121212] p-2.5 border border-[#262626] rounded-sm group relative">
+                              <div className="absolute -left-1.5 -top-1.5 bg-[#181818] border border-[#2d2024] w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-gray-500 font-bold z-10">
+                                {index + 1}
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1 space-y-2">
+                                  <div>
+                                    <input
+                                      type="text"
+                                      value={item.productType}
+                                      placeholder="Product Description..."
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, productType: val } : p));
+                                      }}
+                                      className="w-full bg-transparent text-white border-b border-[#2d2226] px-1 py-1 text-[11px] outline-none focus:border-[#ee317b] font-semibold"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <div className="flex-1">
+                                      <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Qty</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={item.quantity}
+                                        onChange={(e) => {
+                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
+                                        }}
+                                        className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b]"
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Unit Price</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={item.unitPrice}
+                                        onChange={(e) => {
+                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
+                                        }}
+                                        className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b]"
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Advance</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={item.advancePayment}
+                                        onChange={(e) => {
+                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
+                                        }}
+                                        className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b] text-[#71b536]"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setStandaloneProformaItems(prev => prev.filter(p => p.id !== item.id))}
+                                  className="w-6 h-6 flex items-center justify-center bg-[#2a111a] text-red-400 hover:bg-[#ee317b] hover:text-white rounded-sm transition-colors mt-1 shrink-0 group-hover:opacity-100 opacity-50"
+                                  title="Delete Row"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {standaloneProformaItems.length === 0 ? (
-                      <p className="text-gray-400 italic text-[11px] py-1">No items drafted. Click "+ Add Custom Row" to start designing your proforma.</p>
-                    ) : (
-                      <div id="standalone-proforma-list" className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                        {standaloneProformaItems.map((item, index) => (
-                          <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-[#241c1e]/60 p-2 border border-[#2d2024]">
-                            <div className="col-span-1 text-center font-bold text-[#ee317b] text-[10px]">
-                              #{index + 1}
-                            </div>
-                            <div className="col-span-4">
-                              <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Product Description</label>
-                              <input
-                                type="text"
-                                value={item.productType}
-                                placeholder="E.g. Double Ring Notebook (50 gsm)"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, productType: val } : p));
-                                }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
-                              />
-                            </div>
-                            <div className="col-span-2">
-                              <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Qty (pcs)</label>
-                              <input
-                                type="number"
-                                placeholder="Qty"
-                                value={item.quantity}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? '' : Number(e.target.value);
-                                  setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
-                                }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
-                              />
-                            </div>
-                            <div className="col-span-2">
-                              <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Unit Price</label>
-                              <input
-                                type="number"
-                                placeholder="Price"
-                                value={item.unitPrice}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? '' : Number(e.target.value);
-                                  setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
-                                }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
-                              />
-                            </div>
-                            <div className="col-span-2">
-                              <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Paid Advance</label>
-                              <input
-                                type="number"
-                                placeholder="Paid"
-                                value={item.advancePayment}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? '' : Number(e.target.value);
-                                  setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
-                                }}
-                                className="w-full bg-[#121212] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-md outline-none focus:border-[#ee317b]"
-                              />
-                            </div>
-                            <div className="col-span-1 text-right pt-2.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setStandaloneProformaItems(prev => prev.filter(p => p.id !== item.id));
-                                }}
-                                className="text-red-400 hover:text-red-500 font-bold px-1 py-0.5 text-xs cursor-pointer"
-                                title="Delete Row"
-                              >
-                                ✕
-                              </button>
-                            </div>
+                    {/* Live Totals Section */}
+                    {(() => {
+                      const totalSub = standaloneProformaItems.reduce((acc, curr) => acc + (Number(curr.quantity || 0) * Number(curr.unitPrice || 0)), 0);
+                      const vatAmt = proformaIncludeVat ? totalSub * 0.15 : 0;
+                      const grandTotal = totalSub + vatAmt;
+                      const totalAdv = standaloneProformaItems.reduce((acc, curr) => acc + Number(curr.advancePayment || 0), 0);
+                      const bal = grandTotal - totalAdv;
+                      return (
+                        <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-2 text-[11px] shrink-0">
+                          <div className="flex justify-between items-center text-gray-400">
+                            <span>Subtotal:</span>
+                            <span className="font-bold text-white">{totalSub.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})} ETB</span>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                          {proformaIncludeVat && (
+                            <div className="flex justify-between items-center text-gray-400">
+                              <span>VAT (15%):</span>
+                              <span className="font-bold text-[#ee317b]">{vatAmt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})} ETB</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center text-gray-300 pt-1 border-t border-[#262626]">
+                            <span className="font-bold uppercase tracking-wider text-[10px]">Grand Total:</span>
+                            <span className="font-bold text-white text-xs">{grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})} ETB</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[#71b536]">
+                            <span>Total Paid Advance:</span>
+                            <span className="font-bold">-{totalAdv.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})} ETB</span>
+                          </div>
+                          <div className="flex justify-between items-center text-gray-100 pt-1 border-t border-[#262626]">
+                            <span className="font-bold uppercase tracking-wider text-[10px]">Balance Due:</span>
+                            <span className={`font-bold text-[13px] ${bal > 0 ? 'text-[#ee317b]' : bal < 0 ? 'text-yellow-400' : 'text-[#71b536]'}`}>
+                              {bal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})} ETB
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
               </div>
-              </div>
-              
-              {/* Printable Area - Rendered using White-Paper Theme */}
-              <div className="bg-white text-black p-10 shadow-inner overflow-y-auto border border-gray-300 select-text max-h-[70vh] rounded-md flex-1 font-sans overscroll-contain" id="proforma-print-container">
+
+              {/* RIGHT SIDEBAR (PDF PREVIEW) */}
+              <div className={`flex-1 w-full bg-[#1a1a1a] flex-col relative ${proformaMobileTab === 'edit' ? 'hidden min-[1300px]:flex' : 'flex'}`}>
+                
+                {/* PDF Zoom Controls */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#262626]/90 backdrop-blur border border-[#333] rounded-full px-2 py-1.5 flex items-center gap-2 md:gap-3 z-10 shadow-xl print-hidden-stamp-toggle scale-90 md:scale-100 origin-top w-max max-w-[90vw]">
+                  <button onClick={() => setProformaZoom(z => Math.max(0.2, z - 0.1))} className="w-6 h-6 flex items-center justify-center bg-[#1f1f1f] hover:bg-[#333] rounded-full text-white font-bold text-sm transition-colors cursor-pointer shrink-0">-</button>
+                  <span className="text-[10px] text-gray-300 font-bold uppercase w-10 text-center select-none shrink-0">{Math.round(proformaZoom * 100)}%</span>
+                  <button onClick={() => setProformaZoom(z => Math.min(2, z + 0.1))} className="w-6 h-6 flex items-center justify-center bg-[#1f1f1f] hover:bg-[#333] rounded-full text-white font-bold text-sm transition-colors cursor-pointer shrink-0">+</button>
+                  <div className="w-px h-4 bg-[#444] shrink-0"></div>
+                  <button onClick={() => setProformaZoom(1)} className="text-[9px] font-bold uppercase text-gray-400 hover:text-white px-1 cursor-pointer shrink-0">100%</button>
+                  <button onClick={() => {
+                     if (window.innerWidth < 1300) {
+                        const ratio = (window.innerWidth - 24) / 800; // 24px padding
+                        setProformaZoom(Math.min(1.5, Math.max(0.2, ratio)));
+                     } else {
+                        const container = document.getElementById('pdf-preview-scroller');
+                        if(container) {
+                          const ratio = (container.clientWidth - 80) / 800; // 80px margin
+                          setProformaZoom(Math.min(1.5, Math.max(0.2, ratio)));
+                        }
+                     }
+                  }} className="text-[9px] font-bold uppercase text-gray-400 hover:text-white px-1 cursor-pointer shrink-0">Fit</button>
+                </div>
+
+                {/* PDF Container Scroller */}
+                <div id="pdf-preview-scroller" className="flex-1 w-full overflow-auto custom-scrollbar bg-[#0a0a0a]">
+                  <div className="min-w-max min-h-full flex items-start md:justify-center p-3 md:p-10 pt-16 md:pt-20">
+                    {/* Zoom Wrapper */}
+                    <div 
+                      style={{ 
+                        transform: `scale(${proformaZoom})`, 
+                        transition: 'transform 0.15s ease-out',
+                        width: '800px', // matches print-container width
+                        flexShrink: 0
+                      }}
+                      className="shadow-2xl rounded-sm origin-top-left md:origin-top flex justify-center bg-white"
+                    >
+                       {/* Printable Area - Rendered using White-Paper Theme */}
+                       <div className="relative bg-white text-black pl-16 pr-10 py-16 shadow-inner border border-gray-300 select-text font-sans w-[800px] min-h-[1131px] max-w-none pb-24" id="proforma-print-container">
                 <style dangerouslySetInnerHTML={{__html: `
                   /* Explicit print-safe hex color overrides for all elements in the proforma container */
                   #proforma-print-container {
@@ -3355,9 +3462,10 @@ export default function CustomerTab({
                       top: 0 !important;
                       width: 100% !important;
                       height: auto !important;
-                      padding: 15mm !important;
+                      padding: 8mm !important;
                       margin: 0 !important;
                       box-shadow: none !important;
+                      border: none !important;
                       border: none !important;
                       background: white !important;
                       color: black !important;
@@ -3372,75 +3480,85 @@ export default function CustomerTab({
                   }
                 `}} />
                 
+                {/* Letterhead Design Elements */}
+                <div className="absolute left-12 top-0 bottom-0 w-[1px] bg-[#71b536] z-0 print-exact" />
+                <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#2e7d32] z-0 print-exact" />
+
                 {/* Header Section with Corporate Logo and Contact Information */}
-                <div className="flex items-start justify-between border-b border-gray-300 pb-6 mb-6">
-                  {/* Corporate Identity & Brand mark */}
-                  <div className="flex items-start gap-4 text-left">
-                    {/* Premium App Logo image replacement */}
-                    <img 
-                      src="/mena-logo.png" 
-                      alt="Mena Logo" 
-                      className="w-12 h-12 object-contain bg-white border border-gray-250 p-1 mt-1"
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
-                    />
-                    <div>
-                      <h1 className="text-xl font-black tracking-tight text-gray-900 font-sans text-left" style={{ textTransform: 'lowercase' }}>
-                        mena<span className="text-[#ee317b] font-sans">.</span>inc
-                      </h1>
-                      <p className="text-[10px] uppercase font-sans tracking-widest text-[#71b536] font-bold text-left">Mena Inc Trading PLC</p>
+                <div className="relative z-10 flex flex-col mb-8">
+                  <div className="flex items-start justify-between pb-3">
+                    {/* Corporate Identity & Brand mark */}
+                    <div className="flex items-start gap-4 text-left pr-4">
+                      {/* Premium App Logo image replacement */}
+                      <img 
+                        src="/mena-logo.png" 
+                        alt="Mena Logo" 
+                        className="w-16 h-16 object-contain -ml-2"
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                      />
+                      <div className="pt-2">
+                        <h1 className="text-2xl font-black tracking-tight text-gray-900 font-sans text-left" style={{ textTransform: 'lowercase' }}>
+                          mena<span className="text-[#ee317b] font-sans">.</span>inc
+                        </h1>
+                        <p className="text-[11px] uppercase font-sans tracking-widest text-black font-bold text-left mt-0.5">Mena Inc Trading PLC</p>
+                      </div>
+                    </div>
+
+                    {/* Letterhead address coordinates */}
+                    <div className="text-right font-sans text-[10px] text-gray-700 space-y-0.5 pt-2 pb-1">
+                      <p className="font-bold text-gray-900 uppercase tracking-wide">Contact Information</p>
+                      <p>Reality Plaza, Bole Brass</p>
+                      <p>Addis Ababa, Ethiopia</p>
+                      <p className="font-bold text-black mt-1.5">📞 +251 942 125 568</p>
+                      <p className="font-bold text-black">📞 +251 924 148 847</p>
                     </div>
                   </div>
 
-                  {/* Letterhead address coordinates */}
-                  <div className="text-right font-sans text-[9.5px] text-gray-700 space-y-0.5">
-                    <p className="font-bold text-gray-900 uppercase">Contact Information</p>
-                    <p>Bole Brass, adjacent to Yod Abyssinia</p>
-                    <p>Addis Ababa, Ethiopia</p>
-                    <p className="font-bold text-black mt-1">📞 +251 942 125 568</p>
-                    <p className="font-bold text-black">📞 +251 924 148 847</p>
-                    <p className="text-[9px] text-gray-400 lowercase italic">email: mena.inc@trading-plc.com</p>
-                  </div>
+                  {/* Horizontal Green Line completely below the header */}
+                  <div className="h-[1px] bg-[#71b536] z-0 print-exact -ml-4 -mr-10 mb-8" />
                 </div>
 
                 {/* Sub-header document metrics */}
-                <div className="flex justify-between items-end mb-6">
+                <div className="relative z-10 flex justify-between items-end mb-8 pl-4">
                   <div className="text-left">
-                    <h2 className="text-base font-black uppercase text-gray-900 tracking-wider font-sans">PROFORMA INVOICE</h2>
-                    <p className="text-[10px] font-sans text-gray-500">Document No: <strong className="text-black">PRO-2026-{new Date().getMonth() + 1}{new Date().getDate()}-{Math.floor(1000 + Math.random() * 9000)}</strong></p>
+                    <h2 className="text-lg font-black uppercase text-gray-900 tracking-wider font-sans mb-1">PROFORMA INVOICE</h2>
+                    <p className="text-[11px] font-sans text-gray-500">Document No: <strong className="text-black">PRO-2026-{new Date().getMonth() + 1}{new Date().getDate()}-{Math.floor(1000 + Math.random() * 9000)}</strong></p>
                   </div>
-                  <div className="text-right font-sans text-[10px]">
-                    <p className="text-gray-550">Doc Issue Date:</p>
+                  <div className="text-right font-sans text-[11px]">
+                    <p className="text-gray-550 mb-0.5">Doc Issue Date:</p>
                     <p className="font-bold text-gray-900">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
 
                 {/* Client Recipient Details */}
-                <div className="grid grid-cols-2 gap-4 mb-6 border-t border-b border-gray-200 py-4 font-sans text-[10px]">
-                  <div className="text-left border-r border-gray-100 pr-4">
-                    <p className="font-sans text-[8px] uppercase tracking-widest text-[#ee317b] font-bold mb-1">CLIENT BILL TO</p>
-                    <p className="font-bold text-gray-900 text-xs font-sans uppercase">
-                      {isStandaloneProformaMode 
-                        ? standaloneClientName 
-                        : (proformaItemsToRender[0] as any)?.clientName || 'Valued Corporate Client'}
-                    </p>
-                    <p className="text-gray-500 mt-1">
-                      📞 {isStandaloneProformaMode 
-                        ? standaloneClientPhone 
-                        : '+251 (Customer Record)'}
-                    </p>
-                    <p className="text-gray-400 text-[9px] mt-0.5">Approved Ledger Recipient ID: CLN-2026-{(proformaItemsToRender[0]?.id || 'DRAFT').slice(0, 6)}</p>
-                  </div>
-                  <div className="text-left pl-4 font-sans text-left">
-                    <p className="text-[8px] uppercase tracking-widest text-[#71b536] font-bold mb-1">ISSUED BY AUTHORITY</p>
-                    <p className="text-gray-800 font-bold uppercase">{currentUser?.name || 'Mena Automated Operator'}</p>
-                    <p className="text-gray-500 font-sans text-[9.5px]">Position: <span className="text-black font-semibold uppercase text-[9px]">{currentUser?.role || 'Staff Operator'}</span></p>
-                    <p className="text-gray-450 italic mt-1 font-sans text-[9px]">Secure conversion ledger validation active.</p>
-                  </div>
-                </div>
+                {(() => {
+                  const cName = isStandaloneProformaMode ? standaloneClientName : (proformaItemsToRender[0] as any)?.clientName;
+                  const cPhone = isStandaloneProformaMode ? standaloneClientPhone : (proformaItemsToRender[0] as any)?.phone;
+                  
+                  if (!cName || cName.trim() === '') {
+                    return null;
+                  }
+
+                  return (
+                    <div className="relative z-10 mb-8 font-sans text-[11px] pl-4">
+                      <div className="text-left">
+                        <p className="font-sans text-[9px] uppercase tracking-widest text-[#ee317b] font-bold mb-1.5">CLIENT BILL TO</p>
+                        <p className="font-bold text-gray-900 text-sm font-sans uppercase">
+                          {cName}
+                        </p>
+                        {cPhone && cPhone.trim() !== '' && (
+                          <p className="text-gray-600 mt-1.5 font-medium">
+                            📞 {cPhone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Table of selected Order items */}
-                <div className="border border-gray-350 overflow-hidden mb-6 rounded-md">
+                <div className="relative z-10 border border-gray-300 overflow-hidden mb-6 rounded-sm ml-4">
                   <table className="w-full text-left border-collapse text-[10px]">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-300 text-gray-705 font-sans uppercase text-[9px] tracking-wider text-center">
@@ -3480,7 +3598,7 @@ export default function CustomerTab({
                 </div>
 
                 {/* Totals & Deductions summaries */}
-                <div className="flex flex-col md:flex-row items-stretch justify-between gap-6 mb-8 text-[11px]">
+                <div className="flex flex-row items-stretch justify-between gap-6 mb-8 text-[11px]">
                   {/* Terms and Conditions Block */}
                   <div className="border border-gray-300 bg-gray-50/50 p-4 font-sans text-[9px] text-gray-600 flex-1 rounded-md leading-relaxed text-left break-words">
                     <p className="font-bold text-gray-800 uppercase tracking-wider mb-1.5 text-[9.5px]">Terms &amp; General Conditions</p>
@@ -3500,11 +3618,11 @@ export default function CustomerTab({
                       );
                     })()}
                     
-                    <p className="text-[8.5px] text-gray-400 mt-2.5 lowercase">processed in real-time by digital workbook agent, securely archived.</p>
+
                   </div>
 
                   {/* Summary math table */}
-                  <div className="w-full md:w-80 font-sans space-y-1.5 border border-gray-250 p-4 bg-gray-50/20">
+                  <div className="w-80 font-sans space-y-1.5 border border-gray-250 p-4 bg-gray-50/20">
                     <div className="flex justify-between text-gray-600">
                       <span>Itemized Sub-Total:</span>
                       <span className="font-bold text-gray-900">
@@ -3568,61 +3686,30 @@ export default function CustomerTab({
 
                     {/* SVG Rounded Double Circle Stamp overlapping signature or Premium Real Stamp Photo overlay */}
                     {applyDigitalStamp && (
-                      <div className="transform rotate-8 absolute right-2 z-10 bottom-0  pb-2">
+                      <div className="transform rotate-8 absolute right-2 z-10 bottom-0 pb-2">
                         <img 
                           src="https://lh3.googleusercontent.com/d/1CbGimATXHfhwtx7aKcQivzxp8bDi1kZt" 
                           alt="Company Stamp Seal" 
                           className="w-[125px] h-[125px] object-contain mix-blend-multiply opacity-90"
                           referrerPolicy="no-referrer"
                           crossOrigin="anonymous"
-                          onError={(e) => {
-                            // Render standard SVG stamp if external image fails to fetch due to connection issues
-                            (e.target as HTMLElement).style.display = 'none';
-                            const fallback = document.getElementById('svg-stamp-fallback');
-                            if (fallback) fallback.classList.remove('hidden');
-                          }}
                         />
-                        <div id="svg-stamp-fallback" className="hidden">
-                          <svg width="115" height="115" viewBox="0 0 150 150" className="transform rotate-6">
-                            <circle cx="75" cy="75" r="72" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeOpacity="0.85" />
-                            <circle cx="75" cy="75" r="66" fill="none" stroke="#2563EB" strokeWidth="1" strokeOpacity="0.85" />
-                            <path id="curve-top-stamp" d="M 20,75 A 55,55 0 1,1 130,75" fill="none" stroke="none" />
-                            <text fill="#2563EB" fillOpacity="0.85" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
-                              <textPath href="#curve-top-stamp" startOffset="50%" textAnchor="middle">
-                                ሜና ኢንክ ትሬዲንግ ኃ/የተ/የግ/ማ
-                              </textPath>
-                            </text>
-                            <path id="curve-bottom-stamp" d="M 130,75 A 55,55 0 0,1 20,75" fill="none" stroke="none" />
-                            <text fill="#2563EB" fillOpacity="0.85" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
-                              <textPath href="#curve-bottom-stamp" startOffset="50%" textAnchor="middle">
-                                * MENA INC TRADING PLC *
-                              </textPath>
-                            </text>
-                            <circle cx="75" cy="75" r="34" fill="none" stroke="#2563EB" strokeWidth="1.5" strokeDasharray="4,3" strokeOpacity="0.8" />
-                            <g transform="translate(75, 75) scale(0.6)">
-                              <path d="M 0 -22 C -18 -38 -38 -18 -22 0 C -38 18 -18 38 0 22 C 18 38 38 18 22 0 C 38 -18 18 -38 0 -22 Z" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeOpacity="0.8" />
-                              <circle cx="0" cy="0" r="6.5" fill="#2563EB" fillOpacity="0.8" />
-                            </g>
-                            <text x="75" y="60" fill="#2563EB" fillOpacity="0.85" fontSize="7" fontStyle="italic" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
-                              0942125568
-                            </text>
-                            <text x="75" y="98" fill="#2563EB" fillOpacity="0.85" fontSize="7" fontStyle="italic" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
-                              0924148847
-                            </text>
-                          </svg>
-                        </div>
                       </div>
                     )}
                   </div>
-
                 </div>
-
+              </div>
+              </div>
+              </div>
+              </div>
+              </div>
               </div>
 
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* 📦 PRODUCT TYPES MANAGER MODAL */}
       <AnimatePresence>
@@ -3976,7 +4063,17 @@ export default function CustomerTab({
               <button
                 type="button"
                 onClick={() => {
-                  setIsStandaloneProformaMode(false);
+                  const selectedLedgerItems = customers.filter(c => selectedCustomerIds.includes(c.id));
+                  setStandaloneClientName(selectedLedgerItems[0]?.clientName || '');
+                  setStandaloneClientPhone(selectedLedgerItems[0]?.phone || '');
+                  setStandaloneProformaItems(selectedLedgerItems.map(c => ({
+                    id: c.id,
+                    productType: c.productType || '',
+                    quantity: c.quantity?.toString() || '0',
+                    unitPrice: c.unitPrice?.toString() || '0',
+                    advancePayment: c.advancePayment?.toString() || '0'
+                  })));
+                  setIsStandaloneProformaMode(true);
                   setShowProformaModal(true);
                 }}
                 className="bg-[#31111E] border border-[#ee317b]/30 text-[#ee317b] py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"

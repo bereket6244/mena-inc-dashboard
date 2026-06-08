@@ -225,6 +225,7 @@ export default function App() {
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffUser, setNewStaffUser] = useState('');
   const [newStaffPass, setNewStaffPass] = useState('');
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<'admin' | 'employee'>('employee');
   const [newStaffAllowedTabs, setNewStaffAllowedTabs] = useState<('customers' | 'inventory' | 'performance' | 'purchases')[]>(['customers', 'inventory', 'performance', 'purchases']);
   const [staffError, setStaffError] = useState('');
@@ -1735,7 +1736,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Samuel Kebede"
                         value={newStaffName}
                         onChange={(e) => setNewStaffName(e.target.value)}
                         className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans rounded-md"
@@ -1747,7 +1747,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       <input
                         type="text"
                         required
-                        placeholder="e.g. samuel"
                         value={newStaffUser}
                         onChange={(e) => setNewStaffUser(e.target.value)}
                         className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans rounded-md"
@@ -1759,7 +1758,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       <input
                         type="password"
                         required
-                        placeholder="••••••••"
                         value={newStaffPass}
                         onChange={(e) => setNewStaffPass(e.target.value)}
                         className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans tracking-widest rounded-md"
@@ -1770,12 +1768,11 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       <label className="block text-[10px] uppercase text-gray-500 mb-1">Role</label>
                       <SearchableSelect
                         value={newStaffRole}
-                        onChange={(val) => setNewStaffRole(val as 'admin' | 'employee')}
-                        options={[
-                          { value: 'employee', label: 'Staff Member' },
-                          { value: 'admin', label: 'Admin' }
-                        ]}
-                      />
+                        onChange={(e) => setNewStaffRole(e.target.value as 'admin' | 'employee')}
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="admin">Admin</option>
+                      </SearchableSelect>
                     </div>
                   </div>
                   {newStaffRole === 'employee' && (
@@ -1824,10 +1821,19 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
                 {/* Registered Workers List */}
                 <div className="space-y-3 font-sans">
-                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({employees.length})</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({employees.length})</span>
+                    <input
+                      type="text"
+                      placeholder="Search staff..."
+                      value={staffSearchQuery}
+                      onChange={(e) => setStaffSearchQuery(e.target.value)}
+                      className="bg-[#121212] border border-[#262626] text-[10px] px-2 py-1 focus:border-[#ee317b] outline-none text-white rounded-md w-1/3 font-sans"
+                    />
+                  </div>
                   
                   <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden rounded-md">
-                    {employees.map(emp => (
+                    {employees.filter(emp => emp.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.username.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.role.toLowerCase().includes(staffSearchQuery.toLowerCase())).map(emp => (
                       <div key={emp.username} className="px-4 py-3 flex items-center justify-between text-xs font-sans">
                         <div>
                           <span className="font-semibold text-white font-sans">{emp.name}</span>
