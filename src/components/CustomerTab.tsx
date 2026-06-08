@@ -1888,10 +1888,8 @@ export default function CustomerTab({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
                   <div>
                     <h3 className="font-sans font-bold text-white text-base flex items-center gap-1.5 uppercase">
-                      <Sparkles className="w-5 h-5 text-[#ee317b]" />
                       {editingCustomer ? `Edit Order #${editingCustomer.id.slice(-4)}` : 'Create New Customer Order'}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5 font-sans">Stock room computations subtraction automatically runs based on ledger rules.</p>
                   </div>
                   
                   <button
@@ -2522,13 +2520,23 @@ export default function CustomerTab({
                                 setAmount1(parseFractionOrExpression(amount1).toString());
                               }
                             }}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b]"
+                            className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none ${(() => {
+                              if (!amount1 || paperType1 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              const stock = paperStocks.find(p => p.name === paperType1);
+                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              const consumed = Number((parseFractionOrExpression(amount1) * quantity).toFixed(2));
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              return 'border-[#262626] focus:border-[#ee317b]';
+                            })()}`}
                             placeholder="e.g. 1/4 or 0.5"
                           />
-                          <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
-                            <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount1)} sheets/card</span>
-                            <span className="text-[#ee317b]">Total sheets deducted ({parseFractionOrExpression(amount1)} × {quantity}): {Number((parseFractionOrExpression(amount1) * quantity).toFixed(2))} sheets</span>
-                          </div>
+                          {paperType1 !== 'None' && amount1 && (
+                            <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                              {Number((parseFractionOrExpression(amount1) * quantity).toFixed(2))} sheets consumed
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2571,13 +2579,21 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={paperType2 === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
+                              if (!amount2 || paperType2 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              const stock = paperStocks.find(p => p.name === paperType2);
+                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              const consumed = Number((parseFractionOrExpression(amount2) * quantity).toFixed(2));
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              return 'border-[#262626] focus:border-[#ee317b]';
+                            })()}`}
                             placeholder="e.g. 1/2"
                           />
-                          {paperType2 !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
-                              <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount2)} sheets/card</span>
-                              <span className="text-[#71b536]">Total sheets deducted ({parseFractionOrExpression(amount2)} × {quantity}): {Number((parseFractionOrExpression(amount2) * quantity).toFixed(2))} sheets</span>
+                          {paperType2 !== 'None' && amount2 && (
+                            <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                              {Number((parseFractionOrExpression(amount2) * quantity).toFixed(2))} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2622,13 +2638,21 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={paperType3 === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
+                              if (!amount3 || paperType3 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              const stock = paperStocks.find(p => p.name === paperType3);
+                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              const consumed = Number((parseFractionOrExpression(amount3) * quantity).toFixed(2));
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              return 'border-[#262626] focus:border-[#ee317b]';
+                            })()}`}
                             placeholder="e.g. 1/4"
                           />
-                          {paperType3 !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans gap-0.5">
-                              <span className="text-stone-300">Parsed factor: {parseFractionOrExpression(amount3)} sheets/card</span>
-                              <span className="text-[#71b536]">Total sheets deducted ({parseFractionOrExpression(amount3) * quantity}): {Number((parseFractionOrExpression(amount3) * quantity).toFixed(2))} sheets</span>
+                          {paperType3 !== 'None' && amount3 && (
+                            <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                              {Number((parseFractionOrExpression(amount3) * quantity).toFixed(2))} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2686,13 +2710,21 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={entrancePaper === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
+                              if (!amount16 || entrancePaper === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              const stock = paperStocks.find(p => p.name === entrancePaper);
+                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              const consumed = Number((parseFractionOrExpression(amount16) / 16).toFixed(2));
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              return 'border-[#262626] focus:border-[#ee317b]';
+                            })()}`}
                             placeholder="e.g. 160 or 16 * 10"
                           />
-                          {entrancePaper !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans">
-                              <span className="text-stone-300">Parsed: {parseFractionOrExpression(amount16)} sheets</span>
-                              <span className="text-sky-400">Deduction ratio (sheets/16): {(parseFractionOrExpression(amount16) / 16).toFixed(2)} sheets</span>
+                          {entrancePaper !== 'None' && amount16 && (
+                            <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                              {Number((parseFractionOrExpression(amount16) / 16).toFixed(2))} sheets consumed
                             </div>
                           )}
                         </div>
@@ -2744,13 +2776,21 @@ export default function CustomerTab({
                               }
                             }}
                             disabled={ajabiPaper === 'None'}
-                            className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
+                              if (!amount9 || ajabiPaper === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              const stock = paperStocks.find(p => p.name === ajabiPaper);
+                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              const consumed = Number((parseFractionOrExpression(amount9) / 9).toFixed(2));
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              if (newRemaining <= 0) return 'border-red-500 focus:border-red-400';
+                              if (newRemaining <= 50) return 'border-yellow-500 focus:border-yellow-400';
+                              return 'border-[#262626] focus:border-[#ee317b]';
+                            })()}`}
                             placeholder="e.g. 90 or 9 * 10"
                           />
-                          {ajabiPaper !== 'None' && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex flex-col font-sans">
-                              <span className="text-stone-300">Parsed: {parseFractionOrExpression(amount9)} sheets</span>
-                              <span className="text-pink-400">Deduction ratio (sheets/9): {(parseFractionOrExpression(amount9) / 9).toFixed(2)} sheets</span>
+                          {ajabiPaper !== 'None' && amount9 && (
+                            <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                              {Number((parseFractionOrExpression(amount9) / 9).toFixed(2))} sheets consumed
                             </div>
                           )}
                         </div>
