@@ -532,7 +532,7 @@ export default function CustomerTab({
   const [bulkCompleteDate, setBulkCompleteDate] = useState<string>('');
   const [bulkCompleteBankId, setBulkCompleteBankId] = useState<string>('b1');
   
-  const [paperType1, setPaperType1] = useState(paperStocks[0]?.name || 'Big flower');
+  const [paperType1, setPaperType1] = useState('None');
   const [amount1, setAmount1] = useState<string>('');
   const [paperType2, setPaperType2] = useState('None');
   const [amount2, setAmount2] = useState<string>('');
@@ -628,7 +628,7 @@ export default function CustomerTab({
     setPriceInput('');
     setAdvanceInput('');
     setPaymentMethodId('b1');
-    setPaperType1(paperStocks[0]?.name || 'Big flower');
+    setPaperType1('None');
     setAmount1('');
     setPaperType2('None');
     setAmount2('');
@@ -842,7 +842,7 @@ export default function CustomerTab({
     setDeliveryDate('');
     
     // Reset standard layout deductions
-    setPaperType1(paperStocks[0]?.name || 'Big flower');
+    setPaperType1('None');
     setAmount1('');
     setPaperType2('None');
     setAmount2('');
@@ -1890,7 +1890,6 @@ export default function CustomerTab({
                     <h3 className="font-sans font-bold text-white text-base flex items-center gap-1.5 uppercase">
                       {editingCustomer ? `Edit Order #${editingCustomer.id.slice(-4)}` : 'Create New Customer Order'}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-1 font-sans">Step {formStep} of 3</p>
                   </div>
                   
                   <button
@@ -2480,10 +2479,7 @@ export default function CustomerTab({
 
                 {formStep === 2 && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">2. Standard Layout Papers Deduction</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed font-sans">
-                      Select which paper variant types and the literal sheets consumed by this project. Standard papers decrement 1-for-1 from matching stock names.
-                    </p>
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Paper Stock Deduction</h4>
 
                     {/* Paper Type 1 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
@@ -2496,6 +2492,7 @@ export default function CustomerTab({
                             onChange={(e) => setPaperType1(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
+                            <option value="None">None</option>
                             {paperStocks.map(s => {
                               const remaining = s.initialStock - computeTotalConsumed(s.name);
                               let statusClass = '';
@@ -2664,10 +2661,7 @@ export default function CustomerTab({
 
                 {formStep === 3 && (
                   <div className="space-y-4 font-sans">
-                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">3. Auxiliary / Special Layout Sheets</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      Entrance paper sheet counts are divided by 16, and Ajabi paper counts are divided by 9 prior to subtracting. Select materials below:
-                    </p>
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Auxiliary / Special Layout Sheets</h4>
 
                     {/* Entrance Aux (Divided by 16) */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3">
@@ -2730,9 +2724,7 @@ export default function CustomerTab({
                           )}
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-500 leading-tight">
-                        E.g. entering 160 sheets automatically deducts exactly 10 full primary sheets from the stock rooms.
-                      </p>
+
                     </div>
 
                     {/* Ajabi Aux (Divided by 9) */}
@@ -2796,9 +2788,7 @@ export default function CustomerTab({
                           )}
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-500 leading-tight">
-                        E.g. entering 90 sheets automatically deducts exactly 10 full primary sheets from available warehouse stocks.
-                      </p>
+
                     </div>
                   </div>
                 )}
