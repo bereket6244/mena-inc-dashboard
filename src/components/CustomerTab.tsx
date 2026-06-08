@@ -2811,45 +2811,6 @@ export default function CustomerTab({
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Interactive Toggle for Stamp Seal */}
-                    <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs mr-3 select-none">
-                      <input
-                        type="checkbox"
-                        checked={applyDigitalStamp}
-                        onChange={(e) => setApplyDigitalStamp(e.target.checked)}
-                        className="accent-[#71b536]"
-                      />
-                      <span>Apply PLC Stamp Seal</span>
-                    </label>
-
-                    {/* Interactive Toggle for VAT */}
-                    <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs mr-3 select-none">
-                      <input
-                        type="checkbox"
-                        checked={proformaIncludeVat}
-                        onChange={(e) => setProformaIncludeVat(e.target.checked)}
-                        className="accent-[#ee317b]"
-                      />
-                      <span>Include 15% VAT</span>
-                    </label>
-
-                    {/* Bank Selection dropdown */}
-                    <label className="flex items-center gap-1.5 text-stone-300 text-xs mr-3 select-none">
-                      <span>Payment Bank:</span>
-                      <select
-                        value={proformaBankId}
-                        onChange={(e) => setProformaBankId(e.target.value)}
-                        className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors max-w-[130px] md:max-w-none text-ellipsis"
-                      >
-                        <option value="">-- No Bank Details --</option>
-                        {bankAccounts.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
                     {/* Export PDF Button (Instant client-generate) */}
                     <button
                       id="export-pdf-direct-btn"
@@ -2870,31 +2831,78 @@ export default function CustomerTab({
                   </div>
                 </div>
 
-                {/* STANDALONE PROFORMA FORM WRITER CONTROLS ROW */}
-                {isStandaloneProformaMode && (
-                  <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs select-none">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#110b0d] p-3 border border-[#2d2024] mb-1">
-                      <div>
-                        <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT NAME</label>
-                        <input 
-                          type="text" 
-                          value={standaloneClientName} 
-                          onChange={(e) => setStandaloneClientName(e.target.value)} 
-                          className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
-                          placeholder="Mena Corporate Client PLC"
-                        />
+                {/* PROFORMA SETTINGS ROW */}
+                <div className="bg-[#1a1215] border border-[#ee317b]/30 p-4 space-y-3 font-sans text-xs select-none">
+                  <div className="bg-[#110b0d] p-3 border border-[#2d2024] mb-1 flex flex-col gap-3">
+                    {isStandaloneProformaMode && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-[#2d2024] pb-3">
+                        <div>
+                          <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT NAME</label>
+                          <input 
+                            type="text" 
+                            value={standaloneClientName} 
+                            onChange={(e) => setStandaloneClientName(e.target.value)} 
+                            className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
+                            placeholder="Mena Corporate Client PLC"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT PHONE</label>
+                          <input 
+                            type="text" 
+                            value={standaloneClientPhone} 
+                            onChange={(e) => setStandaloneClientPhone(e.target.value)} 
+                            className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
+                            placeholder="+251 900 000 000"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[9px] uppercase text-gray-400 font-bold mb-1">PROFORMA CLIENT PHONE</label>
-                        <input 
-                          type="text" 
-                          value={standaloneClientPhone} 
-                          onChange={(e) => setStandaloneClientPhone(e.target.value)} 
-                          className="w-full bg-[#181818] border border-[#2d2024] px-2.5 py-1 text-[11px] hover:border-[#ee317b]/40 outline-none focus:border-[#ee317b] text-white"
-                          placeholder="+251 900 000 000"
+                    )}
+                    <div className="flex flex-wrap items-center gap-4">
+                      {/* Bank Selection dropdown */}
+                      <label className="flex items-center gap-1.5 text-stone-300 text-xs select-none">
+                        <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank:</span>
+                        <select
+                          value={proformaBankId}
+                          onChange={(e) => setProformaBankId(e.target.value)}
+                          className="px-2 py-1 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b] hover:bg-[#1e1e1e] transition-colors max-w-[150px] md:max-w-none text-ellipsis"
+                        >
+                          <option value="">-- No Bank Details --</option>
+                          {bankAccounts.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {/* Interactive Toggle for Stamp Seal */}
+                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs select-none">
+                        <input
+                          type="checkbox"
+                          checked={applyDigitalStamp}
+                          onChange={(e) => setApplyDigitalStamp(e.target.checked)}
+                          className="accent-[#71b536]"
                         />
-                      </div>
+                        <span className="font-bold text-gray-400 uppercase text-[9px]">Apply PLC Stamp Seal</span>
+                      </label>
+
+                      {/* Interactive Toggle for VAT */}
+                      <label className="flex items-center gap-2 text-stone-300 cursor-pointer text-xs select-none">
+                        <input
+                          type="checkbox"
+                          checked={proformaIncludeVat}
+                          onChange={(e) => setProformaIncludeVat(e.target.checked)}
+                          className="accent-[#ee317b]"
+                        />
+                        <span className="font-bold text-gray-400 uppercase text-[9px]">Include 15% VAT</span>
+                      </label>
                     </div>
+                  </div>
+
+                  {/* STANDALONE PROFORMA FORM WRITER CONTROLS ROW */}
+                  {isStandaloneProformaMode && (
+                    <div className="space-y-3">
                     <div className="flex items-center justify-between border-b border-[#2d2024] pb-2">
                       <span className="text-[#ee317b] font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                         ✨ Quick Draft Editor
@@ -2912,6 +2920,12 @@ export default function CustomerTab({
                               advancePayment: ''
                             }
                           ]);
+                          setTimeout(() => {
+                            const container = document.getElementById('standalone-proforma-list');
+                            if (container) {
+                              container.scrollTop = container.scrollHeight;
+                            }
+                          }, 50);
                         }}
                         className="bg-[#ee317b] hover:bg-[#d61e63] text-white px-2.5 py-1 text-[10px] font-bold uppercase cursor-pointer"
                       >
@@ -2922,7 +2936,7 @@ export default function CustomerTab({
                     {standaloneProformaItems.length === 0 ? (
                       <p className="text-gray-400 italic text-[11px] py-1">No items drafted. Click "+ Add Custom Row" to start designing your proforma.</p>
                     ) : (
-                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                      <div id="standalone-proforma-list" className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                         {standaloneProformaItems.map((item, index) => (
                           <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-[#241c1e]/60 p-2 border border-[#2d2024]">
                             <div className="col-span-1 text-center font-bold text-[#ee317b] text-[10px]">
