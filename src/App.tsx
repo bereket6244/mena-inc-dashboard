@@ -1256,7 +1256,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
         {/* Top Executive Header */}
         <header className="bg-[#121212] border-b border-[#262626]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
+            <div className="flex justify-between items-center min-h-[4rem] py-2 flex-wrap gap-y-2">
 
               {/* Branding Logo - Utilizing the Premium Custom Logo */}
               <div className="flex items-center gap-3">
