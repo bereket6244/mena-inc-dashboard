@@ -964,7 +964,8 @@ CREATE TABLE IF NOT EXISTS public.employees (
   name text NOT NULL,
   username text UNIQUE NOT NULL,
   password text NOT NULL,
-  role text NOT NULL CHECK (role IN ('admin', 'employee'))
+  role text NOT NULL CHECK (role IN ('admin', 'employee')),
+  "allowedTabs" jsonb DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS public.product_types (
