@@ -519,7 +519,7 @@ export default function CustomerTab({
   const [bankRemainingId, setBankRemainingId] = useState<string>('');
   const [incompletionReason, setIncompletionReason] = useState<string>('');
   const [isVatAdded, setIsVatAdded] = useState<boolean>(false);
-  const [baseUnitPriceInput, setBaseUnitPriceInput] = useState<string>('0');
+  const [baseUnitPriceInput, setBaseUnitPriceInput] = useState<string>('');
 
   // Non-blocking custom delete tracking ID
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
@@ -533,16 +533,16 @@ export default function CustomerTab({
   const [bulkCompleteBankId, setBulkCompleteBankId] = useState<string>('b1');
   
   const [paperType1, setPaperType1] = useState(paperStocks[0]?.name || 'Big flower');
-  const [amount1, setAmount1] = useState<string>('0');
+  const [amount1, setAmount1] = useState<string>('');
   const [paperType2, setPaperType2] = useState('None');
-  const [amount2, setAmount2] = useState<string>('0');
+  const [amount2, setAmount2] = useState<string>('');
   const [paperType3, setPaperType3] = useState('None');
-  const [amount3, setAmount3] = useState<string>('0');
+  const [amount3, setAmount3] = useState<string>('');
   
   const [entrancePaper, setEntrancePaper] = useState('None');
-  const [amount16, setAmount16] = useState<string>('0');
+  const [amount16, setAmount16] = useState<string>('');
   const [ajabiPaper, setAjabiPaper] = useState('None');
-  const [amount9, setAmount9] = useState<string>('0');
+  const [amount9, setAmount9] = useState<string>('');
   
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date();
@@ -2050,6 +2050,21 @@ export default function CustomerTab({
                               >
                                 + New
                               </button>
+                              {!['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'].includes(acquisitionSource) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
+                                    setAcquisitionChannels(updated);
+                                    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+                                    setAcquisitionSource(updated[0] || 'Word of Mouth');
+                                  }}
+                                  className="px-2.5 bg-rose-950/20 text-rose-500 hover:bg-rose-900/50 hover:text-white border border-rose-900/30 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors"
+                                  title="Delete custom Lead Option"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </>
                           ) : (
                             <div className="flex-1 flex gap-1 items-center bg-[#181818] border border-[#262626] px-2 py-1">

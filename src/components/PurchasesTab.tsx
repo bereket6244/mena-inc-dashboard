@@ -1338,20 +1338,16 @@ export default function PurchasesTab({
                       <div>
                         <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
                           Recorded By (Logger)
-                          {!isAdmin && <Lock className="w-3 h-3 text-[#ee317b]" />}
+                          <Lock className="w-3 h-3 text-[#ee317b]" />
                         </label>
                         <div className="relative">
                           <input
                             type="text"
                             required
-                            disabled={!isAdmin}
+                            disabled={true}
                             value={recordedBy}
                             onChange={(e) => setRecordedBy(e.target.value)}
-                            className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none focus:border-[#ee317b] font-sans ${
-                              !isAdmin 
-                                ? 'bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed' 
-                                : 'bg-white dark:bg-[#181818] text-stone-950 dark:text-white border-stone-300 dark:border-[#262626]'
-                            }`}
+                            className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none focus:border-[#ee317b] font-sans bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed`}
                           />
                         </div>
                       </div>
