@@ -1,6 +1,8 @@
 export interface ClientType {
   id: string;
   name: string;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export interface BankAccount {
@@ -8,6 +10,8 @@ export interface BankAccount {
   name: string;
   accountNumber?: string;
   initialBalance: number;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export const DEFAULT_CLIENT_TYPES: ClientType[] = [
@@ -19,6 +23,8 @@ export interface PaperStock {
   id: string;
   name: string;
   initialStock: number;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export interface Customer {
@@ -56,11 +62,16 @@ export interface Customer {
   incompletionReason?: string;    // Incompletion Reason text
   isVatAdded?: boolean;           // Whether 15% VAT is added
   baseUnitPrice?: number;         // Unit Price before VAT
+
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export interface ProductType {
   id: string;
   name: string;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
@@ -96,6 +107,8 @@ export interface EmployeeUser {
   password?: string;
   role: 'admin' | 'employee';
   allowedTabs?: ('customers' | 'inventory' | 'performance' | 'purchases')[];
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export const DEFAULT_USERS: EmployeeUser[] = [];
@@ -119,15 +132,18 @@ export interface Purchase {
   hasWithholding?: boolean;
   withholdingAmount?: number;
   baseAmount?: number;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export interface ExpenseCategory {
   id: string;
   name: string;
   items: string[];
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 export const INITIAL_EXPENSE_CATEGORIES: ExpenseCategory[] = [];
 
 export const INITIAL_PURCHASES: Purchase[] = [];
-

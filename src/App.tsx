@@ -576,7 +576,7 @@ export default function App() {
     try {
       const { savePaperStockDoc, deletePaperStockDoc } = await import('./lib/dbService');
       // Delete removed stocks and update changes concurrently in parallel
-      const deletePromises = deletedStocks.map(ds => deletePaperStockDoc(ds.id).catch(() => {}));
+      const deletePromises = deletedStocks.map(ds => deletePaperStockDoc(ds.id, currentUser?.username).catch(() => {}));
       const savePromises = newStocks.map(stock => savePaperStockDoc(stock).catch(() => {}));
       await Promise.allSettled([...deletePromises, ...savePromises]);
     } catch (_) {} finally {
@@ -628,7 +628,7 @@ export default function App() {
     handleUpdateCustomers(updated);
     try {
       const { deleteCustomerDoc } = await import('./lib/dbService');
-      await deleteCustomerDoc(id);
+      await deleteCustomerDoc(id, currentUser?.username);
     } catch (_) {} finally {
       setTimeout(() => setIsBuffering(false), 400);
     }
@@ -650,7 +650,7 @@ export default function App() {
     try {
       const { saveCustomerDoc, deleteCustomerDoc } = await import('./lib/dbService');
       // Concurrently run all database updates/deletes in parallel
-      const deletePromises = deletedItems.map(item => deleteCustomerDoc(item.id).catch(() => {}));
+      const deletePromises = deletedItems.map(item => deleteCustomerDoc(item.id, currentUser?.username).catch(() => {}));
       const savePromises = updatedList.map(item => saveCustomerDoc(item).catch(() => {}));
       await Promise.allSettled([...deletePromises, ...savePromises]);
     } catch (_) {} finally {
@@ -673,7 +673,7 @@ export default function App() {
 
     // Sync deletion to live database
     import('./lib/dbService').then(({ deleteEmployeeDoc }) => {
-      deleteEmployeeDoc(username).catch(() => {});
+      deleteEmployeeDoc(username, currentUser?.username).catch(() => {});
     }).catch(() => {});
   };
 
@@ -722,7 +722,7 @@ export default function App() {
     handleUpdateBankAccountsLocal(updated);
     try {
       const { deleteBankAccountDoc } = await import('./lib/dbService');
-      await deleteBankAccountDoc(ids);
+      await deleteBankAccountDoc(ids, currentUser?.username);
     } catch (_) {} finally {
       setTimeout(() => setIsBuffering(false), 400);
     }
@@ -743,7 +743,7 @@ export default function App() {
       // Delete removed purchases from database
       for (const oldId of oldIds) {
         if (!newIds.has(oldId)) {
-          promises.push(deletePurchaseDoc(oldId).catch(() => {}));
+          promises.push(deletePurchaseDoc(oldId, currentUser?.username).catch(() => {}));
         }
       }
       
@@ -772,7 +772,7 @@ export default function App() {
     try {
       const { saveExpenseCategoryDoc, deleteExpenseCategoryDoc } = await import('./lib/dbService');
       const savePromises = newCategories.map(cat => saveExpenseCategoryDoc(cat).catch(() => {}));
-      const deletePromises = deletedCats.map(cat => deleteExpenseCategoryDoc(cat.id).catch(() => {}));
+      const deletePromises = deletedCats.map(cat => deleteExpenseCategoryDoc(cat.id, currentUser?.username).catch(() => {}));
       
       await Promise.allSettled([...savePromises, ...deletePromises]);
     } catch (_) {} finally {
@@ -793,21 +793,21 @@ export default function App() {
         const updated = [item, ...customers];
         handleUpdateCustomers(updated);
         const { saveCustomerDoc } = await import('./lib/dbService');
-        await saveCustomerDoc(item);
+        await saveCustomerDoc({ ...item, isDeleted: false, deletedBy: undefined });
       } else if (type === 'bulk-customers') {
         const items = data as Customer[];
         const updated = [...items, ...customers];
         handleUpdateCustomers(updated);
         const { saveCustomerDoc } = await import('./lib/dbService');
         for (const item of items) {
-          await saveCustomerDoc(item);
+          await saveCustomerDoc({ ...item, isDeleted: false, deletedBy: undefined });
         }
       } else if (type === 'bank') {
         const item = data as BankAccount;
         const updated = [...bankAccounts, item];
         handleUpdateBankAccountsLocal(updated);
         const { saveBankAccountDoc } = await import('./lib/dbService');
-        await saveBankAccountDoc(item);
+        await saveBankAccountDoc({ ...item, isDeleted: false, deletedBy: undefined });
       } else if (type === 'stock') {
         const items = data as PaperStock[];
         const updated = [...paperStocks, ...items];
@@ -815,7 +815,7 @@ export default function App() {
         localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(updated));
         const { savePaperStockDoc } = await import('./lib/dbService');
         for (const stock of items) {
-          await savePaperStockDoc(stock);
+          await savePaperStockDoc({ ...stock, isDeleted: false, deletedBy: undefined });
         }
       }
     } catch (e) {
@@ -839,7 +839,7 @@ export default function App() {
     if (ids.length === 0) return;
     try {
       const { deleteProductTypes } = await import('./lib/dbService');
-      await deleteProductTypes(ids);
+      await deleteProductTypes(ids, currentUser?.username);
     } catch (e) {
       console.warn('DB delete product type failed, continuing local update');
     }
@@ -861,7 +861,7 @@ export default function App() {
     if (ids.length === 0) return;
     try {
       const { deleteClientTypes } = await import('./lib/dbService');
-      await deleteClientTypes(ids);
+      await deleteClientTypes(ids, currentUser?.username);
     } catch (e) {
       console.warn('DB delete client type failed, continuing local update');
     }
@@ -894,20 +894,26 @@ export default function App() {
 CREATE TABLE IF NOT EXISTS public.paper_stocks (
   id text PRIMARY KEY,
   name text NOT NULL,
-  "initialStock" numeric DEFAULT 0
+  "initialStock" numeric DEFAULT 0,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.bank_accounts (
   id text PRIMARY KEY,
   name text NOT NULL,
   "accountNumber" text,
-  "initialBalance" numeric DEFAULT 0
+  "initialBalance" numeric DEFAULT 0,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.expense_categories (
   id text PRIMARY KEY,
   name text NOT NULL,
-  items jsonb DEFAULT '[]'::jsonb
+  items jsonb DEFAULT '[]'::jsonb,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.purchases (
@@ -926,7 +932,9 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   "vatAmount" numeric DEFAULT 0,
   "hasWithholding" boolean DEFAULT false,
   "withholdingAmount" numeric DEFAULT 0,
-  "baseAmount" numeric DEFAULT 0
+  "baseAmount" numeric DEFAULT 0,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -956,7 +964,9 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "bankRemainingId" text,
   "incompletionReason" text,
   "isVatAdded" boolean DEFAULT false,
-  "baseUnitPrice" numeric DEFAULT 0
+  "baseUnitPrice" numeric DEFAULT 0,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.employees (
@@ -965,21 +975,39 @@ CREATE TABLE IF NOT EXISTS public.employees (
   username text UNIQUE NOT NULL,
   password text NOT NULL,
   role text NOT NULL CHECK (role IN ('admin', 'employee')),
-  "allowedTabs" jsonb DEFAULT '[]'::jsonb
+  "allowedTabs" jsonb DEFAULT '[]'::jsonb,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.product_types (
   id text PRIMARY KEY,
-  name text UNIQUE NOT NULL
+  name text UNIQUE NOT NULL,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 CREATE TABLE IF NOT EXISTS public.client_types (
   id text PRIMARY KEY,
-  name text UNIQUE NOT NULL
+  name text UNIQUE NOT NULL,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
 );
 
 -- Safely migrate existing tables by adding any new columns
 ALTER TABLE IF EXISTS public.employees ADD COLUMN IF NOT EXISTS "allowedTabs" jsonb DEFAULT '[]'::jsonb;
+
+-- Soft delete columns migration
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN SELECT unnest(ARRAY['paper_stocks', 'bank_accounts', 'expense_categories', 'purchases', 'customers', 'employees', 'product_types', 'client_types'])
+  LOOP
+    EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "isDeleted" boolean DEFAULT false;', t);
+    EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "deletedBy" text;', t);
+  END LOOP;
+END $$;
 
 -- Disable Row Level Security (RLS) on each table so the web app can read and write records instantly
 ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;

@@ -11,6 +11,7 @@ export async function fetchAllPaperStocks(localFallback: PaperStock[]): Promise<
       const { data, error } = await supabase
         .from('paper_stocks')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -37,12 +38,12 @@ export async function savePaperStockDoc(stock: PaperStock): Promise<void> {
   }
 }
 
-export async function deletePaperStockDoc(id: string): Promise<void> {
+export async function deletePaperStockDoc(id: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('paper_stocks')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
@@ -61,6 +62,7 @@ export async function fetchAllCustomers(localFallback: Customer[]): Promise<Cust
       const { data, error } = await supabase
         .from('customers')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -87,12 +89,12 @@ export async function saveCustomerDoc(customer: Customer): Promise<void> {
   }
 }
 
-export async function deleteCustomerDoc(id: string): Promise<void> {
+export async function deleteCustomerDoc(id: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('customers')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
@@ -111,6 +113,7 @@ export async function fetchAllBankAccounts(localFallback: BankAccount[]): Promis
       const { data, error } = await supabase
         .from('bank_accounts')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -137,10 +140,10 @@ export async function saveBankAccountDoc(account: BankAccount): Promise<void> {
   }
 }
 
-export async function deleteBankAccountDoc(idOrIds: string | string[]): Promise<void> {
+export async function deleteBankAccountDoc(idOrIds: string | string[], deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
-      let query = supabase.from('bank_accounts').delete();
+      let query = supabase.from('bank_accounts').update({ isDeleted: true, deletedBy });
       if (Array.isArray(idOrIds)) {
         query = query.in('id', idOrIds);
       } else {
@@ -164,6 +167,7 @@ export async function fetchAllPurchases(localFallback: Purchase[]): Promise<Purc
       const { data, error } = await supabase
         .from('purchases')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -190,12 +194,12 @@ export async function savePurchaseDoc(purchase: Purchase): Promise<void> {
   }
 }
 
-export async function deletePurchaseDoc(id: string): Promise<void> {
+export async function deletePurchaseDoc(id: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('purchases')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
@@ -214,6 +218,7 @@ export async function fetchAllExpenseCategories(localFallback: ExpenseCategory[]
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -240,12 +245,12 @@ export async function saveExpenseCategoryDoc(cat: ExpenseCategory): Promise<void
   }
 }
 
-export async function deleteExpenseCategoryDoc(id: string): Promise<void> {
+export async function deleteExpenseCategoryDoc(id: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('expense_categories')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
     } catch (err) {
@@ -264,6 +269,7 @@ export async function fetchAllEmployees(localFallback: EmployeeUser[]): Promise<
       const { data, error } = await supabase
         .from('employees')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -290,12 +296,12 @@ export async function saveEmployeeDoc(emp: EmployeeUser): Promise<void> {
   }
 }
 
-export async function deleteEmployeeDoc(username: string): Promise<void> {
+export async function deleteEmployeeDoc(username: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('employees')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .eq('username', username);
       if (error) throw error;
     } catch (err) {
@@ -314,6 +320,7 @@ export async function fetchAllProductTypes(localFallback: ProductType[]): Promis
       const { data, error } = await supabase
         .from('product_types')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -340,11 +347,11 @@ export async function saveProductTypeDoc(prod: ProductType): Promise<void> {
   }
 }
 
-export async function deleteProductTypeDoc(idOrIds: string | string[]): Promise<void> {
+export async function deleteProductTypeDoc(idOrIds: string | string[], deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const isArray = Array.isArray(idOrIds);
-      const query = supabase.from('product_types').delete();
+      const query = supabase.from('product_types').update({ isDeleted: true, deletedBy });
       const { error } = isArray 
         ? await query.in('id', idOrIds)
         : await query.eq('id', idOrIds);
@@ -365,6 +372,7 @@ export async function fetchAllClientTypes(localFallback: any[]): Promise<any[]> 
       const { data, error } = await supabase
         .from('client_types')
         .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -391,12 +399,12 @@ export async function saveClientTypeDoc(type: any): Promise<void> {
   }
 }
 
-export async function deleteClientTypes(ids: string[]): Promise<void> {
+export async function deleteClientTypes(ids: string[], deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase
         .from('client_types')
-        .delete()
+        .update({ isDeleted: true, deletedBy })
         .in('id', ids);
       if (error) throw error;
     } catch (err) {
