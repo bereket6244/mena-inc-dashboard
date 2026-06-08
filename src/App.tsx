@@ -1772,8 +1772,8 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                         value={newStaffRole}
                         onChange={(val) => setNewStaffRole(val as 'admin' | 'employee')}
                         options={[
-                          { value: 'employee', label: 'Employee - Read/Write, NO Deletes' },
-                          { value: 'admin', label: 'Admin - Full access' }
+                          { value: 'employee', label: 'Staff Member' },
+                          { value: 'admin', label: 'Admin' }
                         ]}
                       />
                     </div>
@@ -1823,7 +1823,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 </form>
 
                 {/* Registered Workers List */}
-                <div className="space-y-3 font-sans">
                 <div className="space-y-3 font-sans">
                   <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({employees.length})</span>
                   
@@ -1885,29 +1884,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                   </div>
                 </div>
 
-                {/* System Admin Settings (Database Link & Configurations) */}
-                <div className="border-t border-[#262626] pt-5 space-y-3 font-sans">
-                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Settings</span>
-                  <div className="flex flex-wrap gap-2.5">
-                    {/* Database Config Trigger */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowStaffModal(false);
-                        setShowDbConfigModal(true);
-                      }}
-                      className={`flex items-center gap-1.5 text-xs font-sans px-3 py-2 rounded-md border cursor-pointer transition-all outline-none ${
-                        liveDbLinked && !dbValidationError
-                          ? 'bg-[#112918] text-[#71b536] border-[#71b536]/30 hover:border-[#71b536]' 
-                          : 'bg-[#1E1215] text-[#ee317b] border-[#ee317b]/20 hover:border-[#ee317b]'
-                      }`}
-                    >
-                      <Wifi className={`w-3.5 h-3.5 ${(liveDbLinked && !dbValidationError) ? 'animate-pulse' : ''}`} />
-                      <span>Configure Relational Database Link</span>
-                    </button>
 
-                  </div>
-                </div>
 
               </div>
 
