@@ -95,6 +95,7 @@ export interface EmployeeUser {
   username: string;
   password?: string;
   role: 'admin' | 'employee';
+  allowedTabs?: ('customers' | 'inventory' | 'performance' | 'purchases')[];
 }
 
 export const DEFAULT_USERS: EmployeeUser[] = [];

@@ -110,6 +110,19 @@ export default function App() {
   const [installGuideTab, setInstallGuideTab] = useState<'ios' | 'android'>('android');
   const [dbValidationError, setDbValidationError] = useState<string | null>(null);
 
+  const hasTabAccess = (tab: 'customers' | 'inventory' | 'performance' | 'purchases') => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (!currentUser.allowedTabs) return true; // legacy support
+    return currentUser.allowedTabs.includes(tab);
+  };
+
+  useEffect(() => {
+    if (currentUser && !hasTabAccess(activeTab)) {
+      const allowed = (['customers', 'inventory', 'purchases', 'performance'] as const).find(t => hasTabAccess(t));
+      if (allowed) setActiveTab(allowed);
+    }
+  }, [currentUser, activeTab]);
   useEffect(() => {
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (isIOSDevice) {
@@ -208,6 +221,7 @@ export default function App() {
   const [newStaffUser, setNewStaffUser] = useState('');
   const [newStaffPass, setNewStaffPass] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<'admin' | 'employee'>('employee');
+  const [newStaffAllowedTabs, setNewStaffAllowedTabs] = useState<('customers' | 'inventory' | 'performance' | 'purchases')[]>(['customers', 'inventory', 'performance', 'purchases']);
   const [staffError, setStaffError] = useState('');
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
 
@@ -234,7 +248,8 @@ export default function App() {
         name: newStaffName.trim(),
         username: newStaffUser.trim().toLowerCase(),
         password: newStaffPass,
-        role: newStaffRole
+        role: newStaffRole,
+        allowedTabs: newStaffRole === 'employee' ? newStaffAllowedTabs : undefined
       };
 
       const updatedEmployees = employees.map(emp => {
@@ -264,6 +279,7 @@ export default function App() {
       setNewStaffUser('');
       setNewStaffPass('');
       setNewStaffRole('employee');
+      setNewStaffAllowedTabs(['customers', 'inventory', 'performance', 'purchases']);
       setStaffError('');
       alert('Staff personnel credentials updated successfully!');
     } else {
@@ -277,13 +293,15 @@ export default function App() {
         username: newStaffUser.trim().toLowerCase(),
         password: newStaffPass,
         name: newStaffName.trim(),
-        role: newStaffRole
+        role: newStaffRole,
+        allowedTabs: newStaffRole === 'employee' ? newStaffAllowedTabs : undefined
       };
       handleAddNewEmployee(newWorker);
       setNewStaffName('');
       setNewStaffUser('');
       setNewStaffPass('');
       setNewStaffRole('employee');
+      setNewStaffAllowedTabs(['customers', 'inventory', 'performance', 'purchases']);
       setStaffError('');
       alert(`Successfully registered staff member "${newWorker.name}" as ${newWorker.role}!`);
     }
@@ -295,6 +313,7 @@ export default function App() {
     setNewStaffUser(emp.username);
     setNewStaffPass(emp.password || '');
     setNewStaffRole(emp.role);
+    setNewStaffAllowedTabs(emp.allowedTabs || ['customers', 'inventory', 'performance', 'purchases']);
     setStaffError('');
   };
 
@@ -304,6 +323,7 @@ export default function App() {
     setNewStaffUser('');
     setNewStaffPass('');
     setNewStaffRole('employee');
+    setNewStaffAllowedTabs(['customers', 'inventory', 'performance', 'purchases']);
     setStaffError('');
   };
 
@@ -1406,6 +1426,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                    <span className="block text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-1">Navigation</span>
                    
                    {/* Tab 1: Customer Management */}
+                   {hasTabAccess('customers') && (
                    <button
                      onClick={() => {
                        setActiveTab('customers');
@@ -1425,8 +1446,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                        {customers.length}
                      </span>
                    </button>
+                   )}
 
                    {/* Tab 2: Inventory Dashboard */}
+                   {hasTabAccess('inventory') && (
                    <button
                      onClick={() => {
                        setActiveTab('inventory');
@@ -1446,8 +1469,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                        {paperStocks.length}
                      </span>
                    </button>
+                   )}
 
                    {/* Tab 3: Purchases Ledger */}
+                   {hasTabAccess('purchases') && (
                    <button
                      onClick={() => {
                        setActiveTab('purchases');
@@ -1467,8 +1492,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                        {purchases.length}
                      </span>
                    </button>
+                   )}
 
                    {/* Tab 4: Performance Summary */}
+                   {hasTabAccess('performance') && (
                    <button
                      onClick={() => {
                        setActiveTab('performance');
@@ -1485,6 +1512,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                        <span>Performance Summary</span>
                      </div>
                    </button>
+                   )}
                  </div>
 
                  {/* System Actions */}
@@ -1585,6 +1613,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           <nav className="flex overflow-x-auto whitespace-nowrap scrollbar-none-x space-x-4 md:space-x-6 -mb-px" aria-label="Tabs Selector">
 
             {/* Tab 1: Customer Management (Now First!) */}
+            {hasTabAccess('customers') && (
             <button
               id="tab-cust-trigger"
               onClick={() => setActiveTab('customers')}
@@ -1600,8 +1629,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 {customers.length}
               </span>
             </button>
+            )}
 
             {/* Tab 2: Inventory Dashboard */}
+            {hasTabAccess('inventory') && (
             <button
               id="tab-inv-trigger"
               onClick={() => setActiveTab('inventory')}
@@ -1617,8 +1648,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 {paperStocks.length}
               </span>
             </button>
+            )}
 
             {/* Tab 3: Purchased Items & Services */}
+            {hasTabAccess('purchases') && (
             <button
               id="tab-purchases-trigger"
               onClick={() => setActiveTab('purchases')}
@@ -1634,8 +1667,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 {purchases.length}
               </span>
             </button>
+            )}
 
             {/* Tab 4: Business Performance Summary */}
+            {hasTabAccess('performance') && (
             <button
               id="tab-perf-trigger"
               onClick={() => setActiveTab('performance')}
@@ -1648,6 +1683,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               <TrendingUp className="w-4 h-4" />
               Business Performance Summary
             </button>
+            )}
 
           </nav>
         </div>
@@ -1926,6 +1962,30 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       </select>
                     </div>
                   </div>
+                  {newStaffRole === 'employee' && (
+                    <div className="pt-2 border-t border-[#262626]">
+                      <label className="block text-[10px] uppercase text-gray-500 mb-2">Module Access Permissions</label>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+                        {(['customers', 'inventory', 'purchases', 'performance'] as const).map((tab) => (
+                          <label key={tab} className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              className="accent-[#ee317b]"
+                              checked={newStaffAllowedTabs.includes(tab)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewStaffAllowedTabs(prev => [...prev, tab]);
+                                } else {
+                                  setNewStaffAllowedTabs(prev => prev.filter(t => t !== tab));
+                                }
+                              }}
+                            />
+                            <span className="capitalize">{tab === 'purchases' ? 'Ledger / Purchases' : tab}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-2 pt-2">
                     {editingEmployee && (
