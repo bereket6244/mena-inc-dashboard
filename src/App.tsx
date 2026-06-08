@@ -1688,7 +1688,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#121212] border border-[#262626] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col relative"
+              className="bg-[#121212] border border-[#262626] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col relative rounded-2xl"
             >
               <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#ee317b] to-[#71b536]" />
               
@@ -1720,7 +1720,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 {/* Add/Edit dynamic worker form */}
                 <form onSubmit={handleCreateStaffSubmit} className="bg-[#181818] border border-[#262626] p-4 space-y-4 font-sans">
                   <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">
-                    {editingEmployee ? `Edit Staff Personnel: ${editingEmployee.name}` : 'Add Staff Personnel / Operator'}
+                    {editingEmployee ? `Edit Staff Member: ${editingEmployee.name}` : 'Add Staff Member'}
                   </span>
                   
                   {staffError && (
@@ -1731,43 +1731,43 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Human Worker Name</label>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Staff Name</label>
                       <input
                         type="text"
                         required
                         placeholder="e.g. Samuel Kebede"
                         value={newStaffName}
                         onChange={(e) => setNewStaffName(e.target.value)}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans rounded-md"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Login Username</label>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Username</label>
                       <input
                         type="text"
                         required
                         placeholder="e.g. samuel"
                         value={newStaffUser}
                         onChange={(e) => setNewStaffUser(e.target.value)}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans rounded-md"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Passkey Keyphrase</label>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Passkey</label>
                       <input
                         type="password"
                         required
                         placeholder="••••••••"
                         value={newStaffPass}
                         onChange={(e) => setNewStaffPass(e.target.value)}
-                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans tracking-widest"
+                        className="w-full bg-[#121212] border border-[#262626] text-xs px-2.5 py-1.5 focus:border-[#ee317b] focus:border outline-none text-white font-sans tracking-widest rounded-md"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase text-gray-500 mb-1">System clearance Role</label>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Role</label>
                       <SearchableSelect
                         value={newStaffRole}
                         onChange={(val) => setNewStaffRole(val as 'admin' | 'employee')}
@@ -1817,24 +1817,25 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                       type="submit"
                       className="bg-[#71b536] hover:bg-white text-black font-bold text-xs uppercase px-4 py-1.5 rounded-md font-sans transition-colors cursor-pointer"
                     >
-                      {editingEmployee ? 'Save Changes' : 'Authorize Operator'}
+                      {editingEmployee ? 'Save Changes' : 'Add Staff Member'}
                     </button>
                   </div>
                 </form>
 
                 {/* Registered Workers List */}
                 <div className="space-y-3 font-sans">
-                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Registered Workforce ({employees.length})</span>
+                <div className="space-y-3 font-sans">
+                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({employees.length})</span>
                   
-                  <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden">
+                  <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden rounded-md">
                     {employees.map(emp => (
                       <div key={emp.username} className="px-4 py-3 flex items-center justify-between text-xs font-sans">
                         <div>
                           <span className="font-semibold text-white font-sans">{emp.name}</span>
-                          <span className="text-[10px] text-gray-550 block">Username ID: <span className="text-gray-300">{emp.username}</span> | Passkey: <span className="text-gray-400">{emp.password}</span></span>
+                          <span className="text-[10px] text-gray-550 block">Username: <span className="text-gray-300">{emp.username}</span> | Role: <span className="text-gray-400 capitalize">{emp.role}</span></span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-0.5 text-[9px] uppercase font-bold ${
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[9px] uppercase font-bold rounded-md ${
                             emp.role === 'admin' 
                               ? 'bg-[#31111E] text-[#ee317b] border border-[#ee317b]/20' 
                               : 'bg-[#1b2b1a] text-[#71b536] border border-[#71b536]/20'
@@ -1842,27 +1843,40 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                             {emp.role}
                           </span>
                           {currentUser && currentUser.role === 'admin' && (
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditEmployee(emp)}
-                              className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] hover:border-[#71b536] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
-                              title="Edit worker credentials & role"
-                            >
-                              EDIT
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditEmployee(emp)}
+                                className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Reset passkey for ${emp.name} to '1234'?`)) {
+                                     handleStartEditEmployee(emp);
+                                     setNewStaffPass('1234');
+                                     setStaffError('Passkey reset to 1234. Click Save Changes to confirm.');
+                                  }
+                                }}
+                                className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
+                              >
+                                Reset Passkey
+                              </button>
+                            </>
                           )}
                           {currentUser && currentUser.role === 'admin' && currentUser.username !== emp.username && (
                             <button
                               type="button"
                               onClick={() => {
-                                if (window.confirm(`Are you sure you want to remove operator "${emp.name}"?`)) {
+                                if (window.confirm(`Are you sure you want to permanently delete staff member "${emp.name}"?`)) {
                                   handleDeleteEmployee(emp.username);
                                 }
                               }}
-                              className="p-1 text-gray-500 hover:text-red-400 border border-transparent hover:border-[#F87171]/20 rounded-md cursor-pointer transition-colors"
-                              title="Delete worker credentials"
+                              className="px-2 py-0.5 bg-[#31111E] text-[#F87171] hover:text-[#EF4444] border border-[#F87171]/20 rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
                             >
-                              <span className="text-red-500 hover:text-red-400 font-bold font-sans">✕</span>
+                              Delete
                             </button>
                           )}
                         </div>
@@ -1873,7 +1887,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
                 {/* System Admin Settings (Database Link & Configurations) */}
                 <div className="border-t border-[#262626] pt-5 space-y-3 font-sans">
-                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Administrative Controls</span>
+                  <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">🔧 System Settings</span>
                   <div className="flex flex-wrap gap-2.5">
                     {/* Database Config Trigger */}
                     <button
@@ -1897,15 +1911,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
               </div>
 
-              {/* Modal footer */}
-              <div className="px-6 py-4 border-t border-[#262626] bg-[#181818]/60 flex justify-end">
-                <button
-                  onClick={() => { setShowStaffModal(false); setStaffError(''); }}
-                  className="bg-[#242424] hover:bg-[#323232] text-white text-xs font-sans font-medium px-4 py-1.5 transition-colors cursor-pointer rounded-md"
-                >
-                  Done
-                </button>
-              </div>
 
             </motion.div>
           </div>
