@@ -2522,14 +2522,14 @@ export default function CustomerTab({
                               }
                             }}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none ${(() => {
-                              if (!amount1 || paperType1 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!amount1 || paperType1 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType1);
-                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Number((parseFractionOrExpression(amount1) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
-                              return 'border-[#262626] focus:border-[#ee317b]';
+                              return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/4 or 0.5"
                           />
@@ -2581,14 +2581,14 @@ export default function CustomerTab({
                             }}
                             disabled={paperType2 === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
-                              if (!amount2 || paperType2 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!amount2 || paperType2 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType2);
-                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Number((parseFractionOrExpression(amount2) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
-                              return 'border-[#262626] focus:border-[#ee317b]';
+                              return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/2"
                           />
@@ -2640,14 +2640,14 @@ export default function CustomerTab({
                             }}
                             disabled={paperType3 === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
-                              if (!amount3 || paperType3 === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!amount3 || paperType3 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === paperType3);
-                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Number((parseFractionOrExpression(amount3) * quantity).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
-                              return 'border-[#262626] focus:border-[#ee317b]';
+                              return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/4"
                           />
@@ -2712,14 +2712,14 @@ export default function CustomerTab({
                             }}
                             disabled={entrancePaper === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
-                              if (!amount16 || entrancePaper === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!amount16 || entrancePaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === entrancePaper);
-                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Number((parseFractionOrExpression(amount16) / 16).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
-                              return 'border-[#262626] focus:border-[#ee317b]';
+                              return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 160 or 16 * 10"
                           />
@@ -2778,14 +2778,14 @@ export default function CustomerTab({
                             }}
                             disabled={ajabiPaper === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
-                              if (!amount9 || ajabiPaper === 'None') return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!amount9 || ajabiPaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
                               const stock = paperStocks.find(p => p.name === ajabiPaper);
-                              if (!stock) return 'border-[#262626] focus:border-[#ee317b]';
+                              if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Number((parseFractionOrExpression(amount9) / 9).toFixed(2));
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
-                              return 'border-[#262626] focus:border-[#ee317b]';
+                              return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 90 or 9 * 10"
                           />
