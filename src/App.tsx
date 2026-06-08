@@ -1179,7 +1179,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-4 selection:bg-[#ee317b]/30 font-sans">
-        <div className="w-full max-w-md bg-[#121212] border border-[#262626] p-8 shadow-2xl relative">
+        <div className="w-full max-w-md bg-[#121212] border border-[#262626] p-8 shadow-2xl relative rounded-2xl overflow-hidden">
           <div className="absolute top-0 left-0 w-2 h-2 bg-[#ee317b]" />
           <div className="absolute top-0 right-0 w-2 h-2 bg-[#71b536]" />
           <div className="absolute bottom-0 left-0 w-2 h-2 bg-[#71b536]" />
@@ -1215,7 +1215,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 required
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans"
+                className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans rounded-md"
                 placeholder="e.g. bereket"
               />
             </div>
@@ -1228,7 +1228,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                   required
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans font-sans"
+                  className="w-full bg-[#181818] border border-[#262626] px-3.5 py-2 text-sm text-white focus:border-[#ee317b] outline-none font-sans rounded-md"
                   placeholder="••••••••"
                 />
                 <button
@@ -1243,55 +1243,13 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
             <button
               type="submit"
-              className="w-full bg-[#ee317b] text-black font-bold font-sans py-2.5 hover:bg-white hover:text-black transition-all cursor-pointer text-xs uppercase"
+              className="w-full bg-[#ee317b] text-black font-bold font-sans py-2.5 hover:bg-white hover:text-black transition-all cursor-pointer text-xs uppercase rounded-md"
             >
               Verify &amp; Unlock Space
             </button>
           </form>
 
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={triggerPwaInstall}
-              className="w-full bg-[#181818] text-[#71b536] hover:text-white border border-[#71b536]/30 hover:border-[#71b536] font-bold font-sans py-2 hover:bg-[#71b536]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5 mb-3"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download Web App
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => {
-                const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
-              }}
-              className="w-full bg-[#181818] text-[#ee317b] hover:text-white border border-[#ee317b]/30 hover:border-[#ee317b] font-bold font-sans py-2 hover:bg-[#ee317b]/10 transition-all cursor-pointer text-xs uppercase flex items-center justify-center gap-1.5"
-            >
-              <FolderDown className="w-3.5 h-3.5" />
-              Export Data
-            </button>
-          </div>
 
-          <div className="mt-8 border-t border-[#232323] pt-5">
-            <span className="block text-[9px] uppercase tracking-wider font-sans text-[#71b536] mb-2 font-bold">Standard Demorun Credentials:</span>
-            <div className="bg-[#181818] p-3 rounded-md text-[11px] font-sans text-gray-400 space-y-1 bg-opacity-40">
-              <div className="flex justify-between">
-                <span>🛡️ Admin:</span>
-                <span className="text-white">admin / admin</span>
-              </div>
-              <div className="flex justify-between border-t border-[#232323] pt-1 mt-1">
-                <span>👤 Employee (Restricted):</span>
-                <span className="text-[#ee317b]">bereket / 1234</span>
-              </div>
-              <div className="flex justify-between text-stone-500">
-                <span>👤 Employee (Restricted):</span>
-                <span>yeabsra / 1234</span>
-              </div>
-            </div>
-            <p className="text-[9px] text-gray-600 mt-3 font-sans leading-relaxed">
-              * Employees possess full read/write customer logs capabilities, but deletions, inventory initial values updates, and financials are guarded exclusively for Admins.
-            </p>
-          </div>
         </div>
       </div>
     );
