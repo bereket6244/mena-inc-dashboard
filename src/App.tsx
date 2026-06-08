@@ -281,7 +281,7 @@ export default function App() {
       setNewStaffRole('employee');
       setNewStaffAllowedTabs(['customers', 'inventory', 'performance', 'purchases']);
       setStaffError('');
-      alert('Staff personnel credentials updated successfully!');
+      alert('Changes saved! The database has been updated with their new module access permissions.');
     } else {
       // Create new employee
       if (employees.some(emp => emp.username.toLowerCase() === newStaffUser.trim().toLowerCase())) {
@@ -303,7 +303,7 @@ export default function App() {
       setNewStaffRole('employee');
       setNewStaffAllowedTabs(['customers', 'inventory', 'performance', 'purchases']);
       setStaffError('');
-      alert(`Successfully registered staff member "${newWorker.name}" as ${newWorker.role}!`);
+      alert(`Changes saved! The database has been updated. Successfully registered "${newWorker.name}" as ${newWorker.role} with selected module access.`);
     }
   };
 
