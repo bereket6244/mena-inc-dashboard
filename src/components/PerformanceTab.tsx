@@ -282,9 +282,7 @@ export default function PerformanceTab({
               <TrendingUp className="w-5 h-5 text-[#ee317b]" />
               📊 Expense Category &amp; Interval Analysis Engine
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5 font-sans">
-              Determine operational costs during custom date ranges and category parameters.
-            </p>
+
           </div>
           {(expenseStartDate || expenseEndDate || deselectedCategories.length > 0) && (
             <button

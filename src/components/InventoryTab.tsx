@@ -658,15 +658,7 @@ export default function InventoryTab({
 
 
           {/* Guidelines info card helper */}
-          <div className="bg-[#121212] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
-            <span className="font-sans text-xs text-[#ee317b] tracking-wider uppercase font-bold block">Warehouse Instructions</span>
-            <ul className="text-xs text-gray-400 space-y-2 list-disc list-inside leading-relaxed bg-[#181818]/40 p-3 border border-[#262626]">
-              <li>Paper counts must be kept up-to-date daily.</li>
-              <li>Stocks dropping under 50 sheets trigger a flash <strong className="text-[#FACC15]">Low Stock Alert</strong> automations.</li>
-              <li>Values under or equal to 0 sheets trigger <strong className="text-[#F87171]">Out of Stock</strong>.</li>
-              <li>To adjust material inventory levels directly, edit the "Initial Sheets" using the pencil icons.</li>
-            </ul>
-          </div>
+
 
         </div>
 

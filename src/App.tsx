@@ -1335,7 +1335,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               </div>
               <div>
                 <h1 className="text-base font-bold text-white tracking-tight font-sans">
-                  MENA INC. <span className="font-medium text-[#ee317b] font-sans text-xs">V2.1</span>
+                  MENA INC.
                 </h1>
                 <p className="text-[10px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
               </div>
@@ -1661,7 +1661,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           <div className="flex gap-4">
             <span className="flex items-center gap-1">
               <Database className="w-3.5 h-3.5 text-[#ee317b]" />
-              Secure CRM &amp; Inventory Engine (V2.1)
+              Secure CRM &amp; Inventory Engine
             </span>
           </div>
         </div>

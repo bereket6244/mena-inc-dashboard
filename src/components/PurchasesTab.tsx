@@ -652,18 +652,11 @@ export default function PurchasesTab({
             <Layers className="w-4 h-4 text-[#ee317b]" />
             Business Expenses &amp; Purchases Ledger
           </h2>
-          <p className="text-xs text-stone-400 mt-1 font-sans">
-            Streamlined registry of materials, maintenance, advertising, utilities, and studio consumption, connected to payment account ledgers.
-          </p>
+
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-right">
-            <span className="text-[10px] text-gray-500 font-sans tracking-wider uppercase block">Total Expenses (Filtered)</span>
-            <span className="text-xl font-sans font-bold text-red-400 block">
-              E{totalExpenseAmount.toLocaleString(undefined, { minimumFractionDigits: 1 })} ETB
-            </span>
-          </div>
+
 
 
 
@@ -863,9 +856,7 @@ export default function PurchasesTab({
                 ))}
               </div>
 
-              <p className="text-[10px] text-gray-500 font-sans leading-tight pt-1">
-                💡 Renaming a category automatically cascades and updates all existing purchase rows locked to that category!
-              </p>
+
             </div>
           </div>
         </div>
