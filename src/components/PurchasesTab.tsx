@@ -322,122 +322,123 @@ export default function PurchasesTab({
   const handleSavePurchase = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // If we have items in the batch and field inputs are empty or partially drafted
-    if (pendingBatchItems.length > 0) {
-      // Create separate Ledger purchase lines for each pending item in the batch
-      const newItemsToCommit: Purchase[] = pendingBatchItems.map((item, idx) => ({
-        id: `pur-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
-        purchasedBy: (isAdmin ? purchasedBy.trim() : currentUser?.name) || 'Staff',
-        itemOrService: item.itemOrService,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        purchaseDate,
-        paymentMethodId,
-        totalPrice: item.totalPrice,
-        notesOrDescription: item.notesOrDescription || 'Batch item',
-        recordedBy: (isAdmin ? recordedBy.trim() : currentUser?.name) || 'Admin',
-        expenseCategory: item.expenseCategory,
-        hasVat: item.hasVat,
-        vatAmount: item.vatAmount,
-        hasWithholding: item.hasWithholding,
-        withholdingAmount: item.withholdingAmount,
-        baseAmount: item.baseAmount
-      }));
+    const finalItemName = itemOrServiceInput.trim();
+    let allItemsToSave = [...pendingBatchItems];
 
-      onUpdatePurchases([...purchases, ...newItemsToCommit]);
+    // If there is a partially drafted item in the form, append it to the batch automatically
+    if (finalItemName) {
+      if (quantity <= 0) {
+        alert('Quantity must be greater than zero for the pending item.');
+        return;
+      }
+      if (unitPrice < 0) {
+        alert('Unit Price cannot be negative for the pending item.');
+        return;
+      }
+
+      const calculatedBase = quantity * unitPrice;
+      const calculatedVat = hasVat ? calculatedBase * 0.15 : 0;
+      const calculatedWithholding = hasWithholding ? calculatedBase * 0.03 : 0;
+      const calculatedTotal = calculatedBase + calculatedVat - calculatedWithholding;
+
+      const newBatchItem: PendingPurchaseItem = {
+        tempId: `tmp-${Date.now()}-auto`,
+        itemOrService: finalItemName,
+        expenseCategory: expenseCategory || categories[0]?.name || 'Uncategorized',
+        quantity,
+        unitPrice,
+        hasVat,
+        vatAmount: calculatedVat,
+        hasWithholding,
+        withholdingAmount: calculatedWithholding,
+        baseAmount: calculatedBase,
+        totalPrice: calculatedTotal,
+        notesOrDescription: notesOrDescription.trim()
+      };
+      
+      allItemsToSave.push(newBatchItem);
+
+      // Track dynamic additions for the automatically added item
+      const existingInCatalog = allCatalogItems.some(
+        item => item.name.toLowerCase() === finalItemName.toLowerCase()
+      );
+      if (!existingInCatalog) {
+        const targetCat = expenseCategory || categories[0]?.name;
+        const updatedCats = categories.map(c => {
+          if (c.name === targetCat && !c.items.includes(finalItemName)) {
+            return { ...c, items: [...c.items, finalItemName] };
+          }
+          return c;
+        });
+        onUpdateCategories(updatedCats);
+      }
+    }
+
+    // If we have items in the batch (including the auto-added one)
+    if (allItemsToSave.length > 0) {
+      if (editingPurchase && allItemsToSave.length === 1) {
+        // We are editing a single purchase
+        const item = allItemsToSave[0];
+        const shopperWorkerName = isAdmin ? purchasedBy.trim() : currentUser?.name;
+        const loggerWorkerName = isAdmin ? recordedBy.trim() : currentUser?.name;
+
+        const updated = purchases.map(p => {
+          if (p.id === editingPurchase.id) {
+            return {
+              ...p,
+              purchasedBy: shopperWorkerName || p.purchasedBy,
+              itemOrService: item.itemOrService,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              purchaseDate,
+              paymentMethodId,
+              totalPrice: item.totalPrice,
+              notesOrDescription: item.notesOrDescription,
+              recordedBy: loggerWorkerName || p.recordedBy,
+              expenseCategory: item.expenseCategory,
+              hasVat: item.hasVat,
+              vatAmount: item.vatAmount,
+              hasWithholding: item.hasWithholding,
+              withholdingAmount: item.withholdingAmount,
+              baseAmount: item.baseAmount
+            };
+          }
+          return p;
+        });
+        onUpdatePurchases(updated);
+      } else {
+        // We are creating new purchases
+        const newItemsToCommit: Purchase[] = allItemsToSave.map((item, idx) => ({
+          id: `pur-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+          purchasedBy: (isAdmin ? purchasedBy.trim() : currentUser?.name) || 'Staff',
+          itemOrService: item.itemOrService,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          purchaseDate,
+          paymentMethodId,
+          totalPrice: item.totalPrice,
+          notesOrDescription: item.notesOrDescription || 'Batch item',
+          recordedBy: (isAdmin ? recordedBy.trim() : currentUser?.name) || 'Admin',
+          expenseCategory: item.expenseCategory,
+          hasVat: item.hasVat,
+          vatAmount: item.vatAmount,
+          hasWithholding: item.hasWithholding,
+          withholdingAmount: item.withholdingAmount,
+          baseAmount: item.baseAmount
+        }));
+
+        onUpdatePurchases([...purchases, ...newItemsToCommit]);
+      }
+      
       setPendingBatchItems([]);
       setIsFormOpen(false);
       return;
     }
 
-    // Fallback: Custom single commit if list is empty
-    const finalItemName = itemOrServiceInput.trim();
-    if (!finalItemName) {
-      alert('Please specify the Item or Service purchased.');
-      return;
-    }
-    if (quantity <= 0) {
-      alert('Quantity must be greater than zero.');
-      return;
-    }
-    if (unitPrice < 0) {
-      alert('Unit Price cannot be negative.');
-      return;
-    }
+    // If nothing was entered at all
+    alert('Please specify the Item or Service purchased.');
+    return;
 
-    const calculatedBase = quantity * unitPrice;
-    const calculatedVat = hasVat ? calculatedBase * 0.15 : 0;
-    const calculatedWithholding = hasWithholding ? calculatedBase * 0.03 : 0;
-    const calculatedTotal = calculatedBase + calculatedVat - calculatedWithholding;
-
-    // Track dynamic additions
-    const existingInCatalog = allCatalogItems.some(
-      item => item.name.toLowerCase() === finalItemName.toLowerCase()
-    );
-    if (!existingInCatalog && finalItemName) {
-      const targetCat = expenseCategory || categories[0]?.name;
-      const updatedCats = categories.map(c => {
-        if (c.name === targetCat && !c.items.includes(finalItemName)) {
-          return { ...c, items: [...c.items, finalItemName] };
-        }
-        return c;
-      });
-      onUpdateCategories(updatedCats);
-    }
-
-    const shopperWorkerName = isAdmin ? purchasedBy.trim() : currentUser?.name;
-    const loggerWorkerName = isAdmin ? recordedBy.trim() : currentUser?.name;
-
-    if (editingPurchase) {
-      // Modify single item
-      const updated = purchases.map(p => {
-        if (p.id === editingPurchase.id) {
-          return {
-            ...p,
-            purchasedBy: shopperWorkerName || p.purchasedBy,
-            itemOrService: finalItemName,
-            quantity,
-            unitPrice,
-            purchaseDate,
-            paymentMethodId,
-            totalPrice: calculatedTotal,
-            notesOrDescription: notesOrDescription.trim(),
-            recordedBy: loggerWorkerName || p.recordedBy,
-            expenseCategory: expenseCategory || p.expenseCategory,
-            hasVat,
-            vatAmount: calculatedVat,
-            hasWithholding,
-            withholdingAmount: calculatedWithholding,
-            baseAmount: calculatedBase
-          };
-        }
-        return p;
-      });
-      onUpdatePurchases(updated);
-    } else {
-      // Create single item
-      const newPurchase: Purchase = {
-        id: `pur-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        purchasedBy: shopperWorkerName || 'Staff',
-        itemOrService: finalItemName,
-        quantity,
-        unitPrice,
-        purchaseDate,
-        paymentMethodId,
-        totalPrice: calculatedTotal,
-        notesOrDescription: notesOrDescription.trim(),
-        recordedBy: loggerWorkerName || 'Admin',
-        expenseCategory: expenseCategory || categories[0]?.name || 'Uncategorized',
-        hasVat,
-        vatAmount: calculatedVat,
-        hasWithholding,
-        withholdingAmount: calculatedWithholding,
-        baseAmount: calculatedBase
-      };
-      onUpdatePurchases([...purchases, newPurchase]);
-    }
-
-    setIsFormOpen(false);
   };
 
   // Delete single purchase
