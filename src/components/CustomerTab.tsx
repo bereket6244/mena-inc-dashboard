@@ -2225,7 +2225,6 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
 
-                        {editingCustomer && (
                           <div>
                             <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
                             <input
@@ -2236,7 +2235,6 @@ export default function CustomerTab({
                               className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                             />
                           </div>
-                        )}
                       </div>
                     </div>
 
