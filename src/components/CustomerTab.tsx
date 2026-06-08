@@ -2341,7 +2341,7 @@ export default function CustomerTab({
                             <option value="">-- None --</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
-                                {b.name} {b.accountNumber ? `(A/C: ${b.accountNumber})` : ''}
+                                {b.name}
                               </option>
                             ))}
                           </select>
@@ -2360,7 +2360,7 @@ export default function CustomerTab({
                             <option value="">-- Unpaid / Pending --</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
-                                {b.name} {b.accountNumber ? `(A/C: ${b.accountNumber})` : ''}
+                                {b.name}
                               </option>
                             ))}
                           </select>

@@ -1326,7 +1326,7 @@ export default function PurchasesTab({
                           className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                         >
                           {bankAccounts.map((b) => (
-                            <option key={b.id} value={b.id}>{b.name} (Acct: {b.accountNumber || 'Cash'})</option>
+                            <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
                         </select>
                       </div>
