@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 interface SearchableSelectProps {
@@ -16,8 +17,11 @@ export default function SearchableSelect({
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Parse children into options array
   const options: { value: string; label: string }[] = [];
@@ -43,16 +47,60 @@ export default function SearchableSelect({
 
   const selectedOption = options.find(opt => opt.value === value);
 
+  const updateDropdownPosition = () => {
+    if (wrapperRef.current && isOpen) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const dropdownHeight = 240; // max-h-60 is 240px
+      
+      let top = rect.bottom + window.scrollY;
+      
+      // If no space below but space above, render upwards
+      if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+        top = rect.top + window.scrollY - dropdownHeight - 4; // 4px margin
+      } else {
+        top += 4; // 4px margin below
+      }
+
+      setDropdownStyle({
+        position: 'absolute',
+        top: `${top}px`,
+        left: `${rect.left + window.scrollX}px`,
+        width: `${Math.max(rect.width, 200)}px`,
+        zIndex: 99999,
+      });
+    }
+  };
+
   // Click outside listener
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current && 
+        !wrapperRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Handle position on scroll and resize
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+      window.removeEventListener('resize', updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Focus input when opened
   useEffect(() => {
@@ -106,9 +154,13 @@ export default function SearchableSelect({
         </div>
       </div>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute z-[9999] top-full mt-1 left-0 w-full min-w-[200px] bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden">
+      {/* Portal Dropdown Menu */}
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          style={dropdownStyle}
+          className="bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden"
+        >
           <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 py-1">
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-3 text-xs text-gray-500 text-center italic">
@@ -134,7 +186,8 @@ export default function SearchableSelect({
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
