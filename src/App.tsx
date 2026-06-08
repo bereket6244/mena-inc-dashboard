@@ -102,7 +102,7 @@ export default function App() {
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(false);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
@@ -370,7 +370,6 @@ export default function App() {
   // Load from LocalStorage and synchronizing with Real Cloud Firestore if configured
   useEffect(() => {
     const loadData = async () => {
-      const loaderTimer = setTimeout(() => setIsInitialLoad(true), 150);
       setIsBuffering(true);
       try {
         // Load and seed employees
@@ -573,9 +572,7 @@ export default function App() {
       } catch (err) {
         // Fallback
       } finally {
-        clearTimeout(loaderTimer);
         setTimeout(() => setIsBuffering(false), 500);
-        setIsInitialLoad(false);
       }
     };
 
@@ -1302,56 +1299,6 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans antialiased" style={{ lineSpacing: "1.15" }}>
       
-      {/* 🚀 INITIAL STARTUP LOADING SCREEN */}
-      <AnimatePresence>
-        {isInitialLoad && (
-          <motion.div
-            key="initial-loader"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0 } }}
-            className="fixed inset-0 z-[99999] bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden"
-          >
-            {/* Glowing Background Orbs */}
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} 
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-1/3 left-1/4 w-96 h-96 bg-[#ee317b]/20 rounded-full blur-[100px]"
-            />
-            <motion.div 
-              animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0.4, 0.2] }} 
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-[#71b536]/20 rounded-full blur-[100px]"
-            />
-
-            {/* Central Animated Logo/Spinner */}
-            <div className="relative z-10 flex flex-col items-center">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 border-t-2 border-r-2 border-[#ee317b] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(238,49,123,0.3)] mb-4"
-              >
-                <motion.div
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="w-10 h-10 border-b-2 border-l-2 border-[#71b536] rounded-full shadow-[0_0_15px_rgba(113,181,54,0.3)]"
-                />
-              </motion.div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.5 }}
-                className="text-xs text-gray-400 font-mono tracking-widest uppercase flex items-center gap-2"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#71b536] animate-pulse" />
-                Loading...
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b] animate-pulse" />
-              </motion.p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
 
 
       {/* Sticky Top Navigation Container */}
