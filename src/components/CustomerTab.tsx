@@ -1451,7 +1451,7 @@ export default function CustomerTab({
                           <option value="">- Empty/Unpaid -</option>
                           {bankAccounts.map(b => (
                             <option key={b.id} value={b.id}>
-                              {b.name.replace(/\s*\(.*\)/, '').replace('Commercial Bank of Ethiopia', 'CBE')} {b.accountNumber ? `(${b.accountNumber.slice(-4)})` : ''}
+                              {b.name}
                             </option>
                           ))}
                         </select>
@@ -1642,7 +1642,7 @@ export default function CustomerTab({
                               <option value="">- Unpaid -</option>
                               {bankAccounts.map(b => (
                                 <option key={b.id} value={b.id}>
-                                  {b.name.replace(/\s*\(.*\)/, '').replace('Commercial Bank of Ethiopia', 'CBE')} {b.accountNumber ? `(${b.accountNumber.slice(-4)})` : ''}
+                                  {b.name}
                                 </option>
                               ))}
                             </select>
