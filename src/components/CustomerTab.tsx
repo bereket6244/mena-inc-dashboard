@@ -3917,7 +3917,7 @@ export default function CustomerTab({
         )}
       </AnimatePresence>
       {/* Mobile FAB for Create Customer Order */}
-      <div className="md:hidden fixed bottom-[5.5rem] right-4 z-30 pointer-events-none">
+      <div className="md:hidden fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
         <button
           type="button"
           onClick={handleOpenCreate}
@@ -3934,7 +3934,7 @@ export default function CustomerTab({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            className="md:hidden fixed bottom-16 left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
+            className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
           >
             <div className="flex justify-between items-center text-xs font-bold text-[#ee317b] mb-1 px-1">
               <span>{selectedCustomerIds.length} Selected Orders</span>
