@@ -23,7 +23,8 @@ import {
   Share2,
   Menu,
   FolderDown,
-  Type
+  Type,
+  MoreVertical
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
 import { generateReportPdf } from './utils/pdfExport';
@@ -1427,175 +1428,77 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                </button>
              </div>
 
-             {/* Mobile hamburger icon trigger button */}
-             <button
-               type="button"
-               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-               className="md:hidden p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-md focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
-               aria-label="Toggle Navigation Menu"
-             >
-               {isMobileMenuOpen ? (
-                 <X className="w-5 h-5 text-[#ee317b]" />
-               ) : (
-                 <Menu className="w-5 h-5 text-white" />
-               )}
-             </button>
-
-           </div>
-         </div>
-
-         {/* Universal Dropdown Menu Drawer */}
-         <AnimatePresence>
-           {isMobileMenuOpen && (
-             <motion.div
-               initial={{ height: 0, opacity: 0 }}
-               animate={{ height: 'auto', opacity: 1 }}
-               exit={{ height: 0, opacity: 0 }}
-               transition={{ duration: 0.2, ease: 'easeInOut' }}
-               className="absolute left-0 right-0 top-16 md:hidden border-b border-[#262626] bg-[#121212]/95 backdrop-blur-md overflow-y-auto max-h-[calc(100vh-4rem)] shadow-2xl z-50"
-             >
-               <div className="px-4 py-4 space-y-4 font-sans">
-                 
-                 {/* Logged in User Tag */}
-                 <div className="flex items-center justify-between bg-[#181818] border border-[#262626] px-3 py-2 text-xs">
-                   <div className="flex items-center gap-1.5">
-                     {currentUser.role === 'admin' ? (
-                       <Shield className="w-3.5 h-3.5 text-[#ee317b]" />
-                     ) : (
-                       <User className="w-3.5 h-3.5 text-[#71b536]" />
-                     )}
-                     <span className="text-gray-200 tracking-wide font-medium">{currentUser.name}</span>
-                   </div>
-                   <span className={`text-[8px] uppercase tracking-wider px-1.5 border font-bold py-0.5 ${
-                     currentUser.role === 'admin' ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/15' : 'bg-[#1b2b1a] text-[#71b536] border-[#71b536]/15'
-                   }`}>
-                     {currentUser.role}
-                   </span>
-                 </div>
-
-                 {/* Clock / Time Info */}
-                 <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-[#181818] border border-[#262626] px-3 py-2">
-                   <Clock className="w-3.5 h-3.5 text-[#ee317b] animate-pulse" />
-                   <span>UTC: {timeStr || '08:12'}</span>
-                 </div>
-
-                 {/* Vertical Tab Navigation */}
-                 <div className="space-y-1.5">
-                   <span className="block text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-1">Navigation</span>
-                   
-                   {/* Tab 1: Customer Management */}
-                   {hasTabAccess('customers') && (
-                   <button
-                     onClick={() => {
-                       setActiveTab('customers');
-                       setIsMobileMenuOpen(false);
-                     }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
-                       activeTab === 'customers'
-                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
-                         : 'bg-[#181818] text-gray-400 hover:text-white'
-                     }`}
+             {/* Mobile Settings Dropdown */}
+             <div className="md:hidden relative">
+               <button
+                 type="button"
+                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                 className="p-2 text-stone-400 hover:text-white bg-[#181818] border border-[#262626] rounded-md focus:outline-none transition-colors cursor-pointer flex items-center justify-center"
+                 aria-label="Toggle Navigation Menu"
+               >
+                 <MoreVertical className="w-5 h-5 text-white" />
+               </button>
+               <AnimatePresence>
+                 {isMobileMenuOpen && (
+                   <motion.div
+                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                     animate={{ opacity: 1, y: 0, scale: 1 }}
+                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                     className="absolute right-0 top-full mt-2 w-56 bg-[#181818] border border-[#262626] rounded-md shadow-2xl z-50 py-2 font-sans"
                    >
-                     <div className="flex items-center gap-2">
-                       <Users className="w-4 h-4" />
-                       <span>Customer Management</span>
-                     </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'customers' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
-                       {customers.length}
-                     </span>
-                   </button>
-                   )}
-
-                   {/* Tab 2: Inventory Dashboard */}
-                   {hasTabAccess('inventory') && (
-                   <button
-                     onClick={() => {
-                       setActiveTab('inventory');
-                       setIsMobileMenuOpen(false);
-                     }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
-                       activeTab === 'inventory'
-                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
-                         : 'bg-[#181818] text-gray-400 hover:text-white'
-                     }`}
-                   >
-                     <div className="flex items-center gap-2">
-                       <Package className="w-4 h-4" />
-                       <span>Inventory Dashboard</span>
-                     </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'inventory' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
-                       {paperStocks.length}
-                     </span>
-                   </button>
-                   )}
-
-                   {/* Tab 3: Purchases Ledger */}
-                   {hasTabAccess('purchases') && (
-                   <button
-                     onClick={() => {
-                       setActiveTab('purchases');
-                       setIsMobileMenuOpen(false);
-                     }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
-                       activeTab === 'purchases'
-                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
-                         : 'bg-[#181818] text-gray-400 hover:text-white'
-                     }`}
-                   >
-                     <div className="flex items-center gap-2">
-                       <Database className="w-4 h-4" />
-                       <span>Purchases &amp; Expenses</span>
-                     </div>
-                     <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'purchases' ? 'bg-[#ee317b] text-black font-extrabold' : 'bg-[#222222] text-gray-400'}`}>
-                       {purchases.length}
-                     </span>
-                   </button>
-                   )}
-
-                   {/* Tab 4: Performance Summary */}
-                   {hasTabAccess('performance') && (
-                   <button
-                     onClick={() => {
-                       setActiveTab('performance');
-                       setIsMobileMenuOpen(false);
-                     }}
-                     className={`w-full py-2.5 px-3 border border-[#262626] text-left font-sans text-xs flex items-center justify-between cursor-pointer transition-colors rounded-md ${
-                       activeTab === 'performance'
-                         ? 'bg-[#31111E]/40 border-[#ee317b] text-[#ee317b] font-bold'
-                         : 'bg-[#181818] text-gray-400 hover:text-white'
-                     }`}
-                   >
-                     <div className="flex items-center gap-2">
-                       <TrendingUp className="w-4 h-4" />
-                       <span>Performance Summary</span>
-                     </div>
-                   </button>
-                   )}
-                 </div>
-
-                 {/* System Actions */}
-                 <div className="space-y-2 pt-2 border-t border-[#222222]">
-                   <span className="block text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-1">Actions</span>
-                   
-                   <div className="grid grid-cols-2 gap-2">
                      {/* Theme Toggle */}
                      <button
                        type="button"
                        onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                       className="w-full text-left text-xs text-gray-300 hover:text-[#ee317b] bg-[#181818] border border-[#262626] px-3 py-2 rounded-md transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                       className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-[#ee317b] hover:bg-[#202020] transition-colors flex items-center gap-2"
                      >
-                       {theme === 'dark' ? (
-                         <>
-                           <Sun className="w-3.5 h-3.5 text-amber-400" />
-                           <span>Light Mode</span>
-                         </>
-                       ) : (
-                         <>
-                           <Moon className="w-3.5 h-3.5 text-sky-400" />
-                           <span>Dark Mode</span>
-                         </>
-                       )}
+                       {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-450" />}
+                       {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                      </button>
+                     
+                     {/* Text Size Adjustment (Mobile) */}
+                     <div className="px-4 py-2.5 text-xs text-gray-300 flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                         <Type className="w-4 h-4 text-[#ee317b]" />
+                         <span>Text Size</span>
+                       </div>
+                       <div className="flex items-center gap-1 bg-[#121212] rounded p-0.5">
+                         <button onClick={() => setFontSize('sm')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
+                         <button onClick={() => setFontSize('base')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
+                         <button onClick={() => setFontSize('lg')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
+                       </div>
+                     </div>
+                     
+                     {/* Export All */}
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setIsMobileMenuOpen(false);
+                         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+                         exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                       }}
+                       className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                     >
+                       <FolderDown className="w-4 h-4 text-sky-400" />
+                       Export All Data
+                     </button>
+
+                     {/* Staff Settings */}
+                     {currentUser.role === 'admin' && (
+                       <button
+                         type="button"
+                         onClick={() => {
+                           setIsMobileMenuOpen(false);
+                           setShowStaffModal(true);
+                         }}
+                         className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-[#ee317b] hover:bg-[#202020] transition-colors flex items-center gap-2"
+                       >
+                         <UserPlus className="w-4 h-4 text-[#ee317b]" />
+                         Manage Staff Settings
+                       </button>
+                     )}
+
+                     <div className="border-t border-[#262626] my-1"></div>
 
                      {/* Logout */}
                      <button
@@ -1604,62 +1507,19 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                          setIsMobileMenuOpen(false);
                          handleLogout();
                        }}
-                       className="w-full text-left text-xs text-gray-350 hover:text-rose-400 bg-[#181818] border border-[#262626] px-3 py-2 rounded-md transition-all cursor-pointer flex items-center gap-1.5 justify-center"
+                       className="w-full text-left px-4 py-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-[#202020] transition-colors flex items-center gap-2"
                      >
-                       <LogOut className="w-3.5 h-3.5 text-rose-500" />
-                       <span>Log Out</span>
+                       <LogOut className="w-4 h-4" />
+                       Log Out
                      </button>
-                   </div>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </div>
 
-                   <div className="grid grid-cols-1 gap-2 mt-2">
-                     {/* Font Size Selector */}
-                     <div className="col-span-1 bg-[#181818] border border-[#262626] rounded-md px-3 py-2 flex flex-row items-center justify-between text-xs">
-                       <div className="flex items-center gap-1.5 text-gray-300">
-                         <Type className="w-3.5 h-3.5 text-[#ee317b]" />
-                         <span>Font Size</span>
-                       </div>
-                       <div className="flex bg-[#121212] rounded border border-[#333] p-0.5">
-                         <button onClick={() => setFontSize('sm')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'sm' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A-</button>
-                         <button onClick={() => setFontSize('base')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'base' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A</button>
-                         <button onClick={() => setFontSize('lg')} className={`px-2 py-1 text-xs rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}>A+</button>
-                       </div>
-                     </div>
-                   </div>
-
-                   {/* Staff Settings for Admins */}
-                   {currentUser.role === 'admin' && (
-                     <button
-                       type="button"
-                       onClick={() => {
-                         setIsMobileMenuOpen(false);
-                         setShowStaffModal(true);
-                       }}
-                       className={`w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 ${theme === 'light' ? 'text-gray-900 font-bold' : 'text-gray-300'}`}
-                     >
-                       <UserPlus className="w-3.5 h-3.5 text-[#ee317b]" />
-                       <span>Manage Staff Settings</span>
-                     </button>
-                   )}
-
-                   {/* Export All Data (Mobile) */}
-                   <button
-                     type="button"
-                     onClick={() => {
-                       setIsMobileMenuOpen(false);
-                       const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                       exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
-                     }}
-                     className={`w-full bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs hover:text-[#ee317b] py-2 rounded-md font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-2 uppercase font-bold ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}
-                   >
-                     <FolderDown className="w-3.5 h-3.5 text-[#ee317b]" />
-                     <span>Export Data</span>
-                   </button>
-                 </div>
-
-               </div>
-             </motion.div>
-           )}
-         </AnimatePresence>
+           </div>
+         </div>
+         {/* Mobile Navigation Drawer Removed and replaced by Bottom Navigation Bar */}
        </header>
      </div>
 
@@ -1675,7 +1535,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-cust-trigger"
               onClick={() => setActiveTab('customers')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
+              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'customers'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
@@ -1683,7 +1543,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Users className="w-4 h-4" />
               Customer Management
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'customers' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'customers' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {customers.length}
               </span>
             </button>
@@ -1694,7 +1554,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-inv-trigger"
               onClick={() => setActiveTab('inventory')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
+              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'inventory'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
@@ -1702,7 +1562,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Package className="w-4 h-4" />
               Inventory Dashboard
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'inventory' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'inventory' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {paperStocks.length}
               </span>
             </button>
@@ -1713,7 +1573,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-purchases-trigger"
               onClick={() => setActiveTab('purchases')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
+              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'purchases'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
@@ -1721,7 +1581,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             >
               <Database className="w-4 h-4" />
               Purchases &amp; Expenses Ledger
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-sans ${activeTab === 'purchases' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'purchases' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {purchases.length}
               </span>
             </button>
@@ -1732,7 +1592,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-perf-trigger"
               onClick={() => setActiveTab('performance')}
-              className={`py-4 px-1 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-md ${
+              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'performance'
                   ? 'border-[#ee317b] text-[#ee317b]'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
@@ -1855,7 +1715,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
       </main>
 
       {/* Corporate Footnotes */}
-      <footer className="bg-[#121212] border-t border-[#262626] mt-auto py-6">
+      <footer className="hidden md:block bg-[#121212] border-t border-[#262626] mt-auto py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-gray-500 text-xs font-sans gap-4 ">
           <p>© 2026 Mena Inc. All Rights Reserved. Fully integrated v2 paper ledger engine.</p>
           <div className="flex gap-4">
@@ -2453,6 +2313,48 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] z-40 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex justify-around items-center h-16">
+          {hasTabAccess('customers') && (
+            <button
+              onClick={() => setActiveTab('customers')}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'customers' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Customers</span>
+            </button>
+          )}
+          {hasTabAccess('inventory') && (
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'inventory' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              <Package className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Inventory</span>
+            </button>
+          )}
+          {hasTabAccess('purchases') && (
+            <button
+              onClick={() => setActiveTab('purchases')}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'purchases' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              <Database className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Expenses</span>
+            </button>
+          )}
+          {hasTabAccess('performance') && (
+            <button
+              onClick={() => setActiveTab('performance')}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'performance' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Reports</span>
+            </button>
+          )}
+        </div>
+      </nav>
 
     </div>
   );

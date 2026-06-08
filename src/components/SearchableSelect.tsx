@@ -24,21 +24,25 @@ export default function SearchableSelect({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Parse children into options array
-  const options: { value: string; label: string }[] = [];
+  const options: { value: string; label: string; statusClass?: string; amountText?: string }[] = [];
   React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child)) return;
     
     if (child.type === 'option') {
       options.push({
         value: child.props.value || '',
-        label: child.props.children?.toString() || ''
+        label: child.props.children?.toString() || '',
+        statusClass: child.props['data-status'] || '',
+        amountText: child.props['data-amount'] || ''
       });
     } else if (child.type === React.Fragment) {
        React.Children.forEach(child.props.children, (fragChild) => {
            if (React.isValidElement(fragChild) && fragChild.type === 'option') {
                options.push({
                    value: fragChild.props.value || '',
-                   label: fragChild.props.children?.toString() || ''
+                   label: fragChild.props.children?.toString() || '',
+                   statusClass: fragChild.props['data-status'] || '',
+                   amountText: fragChild.props['data-amount'] || ''
                });
            }
        });
@@ -125,8 +129,8 @@ export default function SearchableSelect({
     <div className={`relative font-sans ${className}`} ref={wrapperRef}>
       {/* Trigger / Input Field */}
       <div 
-        className="relative w-full h-full min-h-[30px] flex items-center border rounded-md transition-colors bg-transparent border-transparent hover:border-[#ee317b]/50"
-        style={{ backgroundColor: 'inherit', borderColor: 'inherit' }}
+        className="relative w-full h-full min-h-[30px] flex items-center transition-colors bg-transparent"
+        style={{ backgroundColor: 'inherit' }}
         onClick={() => {
           if (!isOpen) setIsOpen(true);
         }}
@@ -174,14 +178,15 @@ export default function SearchableSelect({
                     onChange({ target: { value: opt.value } });
                     setIsOpen(false);
                   }}
-                  className={`px-3 py-2 text-xs cursor-pointer transition-colors break-words
+                  className={`px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
                     ${opt.value === value 
-                      ? 'bg-[#ee317b]/10 text-[#ee317b] font-bold border-l-2 border-[#ee317b]' 
-                      : 'text-gray-300 hover:bg-[#262626] border-l-2 border-transparent'
-                    }
+                      ? 'bg-[#ee317b]/10 border-l-2 border-[#ee317b] font-bold' 
+                      : 'hover:bg-[#262626] border-l-2 border-transparent'
+                    } ${opt.statusClass ? opt.statusClass : (opt.value === value ? 'text-[#ee317b]' : 'text-gray-300')}
                   `}
                 >
-                  {opt.label}
+                  <span className="truncate">{opt.label}</span>
+                  {opt.amountText && <span className="opacity-70 whitespace-nowrap ml-2">{opt.amountText}</span>}
                 </div>
               ))
             )}

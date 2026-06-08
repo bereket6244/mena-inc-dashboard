@@ -20,7 +20,12 @@ import {
   Copy,
   CheckSquare,
   Printer,
-  Download
+  Download,
+  Filter,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical
 } from 'lucide-react';
 
 import { 
@@ -518,6 +523,8 @@ export default function CustomerTab({
 
   // Non-blocking custom delete tracking ID
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<string[]>([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   
   const [paperType1, setPaperType1] = useState(paperStocks[0]?.name || 'Big flower');
@@ -539,6 +546,33 @@ export default function CustomerTab({
   });
 
   const [formError, setFormError] = useState('');
+
+  const computeTotalConsumed = (name: string): number => {
+    let consumed = 0;
+    const lowerName = name.trim().toLowerCase();
+    
+    customers.forEach(c => {
+      const orderQty = Number(c.quantity || 0);
+
+      if (c.paperType1 && c.paperType1.trim().toLowerCase() === lowerName) {
+        consumed += Math.ceil(Number(c.amount1 || 0) * orderQty);
+      }
+      if (c.paperType2 && c.paperType2.trim().toLowerCase() === lowerName) {
+        consumed += Math.ceil(Number(c.amount2 || 0) * orderQty);
+      }
+      if (c.paperType3 && c.paperType3.trim().toLowerCase() === lowerName) {
+        consumed += Math.ceil(Number(c.amount3 || 0) * orderQty);
+      }
+      if (c.entrancePaper && c.entrancePaper.trim().toLowerCase() === lowerName) {
+        consumed += Math.ceil(Number(c.amount16 || 0) / 16);
+      }
+      if (c.ajabiPaper && c.ajabiPaper.trim().toLowerCase() === lowerName) {
+        consumed += Math.ceil(Number(c.amount9 || 0) / 9);
+      }
+    });
+
+    return consumed;
+  };
 
   const handleAddProductInline = async () => {
     const cleaned = newProductInput.trim();
@@ -1004,20 +1038,90 @@ export default function CustomerTab({
     lastShowProformaModalRef.current = showProformaModal;
   }, [showProformaModal, isStandaloneProformaMode, standaloneClientName, standaloneClientPhone, currentUser, bankAccounts, proformaItemsToRender]);
 
+  const formatMoney = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="space-y-6" id="customers-tab-pnl">
+
+      {/* Search Bar (Top Priority on Mobile) */}
+      <div className="flex flex-col md:flex-row items-center gap-4 relative">
+        <div className="relative w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search clients, phone, product type, receipt number, or lead source..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 text-sm bg-[#121212] text-white hover:bg-[#181818] focus:bg-[#181818] border border-[#262626] rounded-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] transition-all font-sans"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Select/Deselect All Toggle button */}
+            <button
+              type="button"
+              onClick={() => {
+                const allFilteredIds = filteredCustomers.map(c => c.id);
+                const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedCustomerIds.includes(id));
+                if (allSelected) {
+                  setSelectedCustomerIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                } else {
+                  const newSelected = new Set([...selectedCustomerIds, ...allFilteredIds]);
+                  setSelectedCustomerIds(Array.from(newSelected));
+                }
+              }}
+              className="text-xs font-sans text-gray-300 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-md px-3 py-3 flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <div className="w-4 h-4 border border-gray-400 rounded flex items-center justify-center bg-[#121212]">
+                {(filteredCustomers.length > 0 && filteredCustomers.every(c => selectedCustomerIds.includes(c.id))) && <Check className="w-3 h-3 text-[#ee317b]" />}
+              </div>
+              <span className="hidden sm:inline">Select All</span>
+            </button>
+        </div>
+      </div>
       
-      {/* Search and Filters Strip - Optimized for Mobile Screen limits */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col gap-4 ">
+      {/* Toolbar / Action Strip */}
+      <div className="flex flex-col lg:flex-row justify-between gap-4">
         
-        {/* Row 1: Selectors and buttons */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 font-sans w-full lg:w-auto text-xs">
+        {/* Mobile Filter & Actions Trigger */}
+        <div className="md:hidden flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters(true)}
+            className="flex-1 bg-[#181818] border border-[#262626] text-gray-300 font-sans text-sm py-2.5 rounded-md flex items-center justify-center gap-2"
+          >
+            <Filter className="w-4 h-4" />
+            Filters
+            {/* Active filters count */}
+            {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
+              <span className="bg-[#ee317b] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsStandaloneProformaMode(true);
+              setStandaloneProformaItems([
+                { id: 'temp-1', productType: '', quantity: '', unitPrice: '', advancePayment: '' }
+              ]);
+              setShowProformaModal(true);
+            }}
+            className="bg-[#181818] border border-[#ee317b]/40 text-[#ee317b] font-sans text-sm py-2.5 px-3 rounded-md flex items-center justify-center cursor-pointer transition-colors hover:bg-[#ee317b]/10"
+            title="Standalone Proforma Tool"
+          >
+            <Printer className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Filters Left Side (Desktop/Tablet) */}
+        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-2 font-sans w-full lg:w-auto text-xs">
             {/* Filter Agent */}
             <SearchableSelect
               value={filterAgent}
               onChange={(e) => setFilterAgent(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
             >
               <option value="All">All Staff</option>
               {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
@@ -1029,7 +1133,7 @@ export default function CustomerTab({
             <SearchableSelect
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
             >
               <option value="All">All Leads</option>
               {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
@@ -1039,7 +1143,7 @@ export default function CustomerTab({
             <SearchableSelect
               value={filterPayment}
               onChange={(e) => setFilterPayment(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
             >
               <option value="All">Any Payment</option>
               <option value="Debt">Outstanding Debt</option>
@@ -1050,7 +1154,7 @@ export default function CustomerTab({
             <SearchableSelect
               value={filterCompletion}
               onChange={(e) => setFilterCompletion(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
             >
               <option value="All">All Job Statuses</option>
               <option value="Completed">Completed Only</option>
@@ -1062,50 +1166,51 @@ export default function CustomerTab({
             <SearchableSelect
               value={filterReceipt}
               onChange={(e) => setFilterReceipt(e.target.value)}
-              className="px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus:border-[#ee317b]"
+              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
             >
               <option value="All">All Receipts</option>
               <option value="NeedsReceipt">Needs Receipts (VAT)</option>
               <option value="WithoutReceipt">Without Receipt</option>
             </SearchableSelect>
-          </div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
-            {/* Select/Deselect All Toggle button */}
+        {/* Primary Actions Right Side (Desktop) */}
+        <div className="hidden md:flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               type="button"
               onClick={() => {
-                const allFilteredIds = filteredCustomers.map(c => c.id);
-                const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedCustomerIds.includes(id));
-                if (allSelected) {
-                  // Deselect all filtered
-                  setSelectedCustomerIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
-                } else {
-                  // Select all filtered
-                  setSelectedCustomerIds(prev => {
-                    const next = [...prev];
-                    allFilteredIds.forEach(id => {
-                      if (!next.includes(id)) next.push(id);
-                    });
-                    return next;
-                  });
-                }
+                setIsStandaloneProformaMode(true);
+                setStandaloneProformaItems([
+                  { id: 'temp-1', productType: '', quantity: '', unitPrice: '', advancePayment: '' }
+                ]);
+                setShowProformaModal(true);
               }}
-              className="text-xs font-sans text-gray-300 hover:text-white bg-[#181818] hover:bg-[#262626] border border-[#262626] px-3.5 py-1.5 flex items-center justify-center gap-1.5 cursor-pointer rounded-md transition-colors"
-              title="Toggle selection of all filtered items"
+              className="text-xs font-sans font-bold text-[#ee317b] hover:text-white bg-transparent hover:bg-[#ee317b] border border-[#ee317b] rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              <CheckSquare className="w-3.5 h-3.5 text-[#ee317b]" />
-              {filteredCustomers.length > 0 && filteredCustomers.every(c => selectedCustomerIds.includes(c.id)) 
-                ? "Deselect All" 
-                : `Select All (${filteredCustomers.length})`}
+              <Printer className="w-4 h-4" />
+              Standalone Proforma Tool
             </button>
 
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="text-xs font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 shadow-md transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Create Customer Order
+            </button>
+        </div>
+      </div>
+
+      {/* Search Bar & Table Controls Row */}
+      <div className="flex flex-col md:flex-row items-center gap-4 relative">
+        <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Grid vs Cards Switcher */}
-            <div className="border border-[#262626] rounded-md p-0.5 flex bg-[#181818] justify-center">
+            <div className="border border-[#262626] rounded-md p-1 flex bg-[#121212]">
               <button
                 type="button"
                 onClick={() => setLayoutMode('grid')}
-                className={`p-1.5 rounded-md cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
+                className={`p-2 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                 title="Tabular Grid View (Default)"
               >
                 <TableIcon className="w-4 h-4" />
@@ -1113,64 +1218,18 @@ export default function CustomerTab({
               <button
                 type="button"
                 onClick={() => setLayoutMode('cards')}
-                className={`p-1.5 rounded-md cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black font-semibold' : 'text-gray-400 hover:text-white'}`}
+                className={`p-2 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                 title="Responsive Cards View"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
-
-
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsStandaloneProformaMode(true);
-                setStandaloneProformaItems([
-                  {
-                    id: 'temp-1',
-                    productType: '',
-                    quantity: '',
-                    unitPrice: '',
-                    advancePayment: ''
-                  }
-                ]);
-                setShowProformaModal(true);
-              }}
-              className="text-xs font-sans font-bold text-gray-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-[#ee317b]" />
-              Standalone Proforma Tool
-            </button>
-
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] rounded-md px-4 py-2 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Create Customer Order
-            </button>
-          </div>
         </div>
-
-        {/* Row 2: Search Bar Below Dropdowns & Settings */}
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search clients by name, phone, product type or lead source..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-[#181818] text-white hover:bg-[#1E1E1E] focus:bg-[#1E1E1E] border border-[#262626] rounded-md outline-none focus:border-[#ee317b] transition-all font-sans"
-          />
-        </div>
-
       </div>
 
-      {/* Bulk Executive Actions Strip */}
+      {/* Bulk Executive Actions Strip (Desktop Only) */}
       {selectedCustomerIds.length > 0 && (
-        <div className="bg-[#181818] border border-blue-900/45 p-3 rounded-md flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-sans animate-fade-in relative z-30">
+        <div className="hidden md:flex bg-[#181818] border border-blue-900/45 p-3 rounded-md flex-col sm:flex-row items-center justify-between gap-3 text-xs font-sans animate-fade-in relative z-30">
           <div className="flex items-center gap-2 text-blue-400">
             <CheckSquare className="w-4 h-4 text-[#ee317b]" />
             <span>Selected <strong className="text-white bg-blue-950 px-1.5 py-0.5 border border-blue-900">{selectedCustomerIds.length}</strong> {selectedCustomerIds.length === 1 ? 'order file' : 'order files'}</span>
@@ -1213,9 +1272,8 @@ export default function CustomerTab({
       )}
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      {layoutMode === 'grid' ? (
-        <div className="bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none">
-          <div className="overflow-x-auto">
+      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none`}>
+        <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
@@ -1235,11 +1293,11 @@ export default function CustomerTab({
                       title="Select/Deselect all filtered rows"
                     />
                   </th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Client Type</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Client Type</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Client Name</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Phone / Contact</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Acquisition Channel</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Order Taken By</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Acquisition Channel</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Order Taken By</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Product Type</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Quantity</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Unit Price (ETB)</th>
@@ -1287,7 +1345,7 @@ export default function CustomerTab({
                           : c.incompletionReason 
                             ? 'incomplete-order-row' 
                             : isSelected
-                              ? 'bg-sky-950/25 border-l-2 border-sky-500'
+                              ? 'bg-[#1A2E20] border-l-2 border-[#ee317b]'
                               : 'hover:bg-[#1a1a1a]'
                       }`}
                     >
@@ -1312,7 +1370,7 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Client Type */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans">
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans hidden xl:table-cell">
                         <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : c.clientType === 'Individual' ? 'bg-[#181818] text-gray-300 border-[#262626]' : 'bg-[#1e1e1e] text-[#ee317b] border-[#ee317b]/30'}`}>
                           {c.clientType.toUpperCase()}
                         </span>
@@ -1325,12 +1383,12 @@ export default function CustomerTab({
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-gray-400 whitespace-nowrap">{c.phone || '-'}</td>
                       
                       {/* Acquisition Channel */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans">
+                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans hidden xl:table-cell">
                         <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md">{c.acquisitionSource}</span>
                       </td>
                       
                       {/* Order Taken By */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300">{c.orderTakenBy}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300 hidden xl:table-cell">{c.orderTakenBy}</td>
                       
                       {/* Product Type */}
                       <td className="py-2 px-3 border-r border-[#262626] text-gray-300 whitespace-nowrap font-sans">{c.productType}</td>
@@ -1340,14 +1398,14 @@ export default function CustomerTab({
                       
                       {/* Unit Price (ETB) */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300">
-                        <div>{c.unitPrice.toLocaleString()}</div>
+                        <div>{formatMoney(c.unitPrice)}</div>
                         {c.isVatAdded && (
                           <div className="text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</div>
                         )}
                       </td>
                       
                       {/* Advance (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-[#71b536] bg-[#112918]/10">{c.advancePayment.toLocaleString()}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-[#71b536] bg-[#112918]/10">{formatMoney(c.advancePayment)}</td>
                       
                       {/* Inline Date Picker for Advance Payment Date */}
                       <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
@@ -1397,7 +1455,7 @@ export default function CustomerTab({
                       
                       {/* Remaining (V) */}
                       <td className={`py-2 px-3 border-r border-[#262626] text-right font-sans font-bold ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
-                        {remainingVal === 0 ? 'PAID' : remainingVal.toLocaleString()}
+                        {remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal)}
                       </td>
                       
                       {/* Final Payment Date */}
@@ -1435,7 +1493,7 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Full (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans font-bold text-white bg-[#31111E]/10">{fullVal.toLocaleString()}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans font-bold text-white bg-[#31111E]/10">{formatMoney(fullVal)}</td>
  
                       {/* Inline Dropdown for Remaining Bank account (Col Y) */}
                       <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
@@ -1518,10 +1576,10 @@ export default function CustomerTab({
             </table>
           </div>
         </div>
-      ) : (
-        /* RESPONSIVE CARDS VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  animate-none">
-          {filteredCustomers.map((c) => {
+
+      {/* RESPONSIVE CARDS VIEW */}
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none`}>
+        {filteredCustomers.map((c) => {
             const fullVal = c.quantity * c.unitPrice;
             const remainingVal = fullVal - c.advancePayment;
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
@@ -1580,13 +1638,23 @@ export default function CustomerTab({
                       </div>
                     </div>
                     
-                    <span className="text-xs text-gray-500 font-sans">
-                      #{c.id.substring(c.id.length - 4)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-sans">
+                        #{c.id.substring(c.id.length - 4)}
+                      </span>
+                      <button 
+                        onClick={() => setExpandedCards(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                        className="p-1 hover:bg-[#262626] rounded text-gray-500 hover:text-white"
+                      >
+                        {expandedCards.includes(c.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Detail Info */}
-                  <div className="text-xs text-gray-300 space-y-1.5 font-sans">
+                  {expandedCards.includes(c.id) && (
+                  <>
+                  <div className="text-xs text-gray-300 space-y-1.5 font-sans animate-fade-in">
                     <div className="flex items-center gap-2">
                        <Phone className="w-3.5 h-3.5 text-[#ee317b]" />
                        <span>{c.phone || 'No phone record'}</span>
@@ -1766,6 +1834,8 @@ export default function CustomerTab({
                       </div>
                     )}
                   </div>
+                  </>
+                  )}
 
                 </div>
 
@@ -1805,8 +1875,6 @@ export default function CustomerTab({
             </div>
           )}
         </div>
-      )}
-
       {/* DYNAMIC BACKDROP DRAWER/MODAL WIZARD */}
       <AnimatePresence>
         {isFormOpen && (
@@ -2416,7 +2484,17 @@ export default function CustomerTab({
                             onChange={(e) => setPaperType1(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
-                            {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            {paperStocks.map(s => {
+                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              let statusClass = '';
+                              if (remaining <= 0) statusClass = 'text-[#F87171]';
+                              else if (remaining < 50) statusClass = 'text-[#FACC15]';
+                              return (
+                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                  {s.name}
+                                </option>
+                              );
+                            })}
                           </SearchableSelect>
                         </div>
                         <div>
@@ -2454,7 +2532,17 @@ export default function CustomerTab({
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
-                            {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            {paperStocks.map(s => {
+                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              let statusClass = '';
+                              if (remaining <= 0) statusClass = 'text-[#F87171]';
+                              else if (remaining < 50) statusClass = 'text-[#FACC15]';
+                              return (
+                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                  {s.name}
+                                </option>
+                              );
+                            })}
                           </SearchableSelect>
                         </div>
                         <div>
@@ -2495,7 +2583,17 @@ export default function CustomerTab({
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
                           >
                             <option value="None">None</option>
-                            {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            {paperStocks.map(s => {
+                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              let statusClass = '';
+                              if (remaining <= 0) statusClass = 'text-[#F87171]';
+                              else if (remaining < 50) statusClass = 'text-[#FACC15]';
+                              return (
+                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                  {s.name}
+                                </option>
+                              );
+                            })}
                           </SearchableSelect>
                         </div>
                         <div>
@@ -2549,7 +2647,17 @@ export default function CustomerTab({
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
-                            {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            {paperStocks.map(s => {
+                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              let statusClass = '';
+                              if (remaining <= 0) statusClass = 'text-[#F87171]';
+                              else if (remaining < 50) statusClass = 'text-[#FACC15]';
+                              return (
+                                <option key={s.id} value={s.name} data-status={statusClass}>
+                                  {s.name} ({remaining} sheets)
+                                </option>
+                              );
+                            })}
                           </SearchableSelect>
                         </div>
                         <div>
@@ -2597,7 +2705,17 @@ export default function CustomerTab({
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                           >
                             <option value="None">None</option>
-                            {paperStocks.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            {paperStocks.map(s => {
+                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              let statusClass = '';
+                              if (remaining <= 0) statusClass = 'text-[#F87171]';
+                              else if (remaining < 50) statusClass = 'text-[#FACC15]';
+                              return (
+                                <option key={s.id} value={s.name} data-status={statusClass}>
+                                  {s.name} ({remaining} sheets)
+                                </option>
+                              );
+                            })}
                           </SearchableSelect>
                         </div>
                         <div>
@@ -3618,6 +3736,174 @@ export default function CustomerTab({
 
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Filters Bottom Sheet */}
+      <AnimatePresence>
+        {showMobileFilters && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileFilters(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] rounded-t-xl z-50 p-4 md:hidden pb-10"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold text-lg">Filters</h3>
+                <button onClick={() => setShowMobileFilters(false)} className="p-2 text-gray-400">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 font-sans text-sm">
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Staff</label>
+                  <select
+                    value={filterAgent}
+                    onChange={(e) => setFilterAgent(e.target.value)}
+                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                  >
+                    <option value="All">All Staff</option>
+                    {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
+                      <option key={agent} value={agent}>{agent}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Lead Channel</label>
+                  <select
+                    value={filterSource}
+                    onChange={(e) => setFilterSource(e.target.value)}
+                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                  >
+                    <option value="All">All Leads</option>
+                    {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Debt Status</label>
+                  <select
+                    value={filterPayment}
+                    onChange={(e) => setFilterPayment(e.target.value)}
+                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                  >
+                    <option value="All">Any Payment</option>
+                    <option value="Debt">Outstanding Debt</option>
+                    <option value="Paid">Paid in Full</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Completion Status</label>
+                  <select
+                    value={filterCompletion}
+                    onChange={(e) => setFilterCompletion(e.target.value)}
+                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                  >
+                    <option value="All">All Job Statuses</option>
+                    <option value="Completed">Completed Only</option>
+                    <option value="Pending">Pending Only</option>
+                    <option value="Incomplete">Incomplete / Problematic</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Receipt Needed</label>
+                  <select
+                    value={filterReceipt}
+                    onChange={(e) => setFilterReceipt(e.target.value)}
+                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                  >
+                    <option value="All">All Receipts</option>
+                    <option value="NeedsReceipt">Needs Receipts (VAT)</option>
+                    <option value="WithoutReceipt">Without Receipt</option>
+                  </select>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setFilterAgent('All');
+                      setFilterSource('All');
+                      setFilterPayment('All');
+                      setFilterCompletion('All');
+                      setFilterReceipt('All');
+                    }}
+                    className="w-full py-3 bg-[#ee317b]/10 text-[#ee317b] rounded-md font-bold"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      {/* Mobile FAB for Create Customer Order */}
+      <div className="md:hidden fixed bottom-[5.5rem] right-4 z-40">
+        <button
+          type="button"
+          onClick={handleOpenCreate}
+          className="bg-[#ee317b] text-black rounded-full p-4 shadow-xl shadow-[#ee317b]/20 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Mobile Sticky Bottom Action Bar for Multi-select */}
+      <AnimatePresence>
+        {selectedCustomerIds.length > 0 && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            className="md:hidden fixed bottom-16 left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
+          >
+            <div className="flex justify-between items-center text-xs font-bold text-[#ee317b] mb-1 px-1">
+              <span>{selectedCustomerIds.length} Selected Orders</span>
+              <button type="button" onClick={() => setSelectedCustomerIds([])} className="text-gray-400 font-normal underline">Clear Selection</button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={handleBulkComplete}
+                className="bg-[#112918] border border-[#71b536]/30 text-[#71b536] py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                Paid
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStandaloneProformaMode(false);
+                  setShowProformaModal(true);
+                }}
+                className="bg-[#31111E] border border-[#ee317b]/30 text-[#ee317b] py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Proforma
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="bg-[#2E181D] border border-red-900/40 text-red-400 py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
