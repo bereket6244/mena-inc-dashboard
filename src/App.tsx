@@ -573,7 +573,7 @@ export default function App() {
         // Fallback
       } finally {
         setTimeout(() => setIsBuffering(false), 500);
-        setTimeout(() => setIsInitialLoad(false), 1500); // Aesthetic minimum loading time
+        setTimeout(() => setIsInitialLoad(false), 100);
       }
     };
 
