@@ -3335,12 +3335,14 @@ export default function CustomerTab({
 
                 {/* PDF Container Scroller */}
                 <TransformWrapper
+                  key={proformaMobileTab}
                   initialScale={1}
                   minScale={0.5}
                   maxScale={4}
                   panning={{ disabled: false }}
                   wheel={{ disabled: true }}
                   pinch={{ disabled: false }}
+                  centerOnInit={true}
                 >
                   <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start md:justify-center p-3 md:p-10 pt-16 md:pt-20">
                     {/* Zoom Wrapper */}
@@ -3351,7 +3353,7 @@ export default function CustomerTab({
                         width: '800px', // matches print-container width
                         flexShrink: 0
                       }}
-                      className="shadow-2xl rounded-sm origin-top-left md:origin-top flex justify-center bg-white"
+                      className="shadow-2xl rounded-sm origin-top flex justify-center bg-white"
                     >
                        {/* Printable Area - Rendered using White-Paper Theme */}
                        <div className="relative bg-white text-black pl-16 pr-10 py-16 shadow-inner border border-gray-300 select-text font-sans w-[800px] min-h-[1131px] max-w-none pb-24" id="proforma-print-container">
