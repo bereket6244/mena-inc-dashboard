@@ -589,7 +589,7 @@ export default function App() {
 
     const refreshInterval = setInterval(() => {
       loadData(true);
-    }, 30000); // 30 seconds
+    }, 5000); // 5 seconds
 
     return () => clearInterval(refreshInterval);
   }, []);
