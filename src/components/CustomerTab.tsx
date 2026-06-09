@@ -2671,7 +2671,7 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Deducted sheets (expression enabled)</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Amount of entrance card</label>
                           <input
                             type="text"
                             value={amount16}
@@ -2735,7 +2735,7 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Deducted sheets (expression enabled)</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Amount of ajabi card</label>
                           <input
                             type="text"
                             value={amount9}
