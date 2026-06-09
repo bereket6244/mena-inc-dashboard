@@ -3725,8 +3725,8 @@ export default function CustomerTab({
                 </div>
               </div>
               </div>
-              </div>
-              </div>
+              </TransformComponent>
+              </TransformWrapper>
               </div>
               </div>
 
