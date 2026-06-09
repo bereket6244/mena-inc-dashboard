@@ -27,7 +27,11 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  MoreVertical
+  MoreVertical,
+  CreditCard,
+  FileText,
+  CheckCircle2,
+  RotateCcw
 } from 'lucide-react';
 
 import { 
@@ -138,6 +142,10 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>('All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>('All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
   const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: number | ''; unitPrice: number | ''; advancePayment: number | ''; }>>([]);
@@ -549,6 +557,45 @@ export default function CustomerTab({
       }
     }
   }, [proformaBankId, bankAccounts]);
+
+  // Handle escape key to close filter popover
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowFilterPopover(false);
+      }
+    };
+    if (showFilterPopover) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showFilterPopover]);
+
+  // Focus search input on expansion
+  useEffect(() => {
+    if (isSearchExpanded && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchExpanded]);
+
+  // Click outside search container should close it if query is empty
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        if (!searchQuery) {
+          setIsSearchExpanded(false);
+        }
+      }
+    };
+    if (isSearchExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchExpanded, searchQuery]);
 
   // Form Fields State
   const [clientType, setClientType] = useState<string>('Individual');
@@ -1109,34 +1156,38 @@ export default function CustomerTab({
   const formatMoney = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="space-y-6" id="customers-tab-pnl">
+    <div className="space-y-3" id="customers-tab-pnl">
 
-      {/* Search Bar (Top Priority on Mobile) */}
-      <div className="flex flex-col md:flex-row items-center gap-4 relative">
+      {/* Mobile-only Top Search Bar */}
+      <div className="md:hidden flex flex-col items-center gap-2 relative">
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input
             type="text"
-            placeholder="Search clients, phone, product type, receipt number, or lead source..."
+            placeholder="Type to search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 text-sm bg-[#121212] text-white hover:bg-[#181818] focus:bg-[#181818] border border-[#262626] rounded-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] transition-all font-sans"
+            className="w-full pl-10 pr-9 py-2 text-sm bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:outline-none focus:ring-1 focus:ring-[#ee317b]"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-      </div>
-      
-      {/* Toolbar / Action Strip */}
-      <div className="flex flex-col lg:flex-row justify-between gap-4">
         
         {/* Mobile Filter & Actions Trigger */}
-        <div className="md:hidden flex flex-wrap items-center gap-2">
-          {/* Grid vs Cards Switcher (Mobile) */}
+        <div className="flex w-full items-center gap-2">
           <div className="border border-[#262626] rounded-md p-1 flex bg-[#121212] shrink-0">
             <button
               type="button"
               onClick={() => setLayoutMode('grid')}
               className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-              title="Tabular Grid View"
             >
               <TableIcon className="w-4 h-4" />
             </button>
@@ -1144,7 +1195,6 @@ export default function CustomerTab({
               type="button"
               onClick={() => setLayoutMode('cards')}
               className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-              title="Responsive Cards View"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -1157,115 +1207,253 @@ export default function CustomerTab({
           >
             <Filter className="w-4 h-4" />
             Filters
-            {/* Active filters count */}
             {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
               <span className="bg-[#ee317b] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
               </span>
             )}
           </button>
-
-        </div>
-
-        {/* Filters Left Side (Desktop/Tablet) */}
-        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-2 font-sans w-full lg:w-auto text-xs">
-            {/* Filter Agent */}
-            <SearchableSelect
-              value={filterAgent}
-              onChange={(e) => setFilterAgent(e.target.value)}
-              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
-            >
-              <option value="All">All Staff</option>
-              {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
-                <option key={agent} value={agent}>{agent}</option>
-              ))}
-            </SearchableSelect>
-
-            {/* Filter Lead Channel */}
-            <SearchableSelect
-              value={filterSource}
-              onChange={(e) => setFilterSource(e.target.value)}
-              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
-            >
-              <option value="All">All Leads</option>
-              {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
-            </SearchableSelect>
-
-            {/* Filter Debt Status */}
-            <SearchableSelect
-              value={filterPayment}
-              onChange={(e) => setFilterPayment(e.target.value)}
-              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
-            >
-              <option value="All">Any Payment</option>
-              <option value="Debt">Outstanding Debt</option>
-              <option value="Paid">Paid in Full</option>
-            </SearchableSelect>
-
-            {/* Filter Completion Status */}
-            <SearchableSelect
-              value={filterCompletion}
-              onChange={(e) => setFilterCompletion(e.target.value)}
-              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
-            >
-              <option value="All">All Job Statuses</option>
-              <option value="Completed">Completed Only</option>
-              <option value="Pending">Pending Only</option>
-              <option value="Incomplete">Incomplete / Problematic</option>
-            </SearchableSelect>
-
-            {/* Filter Receipt Needed */}
-            <SearchableSelect
-              value={filterReceipt}
-              onChange={(e) => setFilterReceipt(e.target.value)}
-              className="px-3 py-2 bg-[#121212] border border-[#262626] text-gray-300 rounded-md text-xs outline-none cursor-pointer focus-within:border-[#ee317b]"
-            >
-              <option value="All">All Receipts</option>
-              <option value="NeedsReceipt">Needs Receipts (VAT)</option>
-              <option value="WithoutReceipt">Without Receipt</option>
-            </SearchableSelect>
-        </div>
-
-        {/* Primary Actions Right Side (Desktop) */}
-        <div className="hidden md:flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Grid vs Cards Switcher (Desktop) */}
-            <div className="border border-[#262626] rounded-md p-1 flex bg-[#121212] shrink-0 mr-2">
-              <button
-                type="button"
-                onClick={() => setLayoutMode('grid')}
-                className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                title="Tabular Grid View"
-              >
-                <TableIcon className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('cards')}
-                className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                title="Responsive Cards View"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
-
-
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="text-xs font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded-md px-4 py-2 flex items-center justify-center gap-1.5 shadow-md transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Create Customer Order
-            </button>
         </div>
       </div>
 
-      {/* Search Bar & Table Controls Row (Removed layout switcher) */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-1 border-b border-[#262626] mb-4 relative z-30">
-        <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          {/* Layout switcher moved to main action bars */}
-        </div>
+      {/* Notion-style Database Toolbar (Desktop/Tablet) */}
+      <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+        {/* Left Side: Empty view space matching Notion's layout */}
+        <div className="flex items-center text-gray-400 font-medium"></div>
 
+        {/* Right Side: Filters, Search, Switcher, Create Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Filter Popover Trigger */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowFilterPopover(!showFilterPopover)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].some(f => f !== 'All')
+                  ? 'text-[#ee317b] bg-[#ee317b]/10'
+                  : ''
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filter</span>
+              {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
+                <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
+                </span>
+              )}
+            </button>
+
+            {showFilterPopover && (
+              <>
+                {/* Backdrop overlay for outside click detection */}
+                <div
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setShowFilterPopover(false)}
+                />
+                
+                {/* Floating Notion popover */}
+                <div className="absolute right-0 mt-1.5 w-72 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Database Filters</span>
+                    {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].some(f => f !== 'All') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterAgent('All');
+                          setFilterSource('All');
+                          setFilterPayment('All');
+                          setFilterCompletion('All');
+                          setFilterReceipt('All');
+                        }}
+                        className="text-[#ee317b] hover:text-[#ee317b]/80 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="h-[1px] bg-[#262626]" />
+
+                  <div className="flex flex-col gap-1.5">
+                    {/* Agent/Staff Row */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                        <User className="w-3.5 h-3.5" />
+                        <span className="text-[11px]">Staff</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                        <SearchableSelect
+                          value={filterAgent}
+                          onChange={(e) => setFilterAgent(e.target.value)}
+                          className="bg-transparent text-xs text-white"
+                        >
+                          <option value="All">All Staff</option>
+                          {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
+                            <option key={agent} value={agent}>{agent}</option>
+                          ))}
+                        </SearchableSelect>
+                      </div>
+                    </div>
+
+                    {/* Lead Source Row */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                        <Layers className="w-3.5 h-3.5" />
+                        <span className="text-[11px]">Lead</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                        <SearchableSelect
+                          value={filterSource}
+                          onChange={(e) => setFilterSource(e.target.value)}
+                          className="bg-transparent text-xs text-white"
+                        >
+                          <option value="All">All Leads</option>
+                          {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
+                        </SearchableSelect>
+                      </div>
+                    </div>
+
+                    {/* Payment Row */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span className="text-[11px]">Pay</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                        <SearchableSelect
+                          value={filterPayment}
+                          onChange={(e) => setFilterPayment(e.target.value)}
+                          className="bg-transparent text-xs text-white"
+                        >
+                          <option value="All">Any Payment</option>
+                          <option value="Debt">Outstanding Debt</option>
+                          <option value="Paid">Paid in Full</option>
+                        </SearchableSelect>
+                      </div>
+                    </div>
+
+                    {/* Completion Row */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="text-[11px]">Status</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                        <SearchableSelect
+                          value={filterCompletion}
+                          onChange={(e) => setFilterCompletion(e.target.value)}
+                          className="bg-transparent text-xs text-white"
+                        >
+                          <option value="All">All Job Statuses</option>
+                          <option value="Completed">Completed Only</option>
+                          <option value="Pending">Pending Only</option>
+                          <option value="Incomplete">Incomplete / Problematic</option>
+                        </SearchableSelect>
+                      </div>
+                    </div>
+
+                    {/* Receipt Row */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span className="text-[11px]">Receipt</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                        <SearchableSelect
+                          value={filterReceipt}
+                          onChange={(e) => setFilterReceipt(e.target.value)}
+                          className="bg-transparent text-xs text-white"
+                        >
+                          <option value="All">All Receipts</option>
+                          <option value="NeedsReceipt">Needs Receipts (VAT)</option>
+                          <option value="WithoutReceipt">Without Receipt</option>
+                        </SearchableSelect>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Search control in toolbar */}
+          <div ref={searchWrapperRef} className="relative flex items-center">
+            {!(isSearchExpanded || searchQuery) ? (
+              <button
+                type="button"
+                onClick={() => setIsSearchExpanded(true)}
+                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] hover:text-white transition-colors cursor-pointer text-xs font-medium font-sans"
+                title="Search database"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <div className="relative flex items-center bg-transparent border border-[#262626] hover:bg-[#202020] focus-within:bg-[#121212] focus-within:border-[#ee317b] rounded px-2.5 py-1.5 transition-all">
+                <Search className="h-3.5 w-3.5 text-gray-500 mr-1.5" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Type to search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsSearchExpanded(false);
+                    }
+                  }}
+                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 shadow-none p-0 m-0 font-sans w-28 focus:w-36 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setIsSearchExpanded(false);
+                    }}
+                    className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none"
+                    title="Clear search"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Grid/List Switcher */}
+          <div className="border border-[#262626] rounded p-0.5 flex bg-transparent shrink-0">
+            <button
+              type="button"
+              onClick={() => setLayoutMode('grid')}
+              className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+              title="Tabular Grid View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayoutMode('cards')}
+              className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+              title="Responsive Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* New Order Button */}
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="text-[11px] font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded px-2.5 py-1.5 flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Selected Items / Controls Row */}
+      <div className="relative z-30">
         {/* Unified Selection Action Bar (Desktop Toolbar Row) */}
         <AnimatePresence>
           {selectedCustomerIds.length > 0 && (
@@ -1442,12 +1630,12 @@ export default function CustomerTab({
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-gray-400 whitespace-nowrap">{c.phone || '-'}</td>
                       
                       {/* Acquisition Channel */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans hidden xl:table-cell">
-                        <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md">{c.acquisitionSource}</span>
+                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans hidden xl:table-cell whitespace-nowrap">
+                        <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">{c.acquisitionSource}</span>
                       </td>
                       
                       {/* Order Taken By */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300">{c.orderTakenBy}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300 whitespace-nowrap">{c.orderTakenBy}</td>
                       
                       {/* Product Type */}
                       <td className="py-2 px-3 border-r border-[#262626] text-gray-300 whitespace-nowrap font-sans">{c.productType}</td>
@@ -1456,10 +1644,10 @@ export default function CustomerTab({
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-white">{c.quantity.toLocaleString()}</td>
                       
                       {/* Unit Price (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300">
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300 whitespace-nowrap">
                         <div>{formatMoney(c.unitPrice)}</div>
                         {c.isVatAdded && (
-                          <div className="text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</div>
+                          <div className="text-[8px] text-[#ee317b] uppercase font-bold tracking-tight whitespace-nowrap">15% VAT Inc.</div>
                         )}
                       </td>
                       
@@ -1483,36 +1671,36 @@ export default function CustomerTab({
                       </td>
 
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
-                        {!c.paymentMethodId ? 'None' : (bankAccounts.find(b => b.id === c.paymentMethodId)?.name || 'None')}
+                        {!c.paymentMethodId ? 'Empty / Unpaid' : (bankAccounts.find(b => b.id === c.paymentMethodId)?.name || 'Empty / Unpaid')}
                       </td>
                       
                       {/* Paper 1 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType1}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType1}</td>
                       {/* Amount 1 */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount1 || '-'}</td>
                       
                       {/* Paper 2 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType2}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType2}</td>
                       {/* Amount 2 */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount2 || '-'}</td>
                       
                       {/* Paper 3 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans">{c.paperType3}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType3}</td>
                       {/* Amount 3 */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount3 || '-'}</td>
                       
                       {/* Entrance Paper */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans">{c.entrancePaper}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans whitespace-nowrap">{c.entrancePaper}</td>
                       {/* Amt /16 */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount16 || '-'}</td>
                       
                       {/* Ajabi Paper */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans">{c.ajabiPaper}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans whitespace-nowrap">{c.ajabiPaper}</td>
                       {/* Amt /9 */}
                       <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount9 || '-'}</td>
                       
                       {/* Remaining (V) */}
-                      <td className={`py-2 px-3 border-r border-[#262626] text-right font-sans font-bold ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
+                      <td className={`py-2 px-3 border-r border-[#262626] text-right font-sans font-bold whitespace-nowrap ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
                         {remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal)}
                       </td>
                       
@@ -1868,7 +2056,7 @@ export default function CustomerTab({
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
                       <span className="text-gray-300 font-medium truncate max-w-[180px]">
-                        {!c.paymentMethodId ? 'None' : (bankAccounts.find(ac => ac.id === c.paymentMethodId)?.name || 'None')}
+                        {!c.paymentMethodId ? 'Empty / Unpaid' : (bankAccounts.find(ac => ac.id === c.paymentMethodId)?.name || 'Empty / Unpaid')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -2411,7 +2599,7 @@ export default function CustomerTab({
                               onChange={(e) => setPaymentMethodId(e.target.value)}
                               className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                             >
-                              <option value="">-- None --</option>
+                              <option value="">-- Empty / Unpaid --</option>
                               {bankAccounts.map(b => (
                                 <option key={b.id} value={b.id}>
                                   {b.name}

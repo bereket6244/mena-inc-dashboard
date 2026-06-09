@@ -1374,14 +1374,14 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
         {/* Top Executive Header */}
         <header className="bg-[#121212] border-b border-[#262626]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center min-h-[4rem] py-2 flex-wrap gap-y-2">
+            <div className="flex justify-between items-center py-2 flex-wrap gap-y-1.5">
 
               {/* Branding Logo - Utilizing the Premium Custom Logo */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <img 
                   src="/mena-logo.png"
                 alt="Mena Logo" 
-                className="w-10 h-10 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
+                className="w-8 h-8 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
@@ -1389,14 +1389,14 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                   if (fallback) fallback.classList.remove('hidden');
                 }}
               />
-              <div id="branding-icon-fallback" className="w-9 h-9 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
-                <Database className="w-5 h-5 text-black" />
+              <div id="branding-icon-fallback" className="w-7 h-7 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
+                <Database className="w-4 h-4 text-black" />
               </div>
               <div>
-                <h1 className="text-base font-bold text-white tracking-tight font-sans">
+                <h1 className="text-sm font-bold text-white tracking-tight font-sans">
                   MENA INC.
                 </h1>
-                <p className="text-[10px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
+                <p className="text-[9px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
               </div>
             </div>
 
@@ -1405,10 +1405,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="w-10 h-10 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
+                  className="w-8 h-8 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
                   title="Profile Menu"
                 >
-                  <span className="text-white font-bold font-sans uppercase">
+                  <span className="text-xs text-white font-bold font-sans uppercase">
                     {currentUser.name.charAt(0)}
                   </span>
                 </button>
@@ -1534,26 +1534,26 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
      </div>
 
       {/* Main Core Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
         {/* Navigation Tabs - Switched Order and made scrollable on Mobile for extreme responsiveness */}
         <div className="border-b border-[#262626] hidden md:block">
-          <nav className="flex overflow-x-auto whitespace-nowrap scrollbar-none-x space-x-4 md:space-x-6 -mb-px" aria-label="Tabs Selector">
+          <nav className="flex overflow-x-auto whitespace-nowrap scrollbar-none-x space-x-2 md:space-x-4 -mb-px" aria-label="Tabs Selector">
 
             {/* Tab 1: Customer Management (Now First!) */}
             {hasTabAccess('customers') && (
             <button
               id="tab-cust-trigger"
               onClick={() => setActiveTab('customers')}
-              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'customers'
-                  ? 'border-[#ee317b] text-[#ee317b]'
+                  ? 'border-[#ee317b] text-white'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
               }`}
             >
-              <Users className="w-4 h-4" />
+              <Users className="w-3.5 h-3.5" />
               Customer Management
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'customers' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[9px] px-1 py-0.2 rounded-full font-sans font-medium ${activeTab === 'customers' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {customers.length}
               </span>
             </button>
@@ -1564,15 +1564,15 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-inv-trigger"
               onClick={() => setActiveTab('inventory')}
-              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'inventory'
-                  ? 'border-[#ee317b] text-[#ee317b]'
+                  ? 'border-[#ee317b] text-white'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/40'
               }`}
             >
-              <Package className="w-4 h-4" />
+              <Package className="w-3.5 h-3.5" />
               Inventory Dashboard
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'inventory' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[9px] px-1 py-0.2 rounded-full font-sans font-medium ${activeTab === 'inventory' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {paperStocks.length}
               </span>
             </button>
@@ -1583,15 +1583,15 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-purchases-trigger"
               onClick={() => setActiveTab('purchases')}
-              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'purchases'
-                  ? 'border-[#ee317b] text-[#ee317b]'
+                  ? 'border-[#ee317b] text-white'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
               }`}
             >
-              <Database className="w-4 h-4" />
+              <Database className="w-3.5 h-3.5" />
               Purchases &amp; Expenses Ledger
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-sans font-medium ${activeTab === 'purchases' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
+              <span className={`text-[9px] px-1 py-0.2 rounded-full font-sans font-medium ${activeTab === 'purchases' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'bg-[#181818] text-gray-400'}`}>
                 {purchases.length}
               </span>
             </button>
@@ -1602,13 +1602,13 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             <button
               id="tab-perf-trigger"
               onClick={() => setActiveTab('performance')}
-              className={`py-4 px-2 border-b-2 font-medium font-sans text-sm flex items-center gap-2 cursor-pointer transition-colors rounded-none ${
+              className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'performance'
-                  ? 'border-[#ee317b] text-[#ee317b]'
+                  ? 'border-[#ee317b] text-white'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-[#ee317b]/30'
               }`}
             >
-              <TrendingUp className="w-4 h-4" />
+              <TrendingUp className="w-3.5 h-3.5" />
               Business Performance Summary
             </button>
             )}
