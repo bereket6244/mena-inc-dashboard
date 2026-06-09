@@ -3334,16 +3334,25 @@ export default function CustomerTab({
                 </div>
 
                 {/* PDF Container Scroller */}
-                <TransformWrapper
-                  key={`${proformaMobileTab}-${proformaZoom}`}
-                  initialScale={1}
-                  minScale={0.5}
-                  maxScale={4}
-                  panning={{ disabled: false }}
-                  wheel={{ disabled: true }}
-                  pinch={{ disabled: false }}
-                >
-                  <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start justify-center p-3 md:p-10 pt-16 md:pt-20">
+                <div id="pdf-preview-scroller" className="flex-1 w-full flex flex-col h-full overflow-hidden">
+                  <TransformWrapper
+                    key={`${proformaMobileTab}-${proformaZoom}`}
+                    initialScale={1}
+                    initialPositionX={
+                      typeof window !== 'undefined'
+                        ? window.innerWidth < 1300
+                          ? (window.innerWidth - 800) / 2
+                          : ((document.getElementById('pdf-preview-scroller')?.clientWidth || window.innerWidth / 2) - 800) / 2
+                        : 0
+                    }
+                    initialPositionY={0}
+                    minScale={0.5}
+                    maxScale={4}
+                    panning={{ disabled: false }}
+                    wheel={{ disabled: true }}
+                    pinch={{ disabled: false }}
+                  >
+                    <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start justify-center p-3 md:p-10 pt-16 md:pt-20">
                     {/* Zoom Wrapper */}
                     <div 
                       style={{ 
@@ -3728,6 +3737,7 @@ export default function CustomerTab({
               </div>
               </TransformComponent>
               </TransformWrapper>
+              </div>
               </div>
               </div>
 
