@@ -3398,11 +3398,12 @@ export default function CustomerTab({
                     initialPositionY={0}
                     minScale={0.5}
                     maxScale={4}
+                    limitToBounds={false}
                     panning={{ disabled: false }}
                     wheel={{ disabled: true }}
                     pinch={{ disabled: false }}
                   >
-                    <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start justify-center p-3 md:p-10 pt-16 md:pt-20">
+                    <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a] proforma-pan-cursor" contentClass="min-w-max min-h-full flex items-start justify-center p-3 md:p-10 pt-16 md:pt-20 select-none">
                     {/* Zoom Wrapper */}
                     <div 
                       style={{ 
