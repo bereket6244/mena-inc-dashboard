@@ -568,23 +568,25 @@ export default function App() {
       if (currentUser) {
         const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
         if (!matchedUser) {
-          setCurrentUser(null);
-          localStorage.removeItem('mena_inc_current_user_v3');
+          setCurrentUser(prev => {
+            if (prev === null) return prev;
+            localStorage.removeItem('mena_inc_current_user_v3');
+            return null;
+          });
         } else {
-          setCurrentUser(matchedUser);
-          localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(matchedUser));
+          const matchedJson = JSON.stringify(matchedUser);
+          setCurrentUser(prev => {
+            if (JSON.stringify(prev) === matchedJson) return prev;
+            localStorage.setItem('mena_inc_current_user_v3', matchedJson);
+            return matchedUser;
+          });
         }
       }
       
       const { supabaseValidationError } = await import('./lib/supabase');
-      setDbValidationError(supabaseValidationError);
+      setDbValidationError(prev => prev === supabaseValidationError ? prev : supabaseValidationError);
       
-      localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(finalS));
-      localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(finalC));
-      localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(finalB));
-      localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(finalP));
-      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(finalCat));
-      localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(finalProd));
+      // localStorage is already updated inside updateIfChanged above
       localStorage.setItem('mena_inc_employees_v3', JSON.stringify(finalEmployees));
     } catch (err) {
       // Fallback
