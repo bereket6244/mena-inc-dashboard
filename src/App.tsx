@@ -76,7 +76,7 @@ export default function App() {
 
   useEffect(() => {
     if (fontSize === 'sm') document.documentElement.style.fontSize = '14px';
-    else if (fontSize === 'lg') document.documentElement.style.fontSize = '18px';
+    else if (fontSize === 'lg') document.documentElement.style.fontSize = '21px';
     else document.documentElement.style.fontSize = '16px';
     localStorage.setItem('mena_inc_font_size', fontSize);
   }, [fontSize]);
@@ -1374,14 +1374,14 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
         {/* Top Executive Header */}
         <header className="bg-[#121212] border-b border-[#262626]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-2 flex-wrap gap-y-1.5">
+            <div className="flex justify-between items-center py-1.5 md:py-2 flex-wrap gap-y-1">
 
               {/* Branding Logo - Utilizing the Premium Custom Logo */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 md:gap-2">
                 <img 
                   src="/mena-logo.png"
                 alt="Mena Logo" 
-                className="w-8 h-8 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
+                className="w-6.5 h-6.5 md:w-8 md:h-8 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
@@ -1389,11 +1389,11 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                   if (fallback) fallback.classList.remove('hidden');
                 }}
               />
-              <div id="branding-icon-fallback" className="w-7 h-7 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
-                <Database className="w-4 h-4 text-black" />
+              <div id="branding-icon-fallback" className="w-6 h-6 md:w-7 md:h-7 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
+                <Database className="w-3.5 h-3.5 md:w-4 md:h-4 text-black" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white tracking-tight font-sans">
+                <h1 className="text-xs md:text-sm font-bold text-white tracking-tight font-sans">
                   MENA INC.
                 </h1>
                 <p className="text-[9px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
@@ -1405,10 +1405,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="w-8 h-8 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
+                  className="w-6.5 h-6.5 md:w-8 md:h-8 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
                   title="Profile Menu"
                 >
-                  <span className="text-xs text-white font-bold font-sans uppercase">
+                  <span className="text-[10px] md:text-xs text-white font-bold font-sans uppercase">
                     {currentUser.name.charAt(0)}
                   </span>
                 </button>
@@ -2315,41 +2315,41 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] z-40 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex justify-around items-center h-16">
+        <div className="flex justify-around items-center h-12">
           {hasTabAccess('customers') && (
             <button
               onClick={() => setActiveTab('customers')}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'customers' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'customers' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              <Users className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Customers</span>
+              <Users className="w-4 h-4" />
+              <span className="text-[9px] font-medium tracking-tight">Customers</span>
             </button>
           )}
           {hasTabAccess('inventory') && (
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'inventory' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'inventory' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              <Package className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Inventory</span>
+              <Package className="w-4 h-4" />
+              <span className="text-[9px] font-medium tracking-tight">Inventory</span>
             </button>
           )}
           {hasTabAccess('purchases') && (
             <button
               onClick={() => setActiveTab('purchases')}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'purchases' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'purchases' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              <Database className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Expenses</span>
+              <Database className="w-4 h-4" />
+              <span className="text-[9px] font-medium tracking-tight">Expenses</span>
             </button>
           )}
           {hasTabAccess('performance') && (
             <button
               onClick={() => setActiveTab('performance')}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${activeTab === 'performance' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'performance' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              <TrendingUp className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Reports</span>
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-[9px] font-medium tracking-tight">Reports</span>
             </button>
           )}
         </div>

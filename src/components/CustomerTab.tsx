@@ -146,6 +146,8 @@ export default function CustomerTab({
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
   const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: number | ''; unitPrice: number | ''; advancePayment: number | ''; }>>([]);
@@ -584,6 +586,30 @@ export default function CustomerTab({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        if (!searchQuery) {
+          setIsSearchExpanded(false);
+        }
+      }
+    };
+    if (isSearchExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchExpanded, searchQuery]);
+
+  // Focus mobile search input on expansion
+  useEffect(() => {
+    if (isSearchExpanded && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus();
+    }
+  }, [isSearchExpanded]);
+
+  // Click outside mobile search container should close it if query is empty
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileSearchWrapperRef.current && !mobileSearchWrapperRef.current.contains(e.target as Node)) {
         if (!searchQuery) {
           setIsSearchExpanded(false);
         }
@@ -1159,56 +1185,66 @@ export default function CustomerTab({
     <div className="space-y-3" id="customers-tab-pnl">
 
       {/* Mobile-only Top Search Bar */}
-      <div className="md:hidden flex flex-col items-center gap-2 relative">
-        <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+      <div className="md:hidden flex flex-col gap-1.5 relative w-full pt-1">
+        <div ref={mobileSearchWrapperRef} className="relative w-full flex items-center bg-[#181818] rounded-md px-2 py-1 transition-all">
+          <div className="flex items-center justify-center text-gray-400 mr-1.5 flex-shrink-0">
+            <Search className="h-3.5 w-3.5" />
+          </div>
           <input
+            ref={mobileSearchInputRef}
             type="text"
-            placeholder="Type to search"
+            placeholder="Type to search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2 text-sm bg-[#121212] text-white border border-[#262626] rounded-md outline-none focus:outline-none focus:ring-1 focus:ring-[#ee317b]"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                mobileSearchInputRef.current?.blur();
+              }
+            }}
+            className="w-full bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none"
+              onClick={() => {
+                setSearchQuery('');
+              }}
+              className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
               title="Clear search"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
         
         {/* Mobile Filter & Actions Trigger */}
-        <div className="flex w-full items-center gap-2">
-          <div className="border border-[#262626] rounded-md p-1 flex bg-[#121212] shrink-0">
+        <div className="flex w-full items-center justify-between gap-1.5">
+          <div className="flex bg-transparent shrink-0 gap-0.5">
             <button
               type="button"
               onClick={() => setLayoutMode('grid')}
-              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
             >
-              <TableIcon className="w-4 h-4" />
+              <TableIcon className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setLayoutMode('cards')}
-              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => setShowMobileFilters(true)}
-            className="flex-1 bg-[#181818] border border-[#262626] text-gray-300 font-sans text-sm py-2 px-2 rounded-md flex items-center justify-center gap-2"
+            className="bg-transparent text-gray-300 font-sans text-xs py-1.5 px-2 rounded hover:bg-[#181818] transition-colors flex items-center gap-1"
           >
-            <Filter className="w-4 h-4" />
-            Filters
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filter</span>
             {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
-              <span className="bg-[#ee317b] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="bg-[#ee317b] text-white text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold">
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
               </span>
             )}
@@ -1389,12 +1425,14 @@ export default function CustomerTab({
                 <Search className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <div className="relative flex items-center bg-transparent border border-[#262626] hover:bg-[#202020] focus-within:bg-[#121212] focus-within:border-[#ee317b] rounded px-2.5 py-1.5 transition-all">
-                <Search className="h-3.5 w-3.5 text-gray-500 mr-1.5" />
+              <div className="relative flex items-center bg-transparent transition-all">
+                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1">
+                  <Search className="h-3.5 w-3.5" />
+                </div>
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Type to search"
+                  placeholder="Type to search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -1402,7 +1440,7 @@ export default function CustomerTab({
                       setIsSearchExpanded(false);
                     }
                   }}
-                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 shadow-none p-0 m-0 font-sans w-28 focus:w-36 transition-all"
+                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-28 focus:w-36 transition-all pl-1"
                 />
                 {searchQuery && (
                   <button
@@ -1519,12 +1557,12 @@ export default function CustomerTab({
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden shadow-none mb-28 md:mb-0`}>
-        <div className="overflow-x-auto">
+      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border-t md:border border-[#262626] md:rounded-md overflow-hidden shadow-none mb-28 md:mb-0`}>
+        <div className="overflow-x-auto scrollbar-none-x">
             <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                  <th className="py-2.5 px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-xs">Index</th>
+                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">Index</th>
                   <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs">
                     <input
                       type="checkbox"
@@ -4213,20 +4251,20 @@ export default function CustomerTab({
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] rounded-t-xl z-50 p-4 md:hidden pb-10"
             >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white font-bold text-lg">Filters</h3>
-                <button onClick={() => setShowMobileFilters(false)} className="p-2 text-gray-400">
-                  <X className="w-5 h-5" />
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-gray-400 font-bold text-[11px] uppercase tracking-wider">Database Filters</span>
+                <button onClick={() => setShowMobileFilters(false)} className="p-1 text-gray-500 hover:text-white">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-4 font-sans text-sm">
+              <div className="space-y-3 font-sans text-xs">
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Staff</label>
+                  <label className="block text-gray-500 text-[10px] uppercase mb-1">Staff</label>
                   <select
                     value={filterAgent}
                     onChange={(e) => setFilterAgent(e.target.value)}
-                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">All Staff</option>
                     {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
@@ -4236,11 +4274,11 @@ export default function CustomerTab({
                 </div>
                 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Lead Channel</label>
+                  <label className="block text-gray-500 text-[10px] uppercase mb-1">Lead Channel</label>
                   <select
                     value={filterSource}
                     onChange={(e) => setFilterSource(e.target.value)}
-                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">All Leads</option>
                     {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
@@ -4248,11 +4286,11 @@ export default function CustomerTab({
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Debt Status</label>
+                  <label className="block text-gray-500 text-[10px] uppercase mb-1">Debt Status</label>
                   <select
                     value={filterPayment}
                     onChange={(e) => setFilterPayment(e.target.value)}
-                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">Any Payment</option>
                     <option value="Debt">Outstanding Debt</option>
@@ -4261,11 +4299,11 @@ export default function CustomerTab({
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Completion Status</label>
+                  <label className="block text-gray-500 text-[10px] uppercase mb-1">Completion Status</label>
                   <select
                     value={filterCompletion}
                     onChange={(e) => setFilterCompletion(e.target.value)}
-                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">All Job Statuses</option>
                     <option value="Completed">Completed Only</option>
@@ -4275,11 +4313,11 @@ export default function CustomerTab({
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Receipt Needed</label>
+                  <label className="block text-gray-500 text-[10px] uppercase mb-1">Receipt Needed</label>
                   <select
                     value={filterReceipt}
                     onChange={(e) => setFilterReceipt(e.target.value)}
-                    className="w-full px-3 py-3 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none"
+                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">All Receipts</option>
                     <option value="NeedsReceipt">Needs Receipts (VAT)</option>
@@ -4287,7 +4325,7 @@ export default function CustomerTab({
                   </select>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-1.5">
                   <button
                     onClick={() => {
                       setFilterAgent('All');
@@ -4296,7 +4334,7 @@ export default function CustomerTab({
                       setFilterCompletion('All');
                       setFilterReceipt('All');
                     }}
-                    className="w-full py-3 bg-[#ee317b]/10 text-[#ee317b] rounded-md font-bold"
+                    className="w-full py-2 bg-[#ee317b]/10 text-[#ee317b] hover:bg-[#ee317b]/20 rounded-md font-bold text-xs transition-colors cursor-pointer"
                   >
                     Clear All Filters
                   </button>
@@ -4307,13 +4345,14 @@ export default function CustomerTab({
         )}
       </AnimatePresence>
       {/* Mobile FAB for Create Customer Order */}
-      <div className="md:hidden fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
+      <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
         <button
           type="button"
           onClick={handleOpenCreate}
-          className="bg-[#ee317b] text-black rounded-full p-4 shadow-xl shadow-[#ee317b]/20 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
+          className="bg-[#181818] border border-[#262626] text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
+          title="Create customer"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5 text-[#ee317b]" />
         </button>
       </div>
 

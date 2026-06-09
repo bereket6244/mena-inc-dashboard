@@ -233,10 +233,36 @@ export default function InventoryTab({
   return (
     <div className="space-y-6 " id="inventory-tab-pnl">
 
+      {/* Mobile-only Top Search Bar */}
+      <div className="md:hidden flex flex-col gap-1.5 relative w-full pt-1">
+        <div className="relative w-full flex items-center bg-[#181818] rounded-md px-2 py-1 transition-all">
+          <div className="flex items-center justify-center text-gray-400 mr-1.5 flex-shrink-0">
+            <Search className="h-3.5 w-3.5" />
+          </div>
+          <input
+            type="text"
+            placeholder="Type to search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Control Bar & Selection Bar */}
       <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-          <div ref={searchWrapperRef} className="relative flex items-center">
+          <div ref={searchWrapperRef} className="hidden md:flex items-center">
             {!(isSearchExpanded || searchQuery) ? (
               <button
                 type="button"
@@ -248,12 +274,14 @@ export default function InventoryTab({
                 <span>Search</span>
               </button>
             ) : (
-              <div className="relative flex items-center bg-transparent border border-[#262626] hover:bg-[#202020] focus-within:bg-[#121212] focus-within:border-[#ee317b] rounded px-2.5 py-1.5 transition-all">
-                <Search className="h-3.5 w-3.5 text-gray-500 mr-1.5" />
+              <div className="relative flex items-center bg-transparent transition-all">
+                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1">
+                  <Search className="h-3.5 w-3.5" />
+                </div>
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Type to search"
+                  placeholder="Type to search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -261,7 +289,7 @@ export default function InventoryTab({
                       setIsSearchExpanded(false);
                     }
                   }}
-                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 shadow-none p-0 m-0 font-sans w-32 focus:w-44 transition-all"
+                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-32 focus:w-44 transition-all pl-1"
                 />
                 {searchQuery && (
                   <button
