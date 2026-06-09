@@ -370,73 +370,75 @@ export default function App() {
   };
 
   // Load from LocalStorage and synchronizing with Real Cloud Firestore if configured
-  useEffect(() => {
-    const loadData = async () => {
-      setIsBuffering(true);
-      try {
-        // Load and seed employees
-        const savedEmployees = localStorage.getItem('mena_inc_employees_v3');
-        let initialEmployees = DEFAULT_USERS;
-        if (savedEmployees) {
-          try {
-            initialEmployees = JSON.parse(savedEmployees);
-          } catch (_) {}
-        }
-        setEmployees(initialEmployees);
+  const loadData = async (isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) setIsBuffering(true);
+    try {
+      // Load and seed employees
+      const savedEmployees = localStorage.getItem('mena_inc_employees_v3');
+      let initialEmployees = DEFAULT_USERS;
+      if (savedEmployees) {
+        try {
+          initialEmployees = JSON.parse(savedEmployees);
+        } catch (_) {}
+      }
+      if (!isBackgroundRefresh) setEmployees(initialEmployees);
 
-        // Load active login session
+      // Load active login session
+      if (!isBackgroundRefresh) {
         const savedUser = localStorage.getItem('mena_inc_current_user_v3');
         if (savedUser) {
           try {
             setCurrentUser(JSON.parse(savedUser));
           } catch (_) {}
         }
+      }
 
-        const savedStocks = localStorage.getItem(LOCAL_STORAGE_STOCKS_KEY);
-        const savedCustomers = localStorage.getItem(LOCAL_STORAGE_CUSTOMERS_KEY);
-        const savedBanks = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
-        const savedPurchases = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
-        const savedCategories = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-        const savedProductTypes = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
-        
-        let initialS = DEFAULT_PAPER_STOCKS;
-        let initialC = INITIAL_CUSTOMERS;
-        let initialB = DEFAULT_BANK_ACCOUNTS;
-        let initialP = INITIAL_PURCHASES;
-        let initialCat = INITIAL_EXPENSE_CATEGORIES;
-        let initialProd = DEFAULT_PRODUCT_TYPES;
-        
-        if (savedStocks) {
-          try {
-            initialS = JSON.parse(savedStocks);
-          } catch (_) {}
-        }
-        if (savedCustomers) {
-          try {
-            initialC = JSON.parse(savedCustomers);
-          } catch (_) {}
-        }
-        if (savedBanks) {
-          try {
-            initialB = JSON.parse(savedBanks);
-          } catch (_) {}
-        }
-        if (savedPurchases) {
-          try {
-            initialP = JSON.parse(savedPurchases);
-          } catch (_) {}
-        }
-        if (savedCategories) {
-          try {
-            initialCat = JSON.parse(savedCategories);
-          } catch (_) {}
-        }
-        if (savedProductTypes) {
-          try {
-            initialProd = JSON.parse(savedProductTypes);
-          } catch (_) {}
-        }
+      const savedStocks = localStorage.getItem(LOCAL_STORAGE_STOCKS_KEY);
+      const savedCustomers = localStorage.getItem(LOCAL_STORAGE_CUSTOMERS_KEY);
+      const savedBanks = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
+      const savedPurchases = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
+      const savedCategories = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+      const savedProductTypes = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
+      
+      let initialS = DEFAULT_PAPER_STOCKS;
+      let initialC = INITIAL_CUSTOMERS;
+      let initialB = DEFAULT_BANK_ACCOUNTS;
+      let initialP = INITIAL_PURCHASES;
+      let initialCat = INITIAL_EXPENSE_CATEGORIES;
+      let initialProd = DEFAULT_PRODUCT_TYPES;
+      
+      if (savedStocks) {
+        try {
+          initialS = JSON.parse(savedStocks);
+        } catch (_) {}
+      }
+      if (savedCustomers) {
+        try {
+          initialC = JSON.parse(savedCustomers);
+        } catch (_) {}
+      }
+      if (savedBanks) {
+        try {
+          initialB = JSON.parse(savedBanks);
+        } catch (_) {}
+      }
+      if (savedPurchases) {
+        try {
+          initialP = JSON.parse(savedPurchases);
+        } catch (_) {}
+      }
+      if (savedCategories) {
+        try {
+          initialCat = JSON.parse(savedCategories);
+        } catch (_) {}
+      }
+      if (savedProductTypes) {
+        try {
+          initialProd = JSON.parse(savedProductTypes);
+        } catch (_) {}
+      }
 
+      if (!isBackgroundRefresh) {
         const savedClientTypes = localStorage.getItem(LOCAL_STORAGE_CLIENT_TYPES_KEY);
         if (savedClientTypes) {
           try {
@@ -447,60 +449,62 @@ export default function App() {
         } else {
           setClientTypes(DEFAULT_CLIENT_TYPES);
         }
+      }
 
-        const { isSupabaseConfigured } = await import('./lib/supabase');
-        setLiveDbLinked(isSupabaseConfigured);
+      const { isSupabaseConfigured } = await import('./lib/supabase');
+      setLiveDbLinked(isSupabaseConfigured);
 
-        const { 
-          fetchAllPaperStocks, 
-          fetchAllCustomers, 
-          fetchAllBankAccounts,
-          saveBankAccountDoc,
-          fetchAllPurchases,
-          fetchAllExpenseCategories,
-          fetchAllEmployees,
-          saveEmployeeDoc,
-          fetchAllProductTypes,
-          saveProductTypeDoc,
-          fetchAllClientTypes,
-          saveClientTypeDoc
-        } = await import('./lib/dbService');
-        
-        const finalS = await fetchAllPaperStocks(initialS);
-        const fetchedC = await fetchAllCustomers(initialC);
-        const finalC = fetchedC.map(cust => {
-          const repaired = { ...cust };
-          if (repaired.id === 'c1') {
-            if (repaired.amount1 === 75) repaired.amount1 = 0.5;
-            if (repaired.amount2 === 50) repaired.amount2 = 50 / 150;
-          } else if (repaired.id === 'c2') {
-            if (repaired.amount1 === 150) repaired.amount1 = 0.5;
-            if (repaired.amount2 === 150) repaired.amount2 = 0.5;
-            if (repaired.amount3 === 100) repaired.amount3 = 100 / 300;
-          } else if (repaired.id === 'c3') {
-            if (repaired.amount1 === 100) repaired.amount1 = 0.5;
-            if (repaired.amount2 === 50) repaired.amount2 = 0.25;
-          } else if (repaired.id === 'c4') {
-            if (repaired.amount1 === 80) repaired.amount1 = 0.8;
-            if (repaired.amount2 === 40) repaired.amount2 = 0.4;
-          } else if (repaired.id === 'c5') {
-            if (repaired.amount1 === 250) repaired.amount1 = 0.5;
-            if (repaired.amount2 === 120) repaired.amount2 = 120 / 500;
-            if (repaired.amount3 === 50) repaired.amount3 = 0.1;
-          } else if (repaired.id === 'c6') {
-            if (repaired.amount1 === 60) repaired.amount1 = 0.5;
-          }
-          if (!repaired.advancePaymentDate) {
-            repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
-          }
-          const full = (repaired.quantity || 0) * (repaired.unitPrice || 0);
-          const remaining = full - (repaired.advancePayment || 0);
-          if (remaining > 0) {
-            repaired.bankRemainingId = '';
-          }
-          return repaired;
-        });
-        const finalB = await fetchAllBankAccounts(initialB);
+      const { 
+        fetchAllPaperStocks, 
+        fetchAllCustomers, 
+        fetchAllBankAccounts,
+        saveBankAccountDoc,
+        fetchAllPurchases,
+        fetchAllExpenseCategories,
+        fetchAllEmployees,
+        saveEmployeeDoc,
+        fetchAllProductTypes,
+        saveProductTypeDoc,
+        fetchAllClientTypes,
+        saveClientTypeDoc
+      } = await import('./lib/dbService');
+      
+      const finalS = await fetchAllPaperStocks(initialS);
+      const fetchedC = await fetchAllCustomers(initialC);
+      const finalC = fetchedC.map(cust => {
+        const repaired = { ...cust };
+        if (repaired.id === 'c1') {
+          if (repaired.amount1 === 75) repaired.amount1 = 0.5;
+          if (repaired.amount2 === 50) repaired.amount2 = 50 / 150;
+        } else if (repaired.id === 'c2') {
+          if (repaired.amount1 === 150) repaired.amount1 = 0.5;
+          if (repaired.amount2 === 150) repaired.amount2 = 0.5;
+          if (repaired.amount3 === 100) repaired.amount3 = 100 / 300;
+        } else if (repaired.id === 'c3') {
+          if (repaired.amount1 === 100) repaired.amount1 = 0.5;
+          if (repaired.amount2 === 50) repaired.amount2 = 0.25;
+        } else if (repaired.id === 'c4') {
+          if (repaired.amount1 === 80) repaired.amount1 = 0.8;
+          if (repaired.amount2 === 40) repaired.amount2 = 0.4;
+        } else if (repaired.id === 'c5') {
+          if (repaired.amount1 === 250) repaired.amount1 = 0.5;
+          if (repaired.amount2 === 120) repaired.amount2 = 120 / 500;
+          if (repaired.amount3 === 50) repaired.amount3 = 0.1;
+        } else if (repaired.id === 'c6') {
+          if (repaired.amount1 === 60) repaired.amount1 = 0.5;
+        }
+        if (!repaired.advancePaymentDate) {
+          repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
+        }
+        const full = (repaired.quantity || 0) * (repaired.unitPrice || 0);
+        const remaining = full - (repaired.advancePayment || 0);
+        if (remaining > 0) {
+          repaired.bankRemainingId = '';
+        }
+        return repaired;
+      });
+      const finalB = await fetchAllBankAccounts(initialB);
+      if (!isBackgroundRefresh) {
         const hasCbeDefault = finalB.some(b => b.accountNumber === '1000632725896');
         if (!hasCbeDefault) {
           const cbeAccount = {
@@ -512,73 +516,82 @@ export default function App() {
           await saveBankAccountDoc(cbeAccount).catch(() => {});
           finalB.push(cbeAccount);
         }
-        const finalP = await fetchAllPurchases(initialP);
-        const finalCat = await fetchAllExpenseCategories(initialCat);
-        const finalEmployees = await fetchAllEmployees(initialEmployees);
-        
-        const finalProd = await fetchAllProductTypes(initialProd);
-        if (finalProd.length === 0 && DEFAULT_PRODUCT_TYPES.length > 0) {
-          for (const prod of DEFAULT_PRODUCT_TYPES) {
-            await saveProductTypeDoc(prod).catch(() => {});
-          }
-          finalProd.push(...DEFAULT_PRODUCT_TYPES);
-        }
-
-        const initialClientTypesForDb = clientTypes.length > 0 ? clientTypes : DEFAULT_CLIENT_TYPES;
-        const finalClientTypes = await fetchAllClientTypes(initialClientTypesForDb);
-        if (finalClientTypes.length === 0 && DEFAULT_CLIENT_TYPES.length > 0) {
-          for (const ct of DEFAULT_CLIENT_TYPES) {
-            await saveClientTypeDoc(ct).catch(() => {});
-          }
-          finalClientTypes.push(...DEFAULT_CLIENT_TYPES);
-        }
-
-        if (finalEmployees.length === 0 && initialEmployees.length > 0) {
-          // Empty remote table, seed with initialEmployees
-          for (const emp of initialEmployees) {
-            await saveEmployeeDoc(emp);
-          }
-          finalEmployees.push(...initialEmployees);
-        }
-        
-        setPaperStocks(finalS);
-        setCustomers(finalC);
-        setBankAccounts(finalB);
-        setPurchases(finalP);
-        setCategories(finalCat);
-        setEmployees(finalEmployees);
-        setProductTypes(finalProd);
-        setClientTypes(finalClientTypes);
-
-        if (currentUser) {
-          const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
-          if (!matchedUser) {
-            setCurrentUser(null);
-            localStorage.removeItem('mena_inc_current_user_v3');
-          } else {
-            setCurrentUser(matchedUser);
-            localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(matchedUser));
-          }
-        }
-        
-        const { supabaseValidationError } = await import('./lib/supabase');
-        setDbValidationError(supabaseValidationError);
-        
-        localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(finalS));
-        localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(finalC));
-        localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(finalB));
-        localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(finalP));
-        localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(finalCat));
-        localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(finalProd));
-        localStorage.setItem('mena_inc_employees_v3', JSON.stringify(finalEmployees));
-      } catch (err) {
-        // Fallback
-      } finally {
-        setTimeout(() => setIsBuffering(false), 500);
       }
-    };
+      const finalP = await fetchAllPurchases(initialP);
+      const finalCat = await fetchAllExpenseCategories(initialCat);
+      const finalEmployees = await fetchAllEmployees(initialEmployees);
+      
+      const finalProd = await fetchAllProductTypes(initialProd);
+      if (!isBackgroundRefresh && finalProd.length === 0 && DEFAULT_PRODUCT_TYPES.length > 0) {
+        for (const prod of DEFAULT_PRODUCT_TYPES) {
+          await saveProductTypeDoc(prod).catch(() => {});
+        }
+        finalProd.push(...DEFAULT_PRODUCT_TYPES);
+      }
 
-    loadData();
+      const initialClientTypesForDb = clientTypes.length > 0 ? clientTypes : DEFAULT_CLIENT_TYPES;
+      const finalClientTypes = await fetchAllClientTypes(initialClientTypesForDb);
+      if (!isBackgroundRefresh && finalClientTypes.length === 0 && DEFAULT_CLIENT_TYPES.length > 0) {
+        for (const ct of DEFAULT_CLIENT_TYPES) {
+          await saveClientTypeDoc(ct).catch(() => {});
+        }
+        finalClientTypes.push(...DEFAULT_CLIENT_TYPES);
+      }
+
+      if (!isBackgroundRefresh && finalEmployees.length === 0 && initialEmployees.length > 0) {
+        // Empty remote table, seed with initialEmployees
+        for (const emp of initialEmployees) {
+          await saveEmployeeDoc(emp);
+        }
+        finalEmployees.push(...initialEmployees);
+      }
+      
+      setPaperStocks(finalS);
+      setCustomers(finalC);
+      setBankAccounts(finalB);
+      setPurchases(finalP);
+      setCategories(finalCat);
+      setEmployees(finalEmployees);
+      setProductTypes(finalProd);
+      setClientTypes(finalClientTypes);
+
+      if (currentUser) {
+        const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
+        if (!matchedUser) {
+          setCurrentUser(null);
+          localStorage.removeItem('mena_inc_current_user_v3');
+        } else {
+          setCurrentUser(matchedUser);
+          localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(matchedUser));
+        }
+      }
+      
+      const { supabaseValidationError } = await import('./lib/supabase');
+      setDbValidationError(supabaseValidationError);
+      
+      localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(finalS));
+      localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(finalC));
+      localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(finalB));
+      localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(finalP));
+      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(finalCat));
+      localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(finalProd));
+      localStorage.setItem('mena_inc_employees_v3', JSON.stringify(finalEmployees));
+    } catch (err) {
+      // Fallback
+    } finally {
+      if (!isBackgroundRefresh) setTimeout(() => setIsBuffering(false), 500);
+    }
+  };
+
+  // Initial load on mount + auto-refresh every 30 seconds
+  useEffect(() => {
+    loadData(false);
+
+    const refreshInterval = setInterval(() => {
+      loadData(true);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Sync state changes to Local Storage & Database
