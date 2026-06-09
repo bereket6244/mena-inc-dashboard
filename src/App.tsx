@@ -24,7 +24,8 @@ import {
   Menu,
   FolderDown,
   Type,
-  MoreVertical
+  MoreVertical,
+  Printer
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
 import { generateReportPdf } from './utils/pdfExport';
@@ -93,13 +94,56 @@ export default function App() {
 
   // 1. "i want the customer management to be first" -> tab defaults to 'customers'
   const [activeTab, setActiveTab] = useState<'customers' | 'inventory' | 'performance' | 'purchases'>('customers');
-  const [paperStocks, setPaperStocks] = useState<PaperStock[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+  const [showGlobalProforma, setShowGlobalProforma] = useState(false);
+  const [paperStocks, setPaperStocks] = useState<PaperStock[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_STOCKS_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return DEFAULT_PAPER_STOCKS;
+  });
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_CUSTOMERS_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return INITIAL_CUSTOMERS;
+  });
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return DEFAULT_BANK_ACCOUNTS;
+  });
+  const [purchases, setPurchases] = useState<Purchase[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return INITIAL_PURCHASES;
+  });
+  const [categories, setCategories] = useState<ExpenseCategory[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return INITIAL_EXPENSE_CATEGORIES;
+  });
+  const [productTypes, setProductTypes] = useState<ProductType[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return DEFAULT_PRODUCT_TYPES;
+  });
+  const [clientTypes, setClientTypes] = useState<ClientType[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_CLIENT_TYPES_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return DEFAULT_CLIENT_TYPES;
+  });
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -107,8 +151,20 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Login & RBAC personnel state
-  const [employees, setEmployees] = useState<EmployeeUser[]>([]);
-  const [currentUser, setCurrentUser] = useState<EmployeeUser | null>(null);
+  const [employees, setEmployees] = useState<EmployeeUser[]>(() => {
+    const saved = localStorage.getItem('mena_inc_employees_v3');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return DEFAULT_USERS;
+  });
+  const [currentUser, setCurrentUser] = useState<EmployeeUser | null>(() => {
+    const saved = localStorage.getItem('mena_inc_current_user_v3');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return null;
+  });
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [tempDbUrl, setTempDbUrl] = useState(() => localStorage.getItem('VITE_SUPABASE_URL') || 'https://qppigftbbkhcjisnpwmr.supabase.co');
   const [tempDbKey, setTempDbKey] = useState(() => localStorage.getItem('VITE_SUPABASE_ANON_KEY') || 'sb_publishable_lBrgsXkNL5AwXvOQmhGqEw_1Jfn6eU9');
@@ -495,13 +551,6 @@ export default function App() {
         }
         if (!repaired.advancePaymentDate) {
           repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
-        }
-        if (!isBackgroundRefresh) {
-          const full = (repaired.quantity || 0) * (repaired.unitPrice || 0);
-          const remaining = full - (repaired.advancePayment || 0);
-          if (remaining > 0) {
-            repaired.bankRemainingId = '';
-          }
         }
         return repaired;
       });
@@ -1137,44 +1186,74 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
           newB.push(cbeAccount);
         }
 
-        const isDifferent = (a: any[], b: any[]) => JSON.stringify(a) !== JSON.stringify(b);
-
-        // Update states only if new data was fetched and differs from current state
-        if (isDifferent(newS, current.paperStocks)) {
-          setPaperStocks(newS);
-          localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(newS));
-        }
-        if (isDifferent(newC, current.customers)) {
-          // Apply repaired mappings to customers
-          const repairedC = newC.map(cust => {
-            const repaired = { ...cust };
-            if (!repaired.advancePaymentDate) {
-              repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
+        const reconcileCollection = <T extends { id: any }>(currentList: T[], newList: T[]): { list: T[]; hasChanges: boolean } => {
+          const currentMap = new Map(currentList.map(item => [item.id, item]));
+          let hasChanges = false;
+          const reconciled = newList.map(newItem => {
+            const currentItem = currentMap.get(newItem.id);
+            if (!currentItem) {
+              hasChanges = true;
+              return newItem;
             }
-            return repaired;
+            if (JSON.stringify(currentItem) !== JSON.stringify(newItem)) {
+              hasChanges = true;
+              return newItem;
+            }
+            return currentItem;
           });
-          setCustomers(repairedC);
-          localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(repairedC));
+          if (currentList.length !== newList.length) {
+            hasChanges = true;
+          }
+          return { list: reconciled, hasChanges };
+        };
+
+        // Update states only if new data was fetched and differs from current state, keeping unchanged references intact
+        const recS = reconcileCollection(current.paperStocks, newS);
+        if (recS.hasChanges) {
+          setPaperStocks(recS.list);
+          localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(recS.list));
         }
-        if (isDifferent(newB, current.bankAccounts)) {
-          setBankAccounts(newB);
-          localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(newB));
+
+        // Apply repaired mappings to customers before reconciling
+        const repairedC = newC.map(cust => {
+          const repaired = { ...cust };
+          if (!repaired.advancePaymentDate) {
+            repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
+          }
+          return repaired;
+        });
+        const recC = reconcileCollection(current.customers, repairedC);
+        if (recC.hasChanges) {
+          setCustomers(recC.list);
+          localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(recC.list));
         }
-        if (isDifferent(newP, current.purchases)) {
-          setPurchases(newP);
-          localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(newP));
+
+        const recB = reconcileCollection(current.bankAccounts, newB);
+        if (recB.hasChanges) {
+          setBankAccounts(recB.list);
+          localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(recB.list));
         }
-        if (isDifferent(newCat, current.categories)) {
-          setCategories(newCat);
-          localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCat));
+
+        const recP = reconcileCollection(current.purchases, newP);
+        if (recP.hasChanges) {
+          setPurchases(recP.list);
+          localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(recP.list));
         }
-        if (isDifferent(newE, current.employees)) {
-          setEmployees(newE);
-          localStorage.setItem('mena_inc_employees_v3', JSON.stringify(newE));
+
+        const recCat = reconcileCollection(current.categories, newCat);
+        if (recCat.hasChanges) {
+          setCategories(recCat.list);
+          localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(recCat.list));
+        }
+
+        const recE = reconcileCollection(current.employees, newE);
+        if (recE.hasChanges) {
+          setEmployees(recE.list);
+          localStorage.setItem('mena_inc_employees_v3', JSON.stringify(recE.list));
 
           // If the currently logged-in user was updated/deleted in the database
           if (currentUser) {
-            const matched = newE.find(e => e.username === currentUser.username);
+            const matched = recE.list.find(e => e.username === currentUser.username);
             if (!matched) {
               setCurrentUser(null);
               localStorage.removeItem('mena_inc_current_user_v3');
@@ -1193,7 +1272,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
     // Execute immediately on reconnection or mount
     syncDatabase();
 
-    const intervalId = setInterval(syncDatabase, 10000); // Sync check every 10 seconds
+    const intervalId = setInterval(syncDatabase, 5000); // Sync check every 5 seconds
 
     return () => clearInterval(intervalId);
   }, [liveDbLinked, isOnline, currentUser]);
@@ -1390,6 +1469,17 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
 
                       {/* Data / Admin Section */}
                       <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold px-4 pt-1 block mb-1">Data / Admin</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          setShowGlobalProforma(true);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                      >
+                        <Printer className="w-4 h-4 text-[#ee317b]" />
+                        Standalone Proforma Tool
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -1600,7 +1690,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
             />
           )}
 
-          {activeTab === 'customers' && (
+          <div className={activeTab === 'customers' ? 'block' : 'hidden'}>
             <CustomerTab
               customers={customers}
               paperStocks={paperStocks}
@@ -1617,8 +1707,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               onBulkUpdateCustomers={handleBulkUpdateCustomers}
               currentUser={currentUser}
               employees={employees}
+              showGlobalProforma={showGlobalProforma}
+              setShowGlobalProforma={setShowGlobalProforma}
             />
-          )}
+          </div>
 
           {activeTab === 'purchases' && (
             <PurchasesTab

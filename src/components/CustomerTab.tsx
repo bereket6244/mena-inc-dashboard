@@ -105,6 +105,8 @@ interface CustomerTabProps {
   onBulkUpdateCustomers: (updatedList: Customer[]) => void;
   currentUser: EmployeeUser | null;
   employees: EmployeeUser[];
+  showGlobalProforma?: boolean;
+  setShowGlobalProforma?: (val: boolean) => void;
 }
 
 export default function CustomerTab({ 
@@ -122,7 +124,9 @@ export default function CustomerTab({
   onDeleteCustomer,
   onBulkUpdateCustomers,
   currentUser,
-  employees
+  employees,
+  showGlobalProforma,
+  setShowGlobalProforma
 }: CustomerTabProps) {
   
   // View states
@@ -513,6 +517,25 @@ export default function CustomerTab({
       document.body.style.overflow = '';
     };
   }, [isFormOpen, showProformaModal]);
+
+  // Sync showGlobalProforma with local proforma modal states
+  useEffect(() => {
+    if (showGlobalProforma) {
+      setIsStandaloneProformaMode(true);
+      setStandaloneProformaItems([
+        { id: `temp-${Date.now()}`, productType: '', quantity: '', unitPrice: '', advancePayment: '' }
+      ]);
+      setStandaloneClientName('');
+      setStandaloneClientPhone('');
+      setShowProformaModal(true);
+    }
+  }, [showGlobalProforma]);
+
+  useEffect(() => {
+    if (!showProformaModal && setShowGlobalProforma) {
+      setShowGlobalProforma(false);
+    }
+  }, [showProformaModal, setShowGlobalProforma]);
 
   // Removed redundant useEffect that forced default bank ID on empty selection
 
@@ -1141,20 +1164,7 @@ export default function CustomerTab({
               </span>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsStandaloneProformaMode(true);
-              setStandaloneProformaItems([
-                { id: 'temp-1', productType: '', quantity: '', unitPrice: '', advancePayment: '' }
-              ]);
-              setShowProformaModal(true);
-            }}
-            className="bg-[#181818] border border-[#ee317b]/40 text-[#ee317b] font-sans text-sm py-2.5 px-3 rounded-md flex items-center justify-center cursor-pointer transition-colors hover:bg-[#ee317b]/10"
-            title="Standalone Proforma Tool"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
+
         </div>
 
         {/* Filters Left Side (Desktop/Tablet) */}
@@ -1237,20 +1247,7 @@ export default function CustomerTab({
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setIsStandaloneProformaMode(true);
-                setStandaloneProformaItems([
-                  { id: 'temp-1', productType: '', quantity: '', unitPrice: '', advancePayment: '' }
-                ]);
-                setShowProformaModal(true);
-              }}
-              className="text-xs font-sans font-bold text-[#ee317b] hover:text-white bg-transparent hover:bg-[#ee317b] border border-[#ee317b] rounded-md px-4 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              Standalone Proforma Tool
-            </button>
+
 
             <button
               type="button"
@@ -1278,9 +1275,17 @@ export default function CustomerTab({
               exit={{ opacity: 0, scale: 0.95 }}
               className="hidden md:flex bg-[#ee317b]/10 border border-[#ee317b]/30 py-1.5 px-3 rounded-md items-center justify-between gap-4 text-xs font-sans z-30 overflow-x-auto"
             >
-              <div className="flex items-center gap-2 text-white shrink-0">
+              <div className="flex items-center gap-2.5 text-white shrink-0">
                 <CheckSquare className="w-4 h-4 text-[#ee317b]" />
                 <span className="font-bold">{selectedCustomerIds.length} Selected</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCustomerIds([])}
+                  className="px-2 py-0.5 bg-[#1C1C1C] hover:bg-[#262626] border border-[#262626] text-gray-400 hover:text-white rounded text-[10px] uppercase font-sans font-bold cursor-pointer transition-colors ml-1"
+                  title="Deselect All Selected Items"
+                >
+                  Deselect All
+                </button>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -1313,7 +1318,7 @@ export default function CustomerTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowBulkDeleteModal(true)}
+                  onClick={() => setShowBulkDeleteConfirm(true)}
                   className="px-3 py-1 bg-[#31111E] hover:bg-[#4a1a2d] border border-rose-900/50 text-[#ee317b] font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
