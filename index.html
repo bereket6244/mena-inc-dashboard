@@ -61,15 +61,21 @@
         }
       })();
 
-      // Disable pinch-to-zoom and multi-touch scaling gestures
+      // Disable pinch-to-zoom and multi-touch scaling gestures (except for proforma preview)
       document.addEventListener('touchstart', function(event) {
         if (event.touches.length > 1) {
+          if (event.target.closest('.react-transform-wrapper') || event.target.closest('.react-transform-component')) {
+            return;
+          }
           event.preventDefault();
         }
       }, { passive: false });
 
-      // Disable iOS gesture zoom
+      // Disable iOS gesture zoom (except for proforma preview)
       document.addEventListener('gesturestart', function(event) {
+        if (event.target.closest('.react-transform-wrapper') || event.target.closest('.react-transform-component')) {
+            return;
+        }
         event.preventDefault();
       });
 
