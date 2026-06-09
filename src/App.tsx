@@ -76,7 +76,7 @@ export default function App() {
 
   useEffect(() => {
     if (fontSize === 'sm') document.documentElement.style.fontSize = '14px';
-    else if (fontSize === 'lg') document.documentElement.style.fontSize = '21px';
+    else if (fontSize === 'lg') document.documentElement.style.fontSize = '18px';
     else document.documentElement.style.fontSize = '16px';
     localStorage.setItem('mena_inc_font_size', fontSize);
   }, [fontSize]);
