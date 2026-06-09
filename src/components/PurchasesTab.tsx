@@ -928,8 +928,10 @@ export default function PurchasesTab({
                   <Search className="w-3.5 h-3.5" />
                 </button>
               ) : (
-                <div className="relative flex items-center bg-transparent border-b border-[#ee317b] py-0.5 transition-all">
-                  <Search className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
+                <div className="relative flex items-center bg-transparent transition-all">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <Search className="h-3.5 w-3.5" />
+                  </div>
                   <input
                     ref={mobileSearchInputRef}
                     type="text"
