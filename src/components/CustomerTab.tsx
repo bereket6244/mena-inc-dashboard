@@ -1188,50 +1188,63 @@ export default function CustomerTab({
       <div className="md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full">
         {/* Left Side: Search toggler & Filter Icon (with no text) */}
         <div className="flex items-center gap-1">
-          {/* Search Toggle Button */}
-          <div ref={mobileSearchWrapperRef} className="relative flex items-center">
-            {!(isSearchExpanded || searchQuery) ? (
-              <button
-                type="button"
-                onClick={() => setIsSearchExpanded(true)}
-                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
-                title="Search database"
-              >
-                <Search className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <div className="relative flex items-center bg-transparent transition-all">
-                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
-                  <Search className="h-3.5 w-3.5" />
-                </div>
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  placeholder="Type to search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setIsSearchExpanded(false);
-                    }
-                  }}
-                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-24 transition-all pl-0.5"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setIsSearchExpanded(false);
+          <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
+            <AnimatePresence initial={false}>
+              {!(isSearchExpanded || searchQuery) ? (
+                <motion.button
+                  key="search-btn"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  type="button"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                  title="Search database"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="search-input-wrapper"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                  className="relative flex items-center bg-transparent overflow-hidden"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <Search className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Type to search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchExpanded(false);
+                      }
                     }}
-                    className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none"
-                    title="Clear search"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            )}
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-24 sm:w-32 pl-0.5"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Filters toggle button (no word 'filter') */}
