@@ -343,6 +343,56 @@ export default function CustomerTab({
       // Clone the container to completely escape ancestor CSS transforms (like mobile scaling) which cause severe text squishing
       const clone = container.cloneNode(true) as HTMLElement;
       
+      // Bake all computed styles inline on every element so the clone renders identically
+      // This is critical because cloneNode doesn't carry over stylesheet-computed values
+      const sourceElements = container.querySelectorAll('*');
+      const cloneElements = clone.querySelectorAll('*');
+      
+      const stylesToCopy = [
+        'font-size', 'font-weight', 'font-family', 'font-style',
+        'line-height', 'letter-spacing', 'text-align', 'text-transform', 'text-decoration',
+        'color', 'background-color', 'background',
+        'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+        'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+        'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+        'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
+        'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+        'border-collapse', 'border-spacing',
+        'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height',
+        'display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-self',
+        'gap', 'row-gap', 'column-gap', 'flex-grow', 'flex-shrink', 'flex-basis',
+        'position', 'top', 'right', 'bottom', 'left',
+        'overflow', 'overflow-x', 'overflow-y',
+        'white-space', 'word-break', 'word-spacing',
+        'opacity', 'visibility', 'vertical-align',
+        'box-sizing', 'table-layout',
+      ];
+      
+      // Inline styles on the root clone element itself
+      const rootStyles = window.getComputedStyle(container);
+      for (const prop of stylesToCopy) {
+        try {
+          let val = rootStyles.getPropertyValue(prop);
+          if (val) clone.style.setProperty(prop, convertColorStringToRgb(val));
+        } catch (_) {}
+      }
+      
+      // Inline styles on every child element
+      for (let i = 0; i < sourceElements.length && i < cloneElements.length; i++) {
+        const srcEl = sourceElements[i] as HTMLElement;
+        const clnEl = cloneElements[i] as HTMLElement;
+        if (!clnEl.style) continue;
+        try {
+          const computed = window.getComputedStyle(srcEl);
+          for (const prop of stylesToCopy) {
+            try {
+              let val = computed.getPropertyValue(prop);
+              if (val) clnEl.style.setProperty(prop, convertColorStringToRgb(val));
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+      
       // Place clone off-screen in body
       clone.style.position = 'absolute';
       clone.style.top = '-9999px';
