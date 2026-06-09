@@ -597,15 +597,9 @@ export default function App() {
     }
   };
 
-  // Initial load on mount + auto-refresh every 30 seconds
+  // Initial load on mount
   useEffect(() => {
     loadData(false);
-
-    const refreshInterval = setInterval(() => {
-      loadData(true);
-    }, 5000); // 5 seconds
-
-    return () => clearInterval(refreshInterval);
   }, []);
 
   // Sync state changes to Local Storage & Database
