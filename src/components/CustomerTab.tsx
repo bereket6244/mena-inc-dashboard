@@ -567,7 +567,7 @@ export default function CustomerTab({
   const [quantity, setQuantity] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
-  const [paymentMethodId, setPaymentMethodId] = useState<string>('b1');
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
 
   // Math expression string inputs for the numerical editing fields
   const [qtyInput, setQtyInput] = useState<string>('');
@@ -701,7 +701,7 @@ export default function CustomerTab({
     setQtyInput('');
     setPriceInput('');
     setAdvanceInput('');
-    setPaymentMethodId('b1');
+    setPaymentMethodId('');
     setPaperType1('None');
     setAmount1('');
     setPaperType2('None');
@@ -743,7 +743,7 @@ export default function CustomerTab({
     setQtyInput(customer.quantity.toString());
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
-    setPaymentMethodId(customer.paymentMethodId || 'b1');
+    setPaymentMethodId(customer.paymentMethodId || '');
     
     setPaperType1(customer.paperType1);
     setAmount1(customer.amount1.toString());
@@ -785,7 +785,7 @@ export default function CustomerTab({
     setQtyInput(customer.quantity.toString());
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
-    setPaymentMethodId(customer.paymentMethodId || 'b1');
+    setPaymentMethodId(customer.paymentMethodId || '');
     
     setPaperType1(customer.paperType1);
     setAmount1(customer.amount1.toString());
@@ -1482,9 +1482,8 @@ export default function CustomerTab({
                         />
                       </td>
 
-                      {/* Deposit Account (Advance) */}
                       <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
-                        {c.paymentMethodId === '' ? 'None' : (bankAccounts.find(b => b.id === (c.paymentMethodId || 'b1'))?.name || 'Commercial Bank of Ethiopia')}
+                        {!c.paymentMethodId ? 'None' : (bankAccounts.find(b => b.id === c.paymentMethodId)?.name || 'None')}
                       </td>
                       
                       {/* Paper 1 */}
@@ -1869,7 +1868,7 @@ export default function CustomerTab({
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
                       <span className="text-gray-300 font-medium truncate max-w-[180px]">
-                        {c.paymentMethodId === '' ? 'None' : (bankAccounts.find(ac => ac.id === (c.paymentMethodId || 'b1'))?.name || 'CBE')}
+                        {!c.paymentMethodId ? 'None' : (bankAccounts.find(ac => ac.id === c.paymentMethodId)?.name || 'None')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
