@@ -1184,70 +1184,85 @@ export default function CustomerTab({
   return (
     <div className="space-y-3" id="customers-tab-pnl">
 
-      {/* Mobile-only Top Search Bar */}
-      <div className="md:hidden flex flex-col gap-1.5 relative w-full pt-1">
-        <div ref={mobileSearchWrapperRef} className="relative w-full flex items-center bg-[#181818] rounded-md px-2 py-1 transition-all">
-          <div className="flex items-center justify-center text-gray-400 mr-1.5 flex-shrink-0">
-            <Search className="h-3.5 w-3.5" />
-          </div>
-          <input
-            ref={mobileSearchInputRef}
-            type="text"
-            placeholder="Type to search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                mobileSearchInputRef.current?.blur();
-              }
-            }}
-            className="w-full bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-              }}
-              className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
-              title="Clear search"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        
-        {/* Mobile Filter & Actions Trigger */}
-        <div className="flex w-full items-center justify-between gap-1.5">
-          <div className="flex bg-transparent shrink-0 gap-0.5">
-            <button
-              type="button"
-              onClick={() => setLayoutMode('grid')}
-              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-            >
-              <TableIcon className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setLayoutMode('cards')}
-              className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
+      {/* Mobile-only Notion Toolbar Control Row */}
+      <div className="md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full">
+        {/* Left Side: Search toggler & Filter Icon (with no text) */}
+        <div className="flex items-center gap-1">
+          {/* Search Toggle Button */}
+          <div ref={mobileSearchWrapperRef} className="relative flex items-center">
+            {!(isSearchExpanded || searchQuery) ? (
+              <button
+                type="button"
+                onClick={() => setIsSearchExpanded(true)}
+                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                title="Search database"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <div className="relative flex items-center bg-[#181818] rounded px-1.5 py-1 transition-all">
+                <Search className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
+                <input
+                  ref={mobileSearchInputRef}
+                  type="text"
+                  placeholder="Type to search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsSearchExpanded(false);
+                    }
+                  }}
+                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-24 transition-all pl-0.5"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setIsSearchExpanded(false);
+                    }}
+                    className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none"
+                    title="Clear search"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
+          {/* Filters toggle button (no word 'filter') */}
           <button
             type="button"
             onClick={() => setShowMobileFilters(true)}
-            className="bg-transparent text-gray-300 font-sans text-xs py-1.5 px-2 rounded hover:bg-[#181818] transition-colors flex items-center gap-1"
+            className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative"
+            title="Database Filters"
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Filter</span>
             {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
-              <span className="bg-[#ee317b] text-white text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold">
+              <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
               </span>
             )}
+          </button>
+        </div>
+
+        {/* Right Side: Grid/List View switcher */}
+        <div className="flex bg-transparent shrink-0 gap-0.5">
+          <button
+            type="button"
+            onClick={() => setLayoutMode('grid')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+          >
+            <TableIcon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('cards')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -4349,10 +4364,10 @@ export default function CustomerTab({
         <button
           type="button"
           onClick={handleOpenCreate}
-          className="bg-[#181818] border border-[#262626] text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
+          className="bg-[#ee317b] text-black rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
           title="Create customer"
         >
-          <Plus className="w-5 h-5 text-[#ee317b]" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
 

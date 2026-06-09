@@ -53,6 +53,8 @@ export default function PurchasesTab({
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('All');
   const [selectedBankFilter, setSelectedBankFilter] = useState<string>('All');
   const [sortBy, setSortBy] = useState<keyof Purchase>('purchaseDate');
@@ -79,18 +81,25 @@ export default function PurchasesTab({
 
   // Focus search input on expansion
   useEffect(() => {
-    if (isSearchExpanded && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (isSearchExpanded) {
+      if (searchInputRef.current) searchInputRef.current.focus();
+      if (mobileSearchInputRef.current) mobileSearchInputRef.current.focus();
     }
   }, [isSearchExpanded]);
 
   // Click outside search container should close it if query is empty
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
-        if (!searchQuery) {
-          setIsSearchExpanded(false);
-        }
+      let outsideDesktop = true;
+      let outsideMobile = true;
+      if (searchWrapperRef.current && searchWrapperRef.current.contains(e.target as Node)) {
+        outsideDesktop = false;
+      }
+      if (mobileSearchWrapperRef.current && mobileSearchWrapperRef.current.contains(e.target as Node)) {
+        outsideMobile = false;
+      }
+      if (outsideDesktop && outsideMobile && !searchQuery) {
+        setIsSearchExpanded(false);
       }
     };
     if (isSearchExpanded) {
@@ -907,27 +916,47 @@ export default function PurchasesTab({
         <div className="xl:col-span-3 space-y-4">
           
           {/* Mobile-only Top Search Bar */}
-          <div className="md:hidden flex flex-col gap-1.5 relative w-full pt-1">
-            <div className="relative w-full flex items-center bg-[#181818] rounded-md px-2 py-1 transition-all">
-              <div className="flex items-center justify-center text-gray-400 mr-1.5 flex-shrink-0">
-                <Search className="h-3.5 w-3.5" />
-              </div>
-              <input
-                type="text"
-                placeholder="Type to search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans"
-              />
-              {searchQuery && (
+          <div className="md:hidden flex items-center gap-1.5 pt-1 relative w-full">
+            <div ref={mobileSearchWrapperRef} className="relative flex items-center">
+              {!(isSearchExpanded || searchQuery) ? (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
-                  title="Clear search"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                  title="Search database"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Search className="w-3.5 h-3.5" />
                 </button>
+              ) : (
+                <div className="relative flex items-center bg-[#181818] rounded px-1.5 py-1 transition-all">
+                  <Search className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Type to search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchExpanded(false);
+                      }
+                    }}
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-24 transition-all pl-0.5"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
