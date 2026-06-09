@@ -1185,9 +1185,29 @@ export default function CustomerTab({
     <div className="space-y-3" id="customers-tab-pnl">
 
       {/* Mobile-only Notion Toolbar Control Row */}
-      <div className="md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full">
-        {/* Left Side: Search toggler & Filter Icon (with no text) */}
-        <div className="flex items-center gap-1">
+      <div className="md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full h-8">
+        {/* Left Side: Grid/List View switcher */}
+        <div className="flex bg-transparent shrink-0 gap-0.5">
+          <button
+            type="button"
+            onClick={() => setLayoutMode('grid')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Table view"
+          >
+            <TableIcon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('cards')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Gallery view"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Right Side: Search toggler & Filter Icon (with no text) */}
+        <div className="flex items-center gap-1 justify-end flex-1">
           <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
             <AnimatePresence initial={false}>
               {!(isSearchExpanded || searchQuery) ? (
@@ -1196,7 +1216,7 @@ export default function CustomerTab({
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.1 }}
                   type="button"
                   onClick={() => setIsSearchExpanded(true)}
                   className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
@@ -1208,9 +1228,9 @@ export default function CustomerTab({
                 <motion.div
                   key="search-input-wrapper"
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
+                  animate={{ width: 140, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
-                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 250 }}
                   className="relative flex items-center bg-transparent overflow-hidden"
                 >
                   <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
@@ -1227,7 +1247,7 @@ export default function CustomerTab({
                         setIsSearchExpanded(false);
                       }
                     }}
-                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-24 sm:w-32 pl-0.5"
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-20 pl-0.5"
                   />
                   {searchQuery && (
                     <button
@@ -1260,24 +1280,6 @@ export default function CustomerTab({
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
               </span>
             )}
-          </button>
-        </div>
-
-        {/* Right Side: Grid/List View switcher */}
-        <div className="flex bg-transparent shrink-0 gap-0.5">
-          <button
-            type="button"
-            onClick={() => setLayoutMode('grid')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-          >
-            <TableIcon className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setLayoutMode('cards')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
