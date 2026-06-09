@@ -496,10 +496,12 @@ export default function App() {
         if (!repaired.advancePaymentDate) {
           repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
         }
-        const full = (repaired.quantity || 0) * (repaired.unitPrice || 0);
-        const remaining = full - (repaired.advancePayment || 0);
-        if (remaining > 0) {
-          repaired.bankRemainingId = '';
+        if (!isBackgroundRefresh) {
+          const full = (repaired.quantity || 0) * (repaired.unitPrice || 0);
+          const remaining = full - (repaired.advancePayment || 0);
+          if (remaining > 0) {
+            repaired.bankRemainingId = '';
+          }
         }
         return repaired;
       });
