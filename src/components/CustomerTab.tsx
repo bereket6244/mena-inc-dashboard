@@ -810,7 +810,7 @@ export default function CustomerTab({
       quantity: finalQuantity,
       unitPrice: finalUnitPrice,
       advancePayment: finalAdvancePayment,
-      paymentMethodId,
+      paymentMethodId: finalAdvancePayment > 0 ? paymentMethodId : '',
       paperType1,
       amount1: Math.max(0, parseFractionOrExpression(amount1)),
       paperType2,
@@ -861,7 +861,7 @@ export default function CustomerTab({
       quantity: finalQuantity,
       unitPrice: finalUnitPrice,
       advancePayment: finalAdvancePayment,
-      paymentMethodId,
+      paymentMethodId: finalAdvancePayment > 0 ? paymentMethodId : '',
       paperType1,
       amount1: Math.max(0, parseFractionOrExpression(amount1)),
       paperType2,
@@ -1351,7 +1351,7 @@ export default function CustomerTab({
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Client Name</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Phone / Contact</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Acquisition Channel</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Order Taken By</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Order Taken By</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Product Type</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Quantity</th>
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Unit Price (ETB)</th>
@@ -1442,7 +1442,7 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Order Taken By */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300 hidden xl:table-cell">{c.orderTakenBy}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300">{c.orderTakenBy}</td>
                       
                       {/* Product Type */}
                       <td className="py-2 px-3 border-r border-[#262626] text-gray-300 whitespace-nowrap font-sans">{c.productType}</td>

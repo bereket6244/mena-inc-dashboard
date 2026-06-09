@@ -546,14 +546,24 @@ export default function App() {
         finalEmployees.push(...initialEmployees);
       }
       
-      setPaperStocks(finalS);
-      setCustomers(finalC);
-      setBankAccounts(finalB);
-      setPurchases(finalP);
-      setCategories(finalCat);
-      setEmployees(finalEmployees);
-      setProductTypes(finalProd);
-      setClientTypes(finalClientTypes);
+      // Only update state if data actually changed (prevents blinking/flickering from re-renders)
+      const updateIfChanged = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newVal: T, localKey?: string) => {
+        const newJson = JSON.stringify(newVal);
+        setter((prev: T) => {
+          if (JSON.stringify(prev) === newJson) return prev;
+          if (localKey) localStorage.setItem(localKey, newJson);
+          return newVal;
+        });
+      };
+
+      updateIfChanged(setPaperStocks, finalS, LOCAL_STORAGE_STOCKS_KEY);
+      updateIfChanged(setCustomers, finalC, LOCAL_STORAGE_CUSTOMERS_KEY);
+      updateIfChanged(setBankAccounts, finalB, LOCAL_STORAGE_BANKS_KEY);
+      updateIfChanged(setPurchases, finalP, LOCAL_STORAGE_PURCHASES_KEY);
+      updateIfChanged(setCategories, finalCat, LOCAL_STORAGE_CATEGORIES_KEY);
+      updateIfChanged(setEmployees, finalEmployees);
+      updateIfChanged(setProductTypes, finalProd, LOCAL_STORAGE_PRODUCT_TYPES_KEY);
+      updateIfChanged(setClientTypes, finalClientTypes);
 
       if (currentUser) {
         const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
