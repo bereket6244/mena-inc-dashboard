@@ -3335,16 +3335,15 @@ export default function CustomerTab({
 
                 {/* PDF Container Scroller */}
                 <TransformWrapper
-                  key={proformaMobileTab}
+                  key={`${proformaMobileTab}-${proformaZoom}`}
                   initialScale={1}
                   minScale={0.5}
                   maxScale={4}
                   panning={{ disabled: false }}
                   wheel={{ disabled: true }}
                   pinch={{ disabled: false }}
-                  centerOnInit={true}
                 >
-                  <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start md:justify-center p-3 md:p-10 pt-16 md:pt-20">
+                  <TransformComponent wrapperClass="!w-full !h-full flex-1 custom-scrollbar bg-[#0a0a0a]" contentClass="min-w-max min-h-full flex items-start justify-center p-3 md:p-10 pt-16 md:pt-20">
                     {/* Zoom Wrapper */}
                     <div 
                       style={{ 
