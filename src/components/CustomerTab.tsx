@@ -1200,7 +1200,7 @@ export default function CustomerTab({
                 <Search className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <div className="relative flex items-center bg-[#181818] rounded px-1.5 py-1 transition-all">
+              <div className="relative flex items-center bg-transparent border-b border-[#ee317b] py-0.5 transition-all">
                 <Search className="w-3 h-3 text-gray-400 mr-1 flex-shrink-0" />
                 <input
                   ref={mobileSearchInputRef}
