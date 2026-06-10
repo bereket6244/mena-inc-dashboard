@@ -3745,25 +3745,41 @@ export default function CustomerTab({
                     >
                        {/* Printable Area - Rendered using White-Paper Theme */}
                        {(() => {
-                         const MAX_ROWS_NON_LAST = 10;
-                         const MAX_ROWS_LAST = 10;
+                         const MAX_WEIGHT_PER_PAGE = 10;
                          const proformaPages = [];
                          let items = [...proformaItemsToRender];
+                         
+                         const getItemWeight = (item: any) => {
+                           const desc = item.productType || '';
+                           const charWeight = Math.ceil(desc.length / 55);
+                           const newlineWeight = desc.split('\n').length;
+                           return Math.max(1, Math.max(charWeight, newlineWeight));
+                         };
 
                          if (items.length === 0) {
                            proformaPages.push([]);
                          } else {
+                           let currentPage: any[] = [];
+                           let currentWeight = 0;
+                           
                            while (items.length > 0) {
-                             if (items.length <= MAX_ROWS_LAST) {
-                               proformaPages.push(items);
-                               break;
-                             } else if (items.length <= MAX_ROWS_NON_LAST) {
-                               proformaPages.push(items);
-                               proformaPages.push([]);
-                               break;
+                             const nextItem = items[0];
+                             const weight = getItemWeight(nextItem);
+                             
+                             if (currentPage.length === 0) {
+                               currentPage.push(items.shift());
+                               currentWeight += weight;
+                             } else if (currentWeight + weight <= MAX_WEIGHT_PER_PAGE) {
+                               currentPage.push(items.shift());
+                               currentWeight += weight;
                              } else {
-                               proformaPages.push(items.splice(0, MAX_ROWS_NON_LAST));
+                               proformaPages.push(currentPage);
+                               currentPage = [];
+                               currentWeight = 0;
                              }
+                           }
+                           if (currentPage.length > 0) {
+                             proformaPages.push(currentPage);
                            }
                          }
 
@@ -3936,7 +3952,7 @@ export default function CustomerTab({
                 <div className="relative z-10 flex flex-col mb-3">
                   <div className="flex items-start justify-between pb-3">
                     {/* Corporate Identity & Brand mark */}
-                    <div className="flex items-start gap-4 text-left pr-4">
+                    <div className="flex items-start gap-2 text-left pr-4">
                       {/* Premium App Logo image replacement */}
                       <img 
                         src="/mena-logo.png" 
@@ -3947,7 +3963,7 @@ export default function CustomerTab({
                       />
                       <div className="pt-2">
                         <h1 className="text-2xl font-black tracking-tight text-gray-900 font-sans text-left" style={{ textTransform: 'lowercase' }}>
-                          mena<span className="text-[#ee317b] font-sans">.</span>inc
+                          mena inc
                         </h1>
                         <p className="text-[11px] uppercase font-sans tracking-widest text-black font-bold text-left mt-0.5">Mena Inc Trading PLC</p>
                       </div>
@@ -4007,7 +4023,7 @@ export default function CustomerTab({
 
                 {/* Table of selected Order items */}
                 <div className="relative z-10 border border-gray-300 overflow-hidden mb-1 rounded-sm ml-4">
-                  <table className="w-full text-left border-collapse text-[10px]">
+                  <table className="w-full text-left border-collapse text-[10px] table-fixed">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-300 text-gray-705 font-sans uppercase text-[9px] tracking-wider text-center">
                         <th className="py-2 px-3 border-r border-gray-300 font-bold w-12 text-center bg-gray-100">No.</th>
@@ -4025,7 +4041,7 @@ export default function CustomerTab({
                         return (
                           <tr key={item.id} className="hover:bg-gray-55/50">
                             <td className="py-2 px-3 border-r border-gray-300 font-sans text-center text-gray-500">{globalIndexOffset + idx + 1}</td>
-                            <td className="py-2 px-3 border-r border-gray-300 text-left text-gray-800 font-sans">
+                            <td className="py-2 px-3 border-r border-gray-300 text-left text-gray-800 font-sans break-words whitespace-normal">
                               <strong className="text-black font-semibold">{item.productType}</strong>
                             </td>
                             <td className="py-2 px-3 border-r border-gray-300 font-sans text-right text-black font-semibold">{q.toLocaleString()}</td>
