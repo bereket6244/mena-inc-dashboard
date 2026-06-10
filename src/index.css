@@ -180,6 +180,43 @@ body.light-theme {
   border-color: #E5E7EB !important;
 }
 
+/* Shared data-table readability and long-press freeze helpers */
+.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+  background-color: rgba(255, 255, 255, 0.025);
+}
+
+.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.light-theme .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+  background-color: #F8FAFC !important;
+}
+
+.light-theme .alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+  background-color: #FFFFFF !important;
+}
+
+.freeze-header-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+}
+
+.freeze-first-column-table thead th:first-child,
+.freeze-first-column-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+}
+
+.freeze-first-column-table thead th:first-child {
+  z-index: 45;
+}
+
+.freeze-first-column-table tbody td:first-child {
+  z-index: 25;
+}
+
 /* Completed row color high contrast for Light Theme */
 .light-theme .completed-order-row {
   background-color: #E6F4EA !important;
@@ -390,4 +427,3 @@ option {
 .light-theme input.bg-transparent {
   color: #111827 !important;
 }
-

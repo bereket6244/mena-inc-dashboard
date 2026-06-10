@@ -30,8 +30,10 @@ import {
   MoreVertical,
   CreditCard,
   FileText,
+  CheckCircle,
   CheckCircle2,
-  RotateCcw
+  RotateCcw,
+  Megaphone
 } from 'lucide-react';
 
 import { 
@@ -45,7 +47,46 @@ import {
 } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import SearchableSelect from './SearchableSelect';
-import { PageLayout, TableToolbar, DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
+import { DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
+import { SharedDataTableLayout } from './shared/SharedDataTableLayout';
+
+const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
+const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
+const CUSTOMER_FREEZE_HEADER_STORAGE_KEY = 'ui.customer.freezeHeader';
+const CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY = 'ui.customer.freezeFirstColumn';
+const CUSTOMER_SORT_FIELDS = [
+  'recordedOrder',
+  'clientType',
+  'clientName',
+  'phone',
+  'acquisitionSource',
+  'orderTakenBy',
+  'productType',
+  'quantity',
+  'unitPrice',
+  'advancePayment',
+  'advanceDate',
+  'bankAdvanceId',
+  'paperType1',
+  'amount1',
+  'paperType2',
+  'amount2',
+  'paperType3',
+  'amount3',
+  'entrancePaper',
+  'amount16',
+  'ajabiPaper',
+  'amount9',
+  'remainingBalance',
+  'deliveryDate',
+  'fullValue',
+  'bankRemainingId',
+  'incompletionReason',
+] as const;
+type CustomerSortField = typeof CUSTOMER_SORT_FIELDS[number];
+type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder'>;
+const CUSTOMER_SORT_BY_STORAGE_KEY = 'ui.customer.sortBy';
+const CUSTOMER_SORT_DIRECTION_STORAGE_KEY = 'ui.customer.sortDirection';
 
 // Helper functions to translate modern color strings (oklch, oklab, color-mix) to standard RGB/RGBA colors for html2canvas compatibility
 let canvasCtxCache: CanvasRenderingContext2D | null = null;
@@ -135,13 +176,37 @@ export default function CustomerTab({
 }: CustomerTabProps) {
   
   // View states
-  const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>('grid');
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>(() => {
+    const savedLayout = localStorage.getItem(CUSTOMER_LAYOUT_STORAGE_KEY);
+    return savedLayout === 'cards' ? 'cards' : 'grid';
+  });
+  const [customerSortBy, setCustomerSortBy] = useState<CustomerSortField>(() => {
+    const savedSortBy = localStorage.getItem(CUSTOMER_SORT_BY_STORAGE_KEY);
+    return CUSTOMER_SORT_FIELDS.includes(savedSortBy as CustomerSortField) ? savedSortBy as CustomerSortField : 'recordedOrder';
+  });
+  const [customerSortDirection, setCustomerSortDirection] = useState<'asc' | 'desc'>(() => {
+    return localStorage.getItem(CUSTOMER_SORT_DIRECTION_STORAGE_KEY) === 'desc' ? 'desc' : 'asc';
+  });
+  const [freezeCustomerHeader, setFreezeCustomerHeader] = useState(() => {
+    return localStorage.getItem(CUSTOMER_FREEZE_HEADER_STORAGE_KEY) === 'true';
+  });
+  const [freezeCustomerFirstColumn, setFreezeCustomerFirstColumn] = useState(() => {
+    const saved = localStorage.getItem(CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY);
+    return saved === null ? true : saved === 'true';
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterAgent, setFilterAgent] = useState<string>('All');
-  const [filterSource, setFilterSource] = useState<string>('All');
-  const [filterPayment, setFilterPayment] = useState<string>('All'); // 'All', 'Debt', 'Paid'
-  const [filterCompletion, setFilterCompletion] = useState<string>('All'); // 'All', 'Completed', 'Pending', 'Incomplete'
-  const [filterReceipt, setFilterReceipt] = useState<string>('All'); // 'All', 'NeedsReceipt'
+  const savedCustomerFilters = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(CUSTOMER_FILTERS_STORAGE_KEY) || '{}') as Partial<Record<'agent' | 'source' | 'payment' | 'completion' | 'receipt', string>>;
+    } catch {
+      return {};
+    }
+  })();
+  const [filterAgent, setFilterAgent] = useState<string>(savedCustomerFilters.agent || 'All');
+  const [filterSource, setFilterSource] = useState<string>(savedCustomerFilters.source || 'All');
+  const [filterPayment, setFilterPayment] = useState<string>(savedCustomerFilters.payment || 'All'); // 'All', 'Debt', 'Paid'
+  const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
+  const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -169,6 +234,63 @@ export default function CustomerTab({
     { id: '2', content: '2. Payment Term: Requires at least 50% deposit ledger record, balance due prior to packaging release.' },
     { id: '3', content: '3. Validity: This proforma remains valid and conversion rates locked for 10 days from the dates above.' },
   ]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOMER_LAYOUT_STORAGE_KEY, layoutMode);
+  }, [layoutMode]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOMER_SORT_BY_STORAGE_KEY, customerSortBy);
+    localStorage.setItem(CUSTOMER_SORT_DIRECTION_STORAGE_KEY, customerSortDirection);
+  }, [customerSortBy, customerSortDirection]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOMER_FREEZE_HEADER_STORAGE_KEY, String(freezeCustomerHeader));
+    localStorage.setItem(CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY, String(freezeCustomerFirstColumn));
+  }, [freezeCustomerHeader, freezeCustomerFirstColumn]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOMER_FILTERS_STORAGE_KEY, JSON.stringify({
+      agent: filterAgent,
+      source: filterSource,
+      payment: filterPayment,
+      completion: filterCompletion,
+      receipt: filterReceipt,
+    }));
+  }, [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt]);
+
+  const handleRecordedOrderSort = () => {
+    setCustomerSortBy('recordedOrder');
+    setCustomerSortDirection('asc');
+  };
+
+  const handleCustomerSort = (field: CustomerColumnSortField) => {
+    if (customerSortBy === field) {
+      setCustomerSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setCustomerSortBy(field);
+    setCustomerSortDirection('asc');
+  };
+
+  const SortableCustomerHeader = ({ field, children, align = 'left', className = '' }: { field: CustomerColumnSortField; children: React.ReactNode; align?: 'left' | 'center' | 'right'; className?: string }) => {
+    const alignClass = align === 'right' ? 'justify-end text-right' : align === 'center' ? 'justify-center text-center' : 'justify-start text-left';
+    const arrow = customerSortDirection === 'asc' ? '↑' : '↓';
+
+    return (
+      <th
+        className={`py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] ${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} cursor-pointer select-none ${className}`}
+        onClick={() => handleCustomerSort(field)}
+      >
+        <span className={`inline-flex w-full items-center ${alignClass} gap-1 whitespace-nowrap`}>
+          <span>{children}</span>
+          <span className="inline-flex w-3 shrink-0 justify-center text-[#ee317b]" aria-hidden="true">
+            {customerSortBy === field ? arrow : ''}
+          </span>
+        </span>
+      </th>
+    );
+  };
 
 
   // Editable proforma text states
@@ -1059,6 +1181,84 @@ export default function CustomerTab({
     setShowBulkDeleteConfirm(false);
   };
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
+      if (event.key === 'Escape') {
+        if (showMobileFilters) {
+          event.preventDefault();
+          setShowMobileFilters(false);
+        } else if (showFilterPopover) {
+          event.preventDefault();
+          setShowFilterPopover(false);
+        } else if (showProductManager) {
+          event.preventDefault();
+          setShowProductManager(false);
+        } else if (showProformaModal) {
+          event.preventDefault();
+          setShowProformaModal(false);
+        } else if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          setShowBulkDeleteConfirm(false);
+        } else if (showBulkCompleteModal) {
+          event.preventDefault();
+          setShowBulkCompleteModal(false);
+        } else if (deletingCustomerId) {
+          event.preventDefault();
+          setDeletingCustomerId(null);
+        } else if (isFormOpen) {
+          event.preventDefault();
+          setIsFormOpen(false);
+        }
+      }
+
+      if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
+        if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          executeBulkDeleteConfirmed();
+        } else if (showBulkCompleteModal) {
+          event.preventDefault();
+          executeBulkCompleteConfirmed();
+        } else if (deletingCustomerId) {
+          event.preventDefault();
+          onDeleteCustomer(deletingCustomerId);
+          setDeletingCustomerId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    showMobileFilters,
+    showFilterPopover,
+    showProductManager,
+    showProformaModal,
+    showBulkDeleteConfirm,
+    showBulkCompleteModal,
+    deletingCustomerId,
+    isFormOpen,
+    customers,
+    selectedCustomerIds,
+    bulkCompleteDate,
+    bulkCompleteBankId,
+  ]);
+
+  const getCustomerSortValue = (customer: Customer, field: CustomerColumnSortField) => {
+    const fullValue = Number(customer.quantity || 0) * Number(customer.unitPrice || 0);
+    const remainingBalance = fullValue - Number(customer.advancePayment || 0);
+
+    switch (field) {
+      case 'remainingBalance':
+        return remainingBalance;
+      case 'fullValue':
+        return fullValue;
+      default:
+        return customer[field] ?? '';
+    }
+  };
+
   // Filter application
   const filteredCustomers = customers.filter(c => {
     const matchesSearch = 
@@ -1096,6 +1296,17 @@ export default function CustomerTab({
     }
 
     return matchesSearch && matchesAgent && matchesSource && matchesPayment && matchesCompletion && matchesReceipt;
+  }).sort((a, b) => {
+    if (customerSortBy === 'recordedOrder') return 0;
+    const direction = customerSortDirection === 'asc' ? 1 : -1;
+    const valA = getCustomerSortValue(a, customerSortBy);
+    const valB = getCustomerSortValue(b, customerSortBy);
+
+    if (typeof valA === 'number' || typeof valB === 'number') {
+      return (Number(valA || 0) - Number(valB || 0)) * direction;
+    }
+
+    return String(valA || '').localeCompare(String(valB || '')) * direction;
   });
 
   const proformaItemsToRender = isStandaloneProformaMode 
@@ -1193,11 +1404,10 @@ export default function CustomerTab({
   const formatMoney = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <PageLayout id="customers-tab-pnl">
-
-      <TableToolbar
+    <SharedDataTableLayout
+      id="customers-tab-pnl"
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        onSearchChange={setSearchQuery}
         mobileLeftControls={
           <>
             <button
@@ -1219,24 +1429,55 @@ export default function CustomerTab({
           </>
         }
         mobileRightControls={
-          <button
-            type="button"
-            onClick={() => setShowMobileFilters(true)}
-            className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
-            title="Database Filters"
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
-                {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
-              </span>
-            )}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters(true)}
+              className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
+              title="Refine database"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleRecordedOrderSort}
+              className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                customerSortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+              }`}
+              title="Recorded order"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </>
         }
-        desktopLeftControls={null}
+        desktopLeftControls={
+          <div className="border border-[#262626] rounded p-0.5 flex bg-transparent shrink-0">
+            <button
+              type="button"
+              onClick={() => setLayoutMode('grid')}
+              className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+              title="Tabular Grid View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayoutMode('cards')}
+              className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+              title="Responsive Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        }
         desktopRightControls={
           <>
-            <div className="relative">
+            <div className="relative z-20">
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
@@ -1247,7 +1488,6 @@ export default function CustomerTab({
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
-                <span>Filter</span>
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
                   <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                     {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
@@ -1258,12 +1498,15 @@ export default function CustomerTab({
               {showFilterPopover && (
                 <>
                   <div
-                    className="fixed inset-0 z-40 cursor-default"
+                    className="fixed inset-0 z-10 cursor-default"
                     onClick={() => setShowFilterPopover(false)}
                   />
-                  <div className="absolute right-0 mt-1.5 w-72 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5">
+                  <div
+                    className="absolute right-0 mt-1.5 w-72 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-20 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex items-center justify-between px-1">
-                      <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Database Filters</span>
+                      <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Database Options</span>
                       {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].some(f => f !== 'All') && (
                         <button
                           type="button"
@@ -1332,7 +1575,7 @@ export default function CustomerTab({
                           >
                             <option value="All">All Statuses</option>
                             <option value="Paid">Fully Paid</option>
-                            <option value="Unpaid">Unpaid / Debt</option>
+                            <option value="Debt">Unpaid / Debt</option>
                           </SearchableSelect>
                         </div>
                       </div>
@@ -1377,24 +1620,16 @@ export default function CustomerTab({
               )}
             </div>
 
-            <div className="border border-[#262626] rounded p-0.5 flex bg-transparent shrink-0">
-              <button
-                type="button"
-                onClick={() => setLayoutMode('grid')}
-                className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-                title="Tabular Grid View"
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('cards')}
-                className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
-                title="Responsive Cards View"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleRecordedOrderSort}
+              className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                customerSortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+              }`}
+              title="Recorded order"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
 
             <button
               type="button"
@@ -1405,7 +1640,8 @@ export default function CustomerTab({
             </button>
           </>
         }
-      />
+      fab={<FloatingAddButton onClick={handleOpenCreate} title="Create customer" />}
+    >
 
 
       {/* Selected Items / Controls Row */}
@@ -1476,10 +1712,19 @@ export default function CustomerTab({
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
       <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
-        <DataTable>
+        <DataTable
+          className={`alternating-table-rows ${freezeCustomerHeader ? 'freeze-header-table' : ''} ${freezeCustomerFirstColumn ? 'freeze-first-column-table' : ''}`}
+          onLongPressFreeze={(target) => {
+            if (target === 'header') {
+              setFreezeCustomerHeader(prev => !prev);
+            } else {
+              setFreezeCustomerFirstColumn(prev => !prev);
+            }
+          }}
+        >
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
                   <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs">
                     <input
                       type="checkbox"
@@ -1492,40 +1737,40 @@ export default function CustomerTab({
                         }
                       }}
                       className="accent-[#ee317b] cursor-pointer"
-                      title="Select/Deselect all filtered rows"
+                      title="Select/Deselect all rows"
                     />
                   </th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Client Type</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Client Name</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Phone / Contact</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left hidden xl:table-cell">Acquisition Channel</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Order Taken By</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Product Type</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Quantity</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Unit Price (ETB)</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right text-[#71b536]">Advance (ETB)</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center bg-[#1c1c1c]/20">Advance Date</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Deposit Account (Advance)</th>
+                  <SortableCustomerHeader field="clientType" className="hidden xl:table-cell">Client Type</SortableCustomerHeader>
+                  <SortableCustomerHeader field="clientName">Client Name</SortableCustomerHeader>
+                  <SortableCustomerHeader field="phone">Phone / Contact</SortableCustomerHeader>
+                  <SortableCustomerHeader field="acquisitionSource" className="hidden xl:table-cell">Acquisition Channel</SortableCustomerHeader>
+                  <SortableCustomerHeader field="orderTakenBy">Order Taken By</SortableCustomerHeader>
+                  <SortableCustomerHeader field="productType">Product Type</SortableCustomerHeader>
+                  <SortableCustomerHeader field="quantity" align="right">Quantity</SortableCustomerHeader>
+                  <SortableCustomerHeader field="unitPrice" align="right">Unit Price (ETB)</SortableCustomerHeader>
+                  <SortableCustomerHeader field="advancePayment" align="right" className="text-[#71b536]">Advance (ETB)</SortableCustomerHeader>
+                  <SortableCustomerHeader field="advanceDate" align="center" className="bg-[#1c1c1c]/20">Advance Date</SortableCustomerHeader>
+                  <SortableCustomerHeader field="bankAdvanceId">Deposit Account (Advance)</SortableCustomerHeader>
                   
                   {/* Ledger Paper Stocks */}
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] bg-[#31111E]/20 text-left">Paper 1</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right bg-[#31111E]/20">Amount 1</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] bg-[#31111E]/20 text-left">Paper 2</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right bg-[#31111E]/20">Amount 2</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] bg-[#31111E]/20 text-left">Paper 3</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right bg-[#31111E]/20">Amount 3</th>
+                  <SortableCustomerHeader field="paperType1" className="bg-[#31111E]/20">Paper 1</SortableCustomerHeader>
+                  <SortableCustomerHeader field="amount1" align="right" className="bg-[#31111E]/20">Amount 1</SortableCustomerHeader>
+                  <SortableCustomerHeader field="paperType2" className="bg-[#31111E]/20">Paper 2</SortableCustomerHeader>
+                  <SortableCustomerHeader field="amount2" align="right" className="bg-[#31111E]/20">Amount 2</SortableCustomerHeader>
+                  <SortableCustomerHeader field="paperType3" className="bg-[#31111E]/20">Paper 3</SortableCustomerHeader>
+                  <SortableCustomerHeader field="amount3" align="right" className="bg-[#31111E]/20">Amount 3</SortableCustomerHeader>
                   
                   {/* Auxiliary Papers */}
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] bg-[#112233]/40 text-left">Entrance Paper</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right bg-[#112233]/40">Amt /16</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] bg-[#112233]/40 text-left">Ajabi Paper</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right bg-[#112233]/40">Amt /9</th>
+                  <SortableCustomerHeader field="entrancePaper" className="bg-[#112233]/40">Entrance Paper</SortableCustomerHeader>
+                  <SortableCustomerHeader field="amount16" align="right" className="bg-[#112233]/40">Amt /16</SortableCustomerHeader>
+                  <SortableCustomerHeader field="ajabiPaper" className="bg-[#112233]/40">Ajabi Paper</SortableCustomerHeader>
+                  <SortableCustomerHeader field="amount9" align="right" className="bg-[#112233]/40">Amt /9</SortableCustomerHeader>
                   
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Remaining Balance</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center bg-[#31111E]/5">Final Payment Date</th>
-                  <th className="py-2.5 px-3 font-semibold text-[#ee317b] border-r border-[#262626] text-right bg-[#31111E]/10">Full (ETB)</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Remaining Bank</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-stone-400 text-left">Incompletion Reason</th>
+                  <SortableCustomerHeader field="remainingBalance" align="right">Remaining Balance</SortableCustomerHeader>
+                  <SortableCustomerHeader field="deliveryDate" align="center" className="bg-[#31111E]/5">Final Payment Date</SortableCustomerHeader>
+                  <SortableCustomerHeader field="fullValue" align="right" className="text-[#ee317b] bg-[#31111E]/10">Full (ETB)</SortableCustomerHeader>
+                  <SortableCustomerHeader field="bankRemainingId">Remaining Bank</SortableCustomerHeader>
+                  <SortableCustomerHeader field="incompletionReason" className="text-stone-400">Incompletion Reason</SortableCustomerHeader>
                   
                   <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-24">Actions</th>
                 </tr>
@@ -1547,7 +1792,7 @@ export default function CustomerTab({
                           : c.incompletionReason 
                             ? 'incomplete-order-row' 
                             : isSelected
-                              ? 'bg-[#1A2E20] border-l-2 border-[#ee317b]'
+                              ? 'selected-row bg-[#1A2E20] border-l-2 border-[#ee317b]'
                               : 'hover:bg-[#1a1a1a]'
                       }`}
                     >
@@ -4280,7 +4525,7 @@ export default function CustomerTab({
               className="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] rounded-t-xl z-50 p-4 md:hidden pb-10"
             >
               <div className="flex justify-between items-center mb-3">
-                <span className="text-gray-400 font-bold text-[11px] uppercase tracking-wider">Database Filters</span>
+                <span className="text-gray-400 font-bold text-[11px] uppercase tracking-wider">Database Options</span>
                 <button onClick={() => setShowMobileFilters(false)} className="p-1 text-gray-500 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
@@ -4364,7 +4609,7 @@ export default function CustomerTab({
                     }}
                     className="w-full py-2 bg-[#ee317b]/10 text-[#ee317b] hover:bg-[#ee317b]/20 rounded-md font-bold text-xs transition-colors cursor-pointer"
                   >
-                    Clear All Filters
+                    Clear All
                   </button>
                 </div>
               </div>
@@ -4372,18 +4617,6 @@ export default function CustomerTab({
           </>
         )}
       </AnimatePresence>
-      {/* Mobile FAB for Create Customer Order */}
-      <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
-        <button
-          type="button"
-          onClick={handleOpenCreate}
-          className="bg-[#ee317b] text-black rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
-          title="Create customer"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
       {/* Mobile Sticky Bottom Action Bar for Multi-select */}
       <AnimatePresence>
         {selectedCustomerIds.length > 0 && (
@@ -4440,6 +4673,6 @@ export default function CustomerTab({
         )}
       </AnimatePresence>
 
-    </PageLayout>
+    </SharedDataTableLayout>
   );
 }

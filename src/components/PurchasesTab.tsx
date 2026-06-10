@@ -10,12 +10,9 @@ import {
   FileText, 
   FolderPlus, 
   Tag, 
-  CheckSquare, 
   X, 
-  Sparkles,
   ArrowUpDown, 
   Briefcase,
-  Layers,
   Banknote,
   PlusCircle,
   Check,
@@ -23,12 +20,26 @@ import {
   ArrowRight,
   Calculator,
   Percent,
-  Download
+  Download,
+  Filter,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
+import { FloatingAddButton } from './shared/TabLayout';
+
+const PURCHASE_SORT_FIELDS = ['recordedOrder', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
+type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder'>;
+type PurchaseSortField = typeof PURCHASE_SORT_FIELDS[number];
+const PURCHASE_SORT_BY_STORAGE_KEY = 'ui.purchases.sortBy';
+const PURCHASE_SORT_ASC_STORAGE_KEY = 'ui.purchases.sortAsc';
+const PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY = 'ui.purchases.categoriesCollapsed';
+const PURCHASE_FILTERS_STORAGE_KEY = 'ui.purchases.filters';
+const PURCHASE_FREEZE_HEADER_STORAGE_KEY = 'ui.purchases.freezeHeader';
+const PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY = 'ui.purchases.freezeFirstColumn';
 
 interface PurchasesTabProps {
   purchases: Purchase[];
@@ -55,10 +66,38 @@ export default function PurchasesTab({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('All');
-  const [selectedBankFilter, setSelectedBankFilter] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<keyof Purchase>('purchaseDate');
-  const [isSortAsc, setIsSortAsc] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [isCategorySearchExpanded, setIsCategorySearchExpanded] = useState(false);
+  const categorySearchWrapperRef = useRef<HTMLDivElement>(null);
+  const categorySearchInputRef = useRef<HTMLInputElement>(null);
+  const savedPurchaseFilters = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(PURCHASE_FILTERS_STORAGE_KEY) || '{}') as Partial<Record<'category' | 'bank' | 'recordedBy' | 'intervalStart' | 'intervalEnd', string>>;
+    } catch {
+      return {};
+    }
+  })();
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>(savedPurchaseFilters.category || 'All');
+  const [selectedBankFilter, setSelectedBankFilter] = useState<string>(savedPurchaseFilters.bank || 'All');
+  const [selectedRecordedByFilter, setSelectedRecordedByFilter] = useState<string>(savedPurchaseFilters.recordedBy || 'All');
+  const [expenseIntervalStart, setExpenseIntervalStart] = useState(savedPurchaseFilters.intervalStart || '');
+  const [expenseIntervalEnd, setExpenseIntervalEnd] = useState(savedPurchaseFilters.intervalEnd || '');
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<PurchaseSortField>(() => {
+    const savedSortBy = localStorage.getItem(PURCHASE_SORT_BY_STORAGE_KEY);
+    return PURCHASE_SORT_FIELDS.includes(savedSortBy as PurchaseSortField) ? savedSortBy as PurchaseSortField : 'purchaseDate';
+  });
+  const [isSortAsc, setIsSortAsc] = useState(() => {
+    return localStorage.getItem(PURCHASE_SORT_ASC_STORAGE_KEY) === 'true';
+  });
+  const [freezePurchaseHeader, setFreezePurchaseHeader] = useState(() => {
+    return localStorage.getItem(PURCHASE_FREEZE_HEADER_STORAGE_KEY) === 'true';
+  });
+  const [freezePurchaseFirstColumn, setFreezePurchaseFirstColumn] = useState(() => {
+    const saved = localStorage.getItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY);
+    return saved === null ? true : saved === 'true';
+  });
 
   // Form management for custom Purchase
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -87,6 +126,12 @@ export default function PurchasesTab({
     }
   }, [isSearchExpanded]);
 
+  useEffect(() => {
+    if (isCategorySearchExpanded && categorySearchInputRef.current) {
+      categorySearchInputRef.current.focus();
+    }
+  }, [isCategorySearchExpanded]);
+
   // Click outside search container should close it if query is empty
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -98,32 +143,39 @@ export default function PurchasesTab({
       if (mobileSearchWrapperRef.current && mobileSearchWrapperRef.current.contains(e.target as Node)) {
         outsideMobile = false;
       }
+      if (categorySearchWrapperRef.current && categorySearchWrapperRef.current.contains(e.target as Node)) {
+        return;
+      }
       if (outsideDesktop && outsideMobile && !searchQuery) {
         setIsSearchExpanded(false);
       }
+      if (!categorySearchQuery) {
+        setIsCategorySearchExpanded(false);
+      }
     };
-    if (isSearchExpanded) {
+    if (isSearchExpanded || isCategorySearchExpanded) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSearchExpanded, searchQuery]);
+  }, [isSearchExpanded, isCategorySearchExpanded, searchQuery, categorySearchQuery]);
 
   // Handle escape key to close search input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsSearchExpanded(false);
+        setIsCategorySearchExpanded(false);
       }
     };
-    if (isSearchExpanded) {
+    if (isSearchExpanded || isCategorySearchExpanded) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isSearchExpanded]);
+  }, [isSearchExpanded, isCategorySearchExpanded]);
 
   // Purchase Form inputs
   const [purchasedBy, setPurchasedBy] = useState('');
@@ -160,6 +212,7 @@ export default function PurchasesTab({
     notesOrDescription: string;
   }
   const [pendingBatchItems, setPendingBatchItems] = useState<PendingPurchaseItem[]>([]);
+  const purchaseFormInputClass = "w-full h-9 px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans";
 
   // Category Configuration inputs
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -172,7 +225,10 @@ export default function PurchasesTab({
   const [editCategoryNameValue, setEditCategoryNameValue] = useState('');
 
   // Mobile categories collapse
-  const [isMobileCategoriesCollapsed, setIsMobileCategoriesCollapsed] = useState(true);
+  const [isMobileCategoriesCollapsed, setIsMobileCategoriesCollapsed] = useState(() => {
+    const savedCollapsed = localStorage.getItem(PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY);
+    return savedCollapsed === null ? true : savedCollapsed === 'true';
+  });
 
   // New item from search suggestion flow state
   const [newItemTargetCategory, setNewItemTargetCategory] = useState<string>('');
@@ -184,8 +240,10 @@ export default function PurchasesTab({
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<ExpenseCategory | null>(null);
+  const [warningMessage, setWarningMessage] = useState('');
 
   const isAdmin = currentUser?.role === 'admin';
+  const showWarning = (message: string) => setWarningMessage(message);
 
   // Listen for clicks outside suggestions box to close it
   useEffect(() => {
@@ -207,7 +265,12 @@ export default function PurchasesTab({
   }, [isFormOpen, editingPurchase, currentUser]);
 
   // Toggle sorting
-  const handleSort = (field: keyof Purchase) => {
+  const handleRecordedOrderSort = () => {
+    setSortBy('recordedOrder');
+    setIsSortAsc(true);
+  };
+
+  const handleSort = (field: PurchaseColumnSortField) => {
     if (sortBy === field) {
       setIsSortAsc(!isSortAsc);
     } else {
@@ -216,19 +279,59 @@ export default function PurchasesTab({
     }
   };
 
+  const handlePurchaseTableDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
+    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
+    if (!cell) return;
+
+    const isHeader = cell.tagName.toLowerCase() === 'th';
+    const isFirstColumn = cell.cellIndex === 0;
+    if (!isHeader && !isFirstColumn) return;
+
+    const target = isHeader ? 'header' : 'firstColumn';
+    if (target === 'header') {
+      setFreezePurchaseHeader(prev => !prev);
+    } else {
+      setFreezePurchaseFirstColumn(prev => !prev);
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_SORT_BY_STORAGE_KEY, sortBy);
+    localStorage.setItem(PURCHASE_SORT_ASC_STORAGE_KEY, String(isSortAsc));
+  }, [sortBy, isSortAsc]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY, String(isMobileCategoriesCollapsed));
+  }, [isMobileCategoriesCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_FREEZE_HEADER_STORAGE_KEY, String(freezePurchaseHeader));
+    localStorage.setItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY, String(freezePurchaseFirstColumn));
+  }, [freezePurchaseHeader, freezePurchaseFirstColumn]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_FILTERS_STORAGE_KEY, JSON.stringify({
+      category: selectedCategoryFilter,
+      bank: selectedBankFilter,
+      recordedBy: selectedRecordedByFilter,
+      intervalStart: expenseIntervalStart,
+      intervalEnd: expenseIntervalEnd,
+    }));
+  }, [selectedCategoryFilter, selectedBankFilter, selectedRecordedByFilter, expenseIntervalStart, expenseIntervalEnd]);
+
   // Open Form for addition
   const handleOpenAddForm = () => {
     setEditingPurchase(null);
     setPendingBatchItems([]); // reset batch creation
     setPurchasedBy(currentUser?.name || '');
-    setExpenseCategory(categories[0]?.name || '');
+    setExpenseCategory('');
     setItemOrServiceInput('');
     setQuantity(0);
     setUnitPrice(0);
     setHasVat(false);
     setHasWithholding(false);
     setPurchaseDate(new Date().toISOString().split('T')[0]);
-    setPaymentMethodId(bankAccounts[0]?.id || 'b1');
+    setPaymentMethodId('');
     setNotesOrDescription('');
     setRecordedBy(currentUser?.name || '');
     setIsFormOpen(true);
@@ -263,10 +366,6 @@ export default function PurchasesTab({
     }))
   );
 
-  const isExactItemMatchedFromCatalog = allCatalogItems.some(
-    catItem => catItem.name.toLowerCase() === itemOrServiceInput.trim().toLowerCase()
-  );
-
   const hasExactSuggestionMatch = allCatalogItems.some(
     item => item.name.toLowerCase() === itemOrServiceInput.trim().toLowerCase()
   );
@@ -277,6 +376,10 @@ export default function PurchasesTab({
         item.name.toLowerCase().includes(itemOrServiceInput.toLowerCase())
       )
     : [];
+  const matchedItemCategoryName = allCatalogItems.find(
+    item => item.name.toLowerCase() === itemOrServiceInput.trim().toLowerCase()
+  )?.categoryName;
+  const displayedItemCategory = matchedItemCategoryName || expenseCategory;
 
   const handleSuggestionClick = (itemName: string, categoryName: string) => {
     setItemOrServiceInput(itemName);
@@ -305,17 +408,22 @@ export default function PurchasesTab({
 
   // Add Item to current Batch (temporary list)
   const handleAddCurrentRowToBatch = () => {
+    if (!paymentMethodId) {
+      showWarning('Please select the Charge Ledger Bank/Cash account.');
+      return;
+    }
+
     const finalItemName = itemOrServiceInput.trim();
     if (!finalItemName) {
-      alert('Please specify the Item or Service purchased.');
+      showWarning('Please specify the Item or Service purchased.');
       return;
     }
     if (quantity <= 0) {
-      alert('Quantity must be greater than zero.');
+      showWarning('Quantity must be greater than zero for the pending item.');
       return;
     }
     if (unitPrice < 0) {
-      alert('Unit Price cannot be negative.');
+      showWarning('Unit Price cannot be negative for the pending item.');
       return;
     }
 
@@ -374,17 +482,22 @@ export default function PurchasesTab({
   const handleSavePurchase = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!paymentMethodId) {
+      showWarning('Please select the Charge Ledger Bank/Cash account.');
+      return;
+    }
+
     const finalItemName = itemOrServiceInput.trim();
     let allItemsToSave = [...pendingBatchItems];
 
     // If there is a partially drafted item in the form, append it to the batch automatically
     if (finalItemName) {
       if (quantity <= 0) {
-        alert('Quantity must be greater than zero for the pending item.');
+        showWarning('Quantity must be greater than zero for the pending item.');
         return;
       }
       if (unitPrice < 0) {
-        alert('Unit Price cannot be negative for the pending item.');
+        showWarning('Unit Price cannot be negative for the pending item.');
         return;
       }
 
@@ -488,7 +601,7 @@ export default function PurchasesTab({
     }
 
     // If nothing was entered at all
-    alert('Please specify the Item or Service purchased.');
+    showWarning('Please specify the Item or Service purchased.');
     return;
 
   };
@@ -527,7 +640,7 @@ export default function PurchasesTab({
     // Check duplicate check
     if (oldName.toLowerCase() !== trimmedNewName.toLowerCase() &&
         categories.some(c => c.name.toLowerCase() === trimmedNewName.toLowerCase())) {
-      alert(`Category "${trimmedNewName}" already exists on record.`);
+      showWarning(`Category "${trimmedNewName}" already exists on record.`);
       return;
     }
 
@@ -558,7 +671,7 @@ export default function PurchasesTab({
     
     const trimmed = newCategoryName.trim();
     if (categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      alert('This expense category already exists.');
+      showWarning('This expense category already exists.');
       return;
     }
 
@@ -615,7 +728,7 @@ export default function PurchasesTab({
     if (isNewCategoryModeInModal) {
       const trimmedCat = modalNewCategoryName.trim();
       if (!trimmedCat) {
-        alert('Please enter a category name.');
+        showWarning('Please enter a category name.');
         return;
       }
       const existingCat = categories.find(c => c.name.toLowerCase() === trimmedCat.toLowerCase());
@@ -642,7 +755,7 @@ export default function PurchasesTab({
     } else {
       const matchedCategory = categories.find(c => c.id === newItemTargetCategory);
       if (!matchedCategory) {
-        alert('Please select a valid category.');
+        showWarning('Please select a valid category.');
         return;
       }
       finalCategoryName = matchedCategory.name;
@@ -663,10 +776,84 @@ export default function PurchasesTab({
     setAddingNewItemFromSearch(null);
   };
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
+      if (event.key === 'Escape') {
+        if (warningMessage) {
+          event.preventDefault();
+          setWarningMessage('');
+        } else if (addingNewItemFromSearch !== null) {
+          event.preventDefault();
+          setAddingNewItemFromSearch(null);
+        } else if (isFormOpen) {
+          event.preventDefault();
+          setIsFormOpen(false);
+        } else if (showMobileFilters) {
+          event.preventDefault();
+          setShowMobileFilters(false);
+        } else if (showFilterPopover) {
+          event.preventDefault();
+          setShowFilterPopover(false);
+        } else if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          setShowBulkDeleteConfirm(false);
+        } else if (deletingPurchaseId) {
+          event.preventDefault();
+          setDeletingPurchaseId(null);
+        } else if (deletingCategory) {
+          event.preventDefault();
+          setDeletingCategory(null);
+        }
+      }
+
+      if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
+        if (warningMessage) {
+          event.preventDefault();
+          setWarningMessage('');
+        } else if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          handleBulkDelete();
+          setShowBulkDeleteConfirm(false);
+        } else if (deletingPurchaseId) {
+          event.preventDefault();
+          handleDeleteSingle(deletingPurchaseId);
+        } else if (deletingCategory) {
+          event.preventDefault();
+          onUpdateCategories(categories.filter(c => c.id !== deletingCategory.id));
+          setDeletingCategory(null);
+        } else if (addingNewItemFromSearch !== null) {
+          event.preventDefault();
+          handleSaveNewItemFromSearch();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    warningMessage,
+    addingNewItemFromSearch,
+    isFormOpen,
+    showMobileFilters,
+    showFilterPopover,
+    showBulkDeleteConfirm,
+    deletingPurchaseId,
+    deletingCategory,
+    purchases,
+    selectedPurchaseIds,
+    categories,
+    isNewCategoryModeInModal,
+    modalNewCategoryName,
+    newItemTargetCategory,
+  ]);
+
   // Filter Purchase Records
-  const filteredPurchases = purchases.filter(p => {
+  const baseFilteredPurchases = purchases.filter(p => {
     const matchesCategory = selectedCategoryFilter === 'All' || p.expenseCategory === selectedCategoryFilter;
     const matchesBank = selectedBankFilter === 'All' || p.paymentMethodId === selectedBankFilter;
+    const matchesRecordedBy = selectedRecordedByFilter === 'All' || p.recordedBy === selectedRecordedByFilter;
     
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
@@ -676,11 +863,18 @@ export default function PurchasesTab({
       (p.notesOrDescription && p.notesOrDescription.toLowerCase().includes(searchLower)) ||
       p.recordedBy.toLowerCase().includes(searchLower);
 
-    return matchesCategory && matchesBank && matchesSearch;
+    return matchesCategory && matchesBank && matchesRecordedBy && matchesSearch;
+  });
+
+  const filteredPurchases = baseFilteredPurchases.filter(p => {
+    const afterStart = !expenseIntervalStart || p.purchaseDate >= expenseIntervalStart;
+    const beforeEnd = !expenseIntervalEnd || p.purchaseDate <= expenseIntervalEnd;
+    return afterStart && beforeEnd;
   });
 
   // Sort Purchase Records
   const sortedPurchases = [...filteredPurchases].sort((a, b) => {
+    if (sortBy === 'recordedOrder') return 0;
     let valA = a[sortBy];
     let valB = b[sortBy];
 
@@ -691,54 +885,187 @@ export default function PurchasesTab({
     return isSortAsc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
   });
 
-  const totalExpenseAmount = filteredPurchases.reduce((sum, p) => sum + p.totalPrice, 0);
+  const intervalExpenseAmount = filteredPurchases.reduce((sum, p) => sum + p.totalPrice, 0);
+  const activeLedgerFilterCount = [
+    selectedCategoryFilter !== 'All',
+    selectedBankFilter !== 'All',
+    selectedRecordedByFilter !== 'All',
+    Boolean(expenseIntervalStart || expenseIntervalEnd),
+  ].filter(Boolean).length;
+  const recordedByOptions = Array.from(new Set(purchases.map(p => p.recordedBy).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const categorySearchLower = categorySearchQuery.trim().toLowerCase();
+  const visibleCategories = categorySearchLower
+    ? categories.filter(cat =>
+        cat.name.toLowerCase().includes(categorySearchLower) ||
+        cat.items.some(item => item.toLowerCase().includes(categorySearchLower))
+      )
+    : categories;
 
   return (
-    <div className="space-y-6  animate-fadeIn" id="purchases-tab-pnl">
-      
-      {/* Dynamic Summary Ribbon */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-sans font-extrabold text-white uppercase tracking-widest flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-[#ee317b]" />
-            Business Expenses &amp; Purchases Ledger
-          </h2>
-
+    <div className="space-y-2 md:space-y-6 animate-fadeIn" id="purchases-tab-pnl">
+      <div className="md:hidden hidden items-center justify-between gap-1.5 pt-1 relative w-full h-8">
+        <div className="flex bg-transparent shrink-0 gap-0.5" />
+        <div className="flex items-center gap-1 justify-end flex-1">
+          <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
+            <AnimatePresence initial={false}>
+              {!(isSearchExpanded || searchQuery) ? (
+                <motion.button
+                  key="search-btn"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.1 }}
+                  type="button"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                  title="Search database"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="search-input-wrapper"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                  className="relative flex items-center bg-transparent overflow-hidden"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <Search className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Type to search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchExpanded(false);
+                      }
+                    }}
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          {!(isSearchExpanded || searchQuery) && (
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters(true)}
+              className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
+              title="Refine ledger"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              {activeLedgerFilterCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {activeLedgerFilterCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
-
-        <div className="flex items-center gap-4">
-
-
-
-
-          <button
-            type="button"
-            onClick={handleOpenAddForm}
-            className="px-4 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer transition-colors flex items-center gap-1.5 rounded-md"
-          >
-            <Plus className="w-4 h-4" />
-            Add Bulk Purchases
-          </button>
+      </div>
+      
+      <div className="md:hidden bg-[#121212] border border-[#262626] rounded-md px-2 py-2 font-sans text-xs flex items-center justify-between gap-3">
+        <div className="text-gray-300 min-w-0">
+          <div className="text-white font-bold truncate">Total expenses</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[#ee317b] font-extrabold text-xs">{intervalExpenseAmount.toLocaleString()} ETB</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 md:gap-6 items-start">
         
         {/* Left Side: Expense Categories Sidebar Layout */}
-        <div className="xl:col-span-1 space-y-4">
-          <div className="bg-[#121212] border border-[#262626] p-4 rounded-md space-y-4">
+        <div className="xl:col-span-1 space-y-2 md:space-y-4">
+          <div className={`bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-sans font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#ee317b]" />
+              <h3 className={`${isMobileCategoriesCollapsed ? 'text-[11px]' : 'text-xs'} font-sans font-bold text-white uppercase tracking-wider flex items-center`}>
                 Expense Categories
               </h3>
               
               <div className="flex items-center gap-1.5">
+                <div ref={categorySearchWrapperRef} className={`${isMobileCategoriesCollapsed ? 'hidden xl:flex' : 'flex'} relative items-center h-7 select-none`}>
+                  <AnimatePresence initial={false}>
+                    {!(isCategorySearchExpanded || categorySearchQuery) ? (
+                      <motion.button
+                        key="category-search-btn"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        type="button"
+                        onClick={() => setIsCategorySearchExpanded(true)}
+                        className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                        title="Search categories"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                      </motion.button>
+                    ) : (
+                      <motion.div
+                        key="category-search-input-wrapper"
+                        initial={{ width: 0, opacity: 0 }}
+                        animate={{ width: 180, opacity: 1 }}
+                        exit={{ width: 0, opacity: 0 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                        className="relative flex items-center bg-transparent overflow-hidden"
+                      >
+                        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                          <Search className="h-3.5 w-3.5" />
+                        </div>
+                        <input
+                          ref={categorySearchInputRef}
+                          type="text"
+                          placeholder="Type to search..."
+                          value={categorySearchQuery}
+                          onChange={(e) => setCategorySearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              setIsCategorySearchExpanded(false);
+                            }
+                          }}
+                          className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                        />
+                        {categorySearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCategorySearchQuery('');
+                              setIsCategorySearchExpanded(false);
+                            }}
+                            className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                            title="Clear search"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {!isAddingCategory ? (
                   <button
                     type="button"
                     onClick={() => setIsAddingCategory(true)}
-                    className="p-1 bg-[#181818] border border-[#262626] text-stone-300 hover:text-white cursor-pointer transition-colors"
+                    className={`${isMobileCategoriesCollapsed ? 'hidden xl:inline-flex' : 'inline-flex'} p-1 bg-[#181818] border border-[#262626] text-stone-300 hover:text-white cursor-pointer transition-colors`}
                     title="Add New Category"
                   >
                     <Plus className="w-3 h-3" />
@@ -799,7 +1126,12 @@ export default function PurchasesTab({
 
               {/* List of Categories and their Subitems (Fully Editable) */}
               <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
-                {categories.map((cat) => (
+                {visibleCategories.length === 0 && (
+                  <div className="text-[10px] text-gray-500 italic border border-[#202020] bg-[#161616]/45 p-3 rounded-md">
+                    No categories or items match this search.
+                  </div>
+                )}
+                {visibleCategories.map((cat) => (
                   <div key={cat.id} className="border border-[#202020] bg-[#161616]/45 p-3 rounded-md relative">
                     
                     {/* Category Rename inline editor or standard display label */}
@@ -913,12 +1245,14 @@ export default function PurchasesTab({
         </div>
 
         {/* Right Side: Ledger Table Grid */}
-        <div className="xl:col-span-3 space-y-4">
+        <div className="xl:col-span-3 space-y-2 md:space-y-4">
           
-          {/* Mobile-only Top Search Bar */}
-          <div className="md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
-            <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
-              <AnimatePresence initial={false}>
+          {/* Controls */}
+          <div className="hidden">
+            <div className="flex items-center text-gray-400 font-medium gap-2"></div>
+            <div className="flex items-center gap-1.5 shrink-0">
+               {/* Search box */}
+              <div ref={searchWrapperRef} className="flex items-center">
                 {!(isSearchExpanded || searchQuery) ? (
                   <motion.button
                     key="search-btn"
@@ -937,7 +1271,7 @@ export default function PurchasesTab({
                   <motion.div
                     key="search-input-wrapper"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 140, opacity: 1 }}
+                    animate={{ width: 280, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 25, stiffness: 250 }}
                     className="relative flex items-center bg-transparent overflow-hidden"
@@ -946,7 +1280,7 @@ export default function PurchasesTab({
                       <Search className="h-3.5 w-3.5" />
                     </div>
                     <input
-                      ref={mobileSearchInputRef}
+                      ref={searchInputRef}
                       type="text"
                       placeholder="Type to search..."
                       value={searchQuery}
@@ -956,7 +1290,7 @@ export default function PurchasesTab({
                           setIsSearchExpanded(false);
                         }
                       }}
-                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-20 pl-0.5"
+                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
                     />
                     {searchQuery && (
                       <button
@@ -973,112 +1307,144 @@ export default function PurchasesTab({
                     )}
                   </motion.div>
                 )}
-              </AnimatePresence>
-            </div>
-          </div>
+              </div>
 
-          {/* Controls: search and filters */}
-          <div className="bg-[#121212] border border-[#262626] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-               {/* Search box */}
-              <div ref={searchWrapperRef} className="hidden md:flex items-center">
-                {!(isSearchExpanded || searchQuery) ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsSearchExpanded(true)}
-                    className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] hover:text-white transition-colors cursor-pointer text-xs font-medium font-sans border border-[#262626]"
-                    title="Search database"
-                  >
-                    <Search className="w-3.5 h-3.5 mr-1" />
-                    <span>Search</span>
-                  </button>
-                ) : (
-                  <div className="relative flex items-center bg-transparent transition-all">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1">
-                      <Search className="h-3.5 w-3.5" />
-                    </div>
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder="Type to search..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          setIsSearchExpanded(false);
-                        }
-                      }}
-                      className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-32 focus:w-44 transition-all pl-1"
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowFilterPopover(!showFilterPopover)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                    activeLedgerFilterCount > 0
+                      ? 'text-[#ee317b] bg-[#ee317b]/10'
+                      : ''
+                  }`}
+                  title="Refine purchases"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  {activeLedgerFilterCount > 0 && (
+                    <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                      {activeLedgerFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {showFilterPopover && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setShowFilterPopover(false)}
                     />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setIsSearchExpanded(false);
-                        }}
-                        className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none"
-                        title="Clear search"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+                    <div
+                      className="absolute right-0 mt-1.5 w-80 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between px-1">
+                        <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Ledger Options</span>
+                        {activeLedgerFilterCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategoryFilter('All');
+                              setSelectedBankFilter('All');
+                              setSelectedRecordedByFilter('All');
+                              setExpenseIntervalStart('');
+                              setExpenseIntervalEnd('');
+                            }}
+                            className="text-[#ee317b] hover:text-[#ee317b]/80 text-[10px] font-bold cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                      <div className="h-px bg-[#262626] my-0.5"></div>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Tag className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Category</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedCategoryFilter}
+                              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Categories</option>
+                              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Banknote className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Account</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedBankFilter}
+                              onChange={(e) => setSelectedBankFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Bank Methods</option>
+                              {bankAccounts.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <User className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Recorder</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedRecordedByFilter}
+                              onChange={(e) => setSelectedRecordedByFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Recorders</option>
+                              {recordedByOptions.map(name => (
+                                <option key={name} value={name}>{name}</option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Dates</span>
+                          </div>
+                          <div className="flex-1 grid grid-cols-2 gap-1.5">
+                            <input
+                              type="date"
+                              value={expenseIntervalStart}
+                              onChange={(e) => setExpenseIntervalStart(e.target.value)}
+                              className="min-w-0 bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1.5"
+                              title="From date"
+                            />
+                            <input
+                              type="date"
+                              value={expenseIntervalEnd}
+                              onChange={(e) => setExpenseIntervalEnd(e.target.value)}
+                              className="min-w-0 bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1.5"
+                              title="To date"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Category Filter */}
-              <div>
-                <SearchableSelect
-                  value={selectedCategoryFilter}
-                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
-                >
-                  <option value="All">All Categories</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </SearchableSelect>
-              </div>
-
-              {/* Bank Balance Filter */}
-              <div>
-                <SearchableSelect
-                  value={selectedBankFilter}
-                  onChange={(e) => setSelectedBankFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-[#181818] text-gray-300 border border-[#262626] rounded-md focus:border-[#ee317b] outline-none"
-                >
-                  <option value="All">All Bank Methods</option>
-                  {bankAccounts.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </SearchableSelect>
-              </div>
-            </div>
-
-            {/* Multiselect helper triggers */}
-            <div>
-              <button 
+              <button
                 type="button"
-                onClick={() => {
-                  const allFilteredIds = sortedPurchases.map(p => p.id);
-                  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedPurchaseIds.includes(id));
-                  if (allSelected) {
-                    setSelectedPurchaseIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
-                  } else {
-                    setSelectedPurchaseIds(prev => {
-                      const next = [...prev];
-                      allFilteredIds.forEach(id => {
-                        if (!next.includes(id)) next.push(id);
-                      });
-                      return next;
-                    });
-                  }
-                }}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-sans text-gray-300 bg-[#181818] hover:bg-[#262626] border border-[#262626] rounded-md cursor-pointer transition-colors"
+                onClick={handleOpenAddForm}
+                className="text-[11px] font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded px-2.5 py-1.5 flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer"
+                title="Add bulk purchases"
               >
-                <CheckSquare className="w-3.5 h-3.5 text-[#ee317b]" />
-                {sortedPurchases.length > 0 && sortedPurchases.every(p => selectedPurchaseIds.includes(p.id))
-                  ? "Deselect All Listed"
-                  : `Select All Listed (${sortedPurchases.length})`}
+                <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -1099,13 +1465,324 @@ export default function PurchasesTab({
             </div>
           )}
 
+          <div className="hidden md:flex bg-[#121212] border border-[#262626] rounded-md px-2 py-2 md:px-3 md:py-2.5 font-sans text-xs items-center justify-between gap-3">
+            <div className="text-gray-300 min-w-0">
+              <div className="text-white font-bold truncate">Total expenses</div>
+            </div>
+            <div className="flex items-center justify-end gap-2 shrink-0">
+              <div className="text-right">
+                <div className="text-[#ee317b] font-extrabold text-xs md:text-sm">{intervalExpenseAmount.toLocaleString()} ETB</div>
+                <div className="hidden sm:block text-[10px] text-gray-500">{filteredPurchases.length} of {purchases.length} rows</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
+            <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
+              <AnimatePresence initial={false}>
+                {!(isSearchExpanded || searchQuery) ? (
+                  <motion.button
+                    key="search-btn"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.1 }}
+                    type="button"
+                    onClick={() => setIsSearchExpanded(true)}
+                    className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                    title="Search database"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="search-input-wrapper"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 280, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                    className="relative flex items-center bg-transparent overflow-hidden"
+                  >
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                      <Search className="h-3.5 w-3.5" />
+                    </div>
+                    <input
+                      ref={mobileSearchInputRef}
+                      type="text"
+                      placeholder="Type to search..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setIsSearchExpanded(false);
+                      }}
+                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchExpanded(false);
+                        }}
+                        className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                        title="Clear search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {!(isSearchExpanded || searchQuery) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(true)}
+                  className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
+                  title="Refine ledger"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  {activeLedgerFilterCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                      {activeLedgerFilterCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRecordedOrderSort}
+                  className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                    sortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                  }`}
+                  title="Recorded order"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+            <div className="flex items-center text-gray-400 font-medium gap-2"></div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div ref={searchWrapperRef} className="flex items-center">
+                {!(isSearchExpanded || searchQuery) ? (
+                  <motion.button
+                    key="search-btn"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    type="button"
+                    onClick={() => setIsSearchExpanded(true)}
+                    className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                    title="Search database"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="search-input-wrapper"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 280, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                    className="relative flex items-center bg-transparent overflow-hidden"
+                  >
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                      <Search className="h-3.5 w-3.5" />
+                    </div>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Type to search..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setIsSearchExpanded(false);
+                      }}
+                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchExpanded(false);
+                        }}
+                        className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                        title="Clear search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowFilterPopover(!showFilterPopover)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                    activeLedgerFilterCount > 0
+                      ? 'text-[#ee317b] bg-[#ee317b]/10'
+                      : ''
+                  }`}
+                  title="Refine purchases"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  {activeLedgerFilterCount > 0 && (
+                    <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                      {activeLedgerFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {showFilterPopover && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setShowFilterPopover(false)}
+                    />
+                    <div
+                      className="absolute right-0 mt-1.5 w-80 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between px-1">
+                        <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Ledger Options</span>
+                        {activeLedgerFilterCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategoryFilter('All');
+                              setSelectedBankFilter('All');
+                              setSelectedRecordedByFilter('All');
+                              setExpenseIntervalStart('');
+                              setExpenseIntervalEnd('');
+                            }}
+                            className="text-[#ee317b] hover:text-[#ee317b]/80 text-[10px] font-bold cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                      <div className="h-px bg-[#262626] my-0.5"></div>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Tag className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Category</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedCategoryFilter}
+                              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Categories</option>
+                              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Banknote className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Account</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedBankFilter}
+                              onChange={(e) => setSelectedBankFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Bank Methods</option>
+                              {bankAccounts.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <User className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Recorder</span>
+                          </div>
+                          <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                            <SearchableSelect
+                              value={selectedRecordedByFilter}
+                              onChange={(e) => setSelectedRecordedByFilter(e.target.value)}
+                              className="bg-transparent text-xs text-white"
+                            >
+                              <option value="All">All Recorders</option>
+                              {recordedByOptions.map(name => (
+                                <option key={name} value={name}>{name}</option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                          <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Dates</span>
+                          </div>
+                          <div className="flex-1 grid grid-cols-2 gap-1.5">
+                            <input
+                              type="date"
+                              value={expenseIntervalStart}
+                              onChange={(e) => setExpenseIntervalStart(e.target.value)}
+                              className="min-w-0 bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1.5"
+                              title="From date"
+                            />
+                            <input
+                              type="date"
+                              value={expenseIntervalEnd}
+                              onChange={(e) => setExpenseIntervalEnd(e.target.value)}
+                              className="min-w-0 bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1.5"
+                              title="To date"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRecordedOrderSort}
+                className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                  sortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                }`}
+                title="Recorded order"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenAddForm}
+                className="text-[11px] font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded px-2.5 py-1.5 flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer"
+                title="Add bulk purchases"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
           {/* Table Spreadsheet View */}
           <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              <table
+                className={`w-full text-left border-collapse font-sans text-xs min-w-[900px] alternating-table-rows ${freezePurchaseHeader ? 'freeze-header-table' : ''} ${freezePurchaseFirstColumn ? 'freeze-first-column-table' : ''}`}
+                onDoubleClick={handlePurchaseTableDoubleClick}
+              >
                 <thead>
-                  <tr className="border-b border-[#262626] bg-[#181818] text-[10px] text-gray-400 font-sans uppercase tracking-wider ">
-                    <th className="py-3 px-3 text-center w-12">
+                  <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
+                    <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                    <th className="py-2.5 px-3 text-center w-12 border-r border-[#262626]">
                       <input
                         type="checkbox"
                         checked={sortedPurchases.length > 0 && sortedPurchases.every(p => selectedPurchaseIds.includes(p.id))}
@@ -1127,38 +1804,38 @@ export default function PurchasesTab({
                         title="Select all page purchases"
                       />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400 cursor-pointer" onClick={() => handleSort('itemOrService')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('itemOrService')}>
                       Item / Service <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400 cursor-pointer" onClick={() => handleSort('expenseCategory')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('expenseCategory')}>
                       Category <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-3 font-semibold text-gray-400 text-right cursor-pointer text-[9px]" onClick={() => handleSort('quantity')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('quantity')}>
                       Qty <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400 text-right cursor-pointer" onClick={() => handleSort('unitPrice')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('unitPrice')}>
                       Unit P. (ETB) <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400 text-right cursor-pointer" onClick={() => handleSort('totalPrice')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('totalPrice')}>
                       Total Charged (ETB) <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400 cursor-pointer" onClick={() => handleSort('purchaseDate')}>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('purchaseDate')}>
                       Date <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
                     </th>
-                    <th className="py-3 px-4 font-semibold text-gray-400">Payment Account</th>
-                    <th className="py-3 px-4 font-semibold text-gray-400">Recorded By</th>
-                    <th className="py-3 px-4 text-center w-32">Actions</th>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Payment Account</th>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Recorded By</th>
+                    <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-32">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#262626] text-gray-300 font-sans text-xs">
                   {sortedPurchases.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-gray-500 font-sans leading-relaxed italic">
-                        No purchase logs recorded in filter settings. Use the Add button to record ledger data.
+                      <td colSpan={11} className="py-12 text-center text-gray-500 font-sans leading-relaxed italic">
+                        No purchase logs recorded in current settings. Use the Add button to record ledger data.
                       </td>
                     </tr>
                   ) : (
-                    sortedPurchases.map((p) => {
+                    sortedPurchases.map((p, index) => {
                       const isSelected = selectedPurchaseIds.includes(p.id);
                       const matchedBank = bankAccounts.find(b => b.id === p.paymentMethodId);
                       
@@ -1166,11 +1843,12 @@ export default function PurchasesTab({
                         <tr 
                           key={p.id}
                           className={`transition-colors ${
-                            isSelected ? 'bg-[#121912]/20 border-l-2 border-[#71b536]' : 'hover:bg-[#181818]'
+                            isSelected ? 'selected-row bg-[#121912]/20 border-l-2 border-[#71b536]' : 'hover:bg-[#181818]'
                           }`}
                         >
+                          <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
                           {/* Checkbox selector */}
-                          <td className="py-3 px-3 text-center">
+                          <td className="py-2 px-3 text-center border-r border-[#262626]">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -1186,7 +1864,7 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Item/Service with smart custom tax labels if applicable */}
-                          <td className="py-3 px-4 text-[#E2E8F0] select-all font-semibold font-sans">
+                          <td className="py-2 px-3 border-r border-[#262626] text-[#E2E8F0] select-all font-semibold font-sans">
                             <div className="flex flex-col gap-0.5">
                               <span>{p.itemOrService}</span>
                               <div className="flex flex-wrap gap-1 mt-0.5 ">
@@ -1205,20 +1883,20 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Category */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-3 border-r border-[#262626]">
                             <span className="bg-[#24131A] text-pink-400 border border-pink-900/40 text-[10px] px-1.5 py-0.5 uppercase tracking-wide">
                               {p.expenseCategory}
                             </span>
                           </td>
 
                           {/* Qty */}
-                          <td className="py-3 px-4 text-right font-bold text-stone-200">{p.quantity}</td>
+                          <td className="py-2 px-3 border-r border-[#262626] text-right font-bold text-stone-200">{p.quantity}</td>
 
                           {/* Unit Price */}
-                          <td className="py-3 px-4 text-right text-gray-400">{Number(p.unitPrice).toLocaleString()}</td>
+                          <td className="py-2 px-3 border-r border-[#262626] text-right text-gray-400">{Number(p.unitPrice).toLocaleString()}</td>
 
                           {/* Total Price */}
-                          <td className="py-3 px-4 text-right text-red-400 font-bold font-sans">
+                          <td className="py-2 px-3 border-r border-[#262626] text-right text-red-400 font-bold font-sans">
                             <div className="flex flex-col items-end">
                               <span>{Number(p.totalPrice).toLocaleString()} ETB</span>
                               {p.baseAmount && (p.hasVat || p.hasWithholding) && (
@@ -1230,18 +1908,18 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Purchase Date */}
-                          <td className="py-3 px-4 text-[#71b536] text-[11px] whitespace-nowrap">{p.purchaseDate}</td>
+                          <td className="py-2 px-3 border-r border-[#262626] text-[#71b536] whitespace-nowrap">{p.purchaseDate}</td>
 
                           {/* Payment Method */}
-                          <td className="py-3 px-4 text-stone-300 font-sans font-semibold mb-1">
+                          <td className="py-2 px-3 border-r border-[#262626] text-stone-300 font-sans font-semibold mb-1">
                             {matchedBank ? matchedBank.name : 'Unknown Account'}
                           </td>
 
                           {/* Recorded By */}
-                          <td className="py-3 px-4 text-gray-400 font-sans text-[11px]">{p.recordedBy}</td>
+                          <td className="py-2 px-3 border-r border-[#262626] text-gray-400 font-sans">{p.recordedBy}</td>
 
                           {/* Actions */}
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-1 px-2 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
@@ -1407,25 +2085,25 @@ export default function PurchasesTab({
       {/* Drawer / Right Sliding Form Modal for Add (Batch Enabled) / Edit Purchase */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end  overscroll-contain">
+          <div
+            className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end  overscroll-contain"
+            onClick={() => setIsFormOpen(false)}
+          >
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="bg-[#121212] w-full max-w-2xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
+              onClick={(e) => e.stopPropagation()}
             >
               
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818] flex-shrink-0">
                 <div>
-                  <h4 className="font-sans font-bold text-white text-sm flex items-center gap-1.5 uppercase">
-                    <Sparkles className="w-4 h-4 text-[#ee317b]" />
+                  <h4 className="font-sans font-bold text-white text-sm uppercase">
                     {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
                   </h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-sans">
-                    {editingPurchase ? 'Modify ledger row details.' : 'Add multiple products or services below, review the batch summary, and commit everything.'}
-                  </p>
                 </div>
                 
                 <button
@@ -1454,7 +2132,7 @@ export default function PurchasesTab({
                           required
                           value={purchaseDate}
                           onChange={(e) => setPurchaseDate(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
+                          className={purchaseFormInputClass}
                         />
                       </div>
 
@@ -1463,8 +2141,11 @@ export default function PurchasesTab({
                         <SearchableSelect
                           value={paymentMethodId}
                           onChange={(e) => setPaymentMethodId(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                          className={`${purchaseFormInputClass} cursor-pointer`}
+                          inputClassName="text-center pl-7"
+                          placeholder="Select bank/cash..."
                         >
+                          <option value="">Select bank/cash...</option>
                           {bankAccounts.map((b) => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
@@ -1486,7 +2167,7 @@ export default function PurchasesTab({
                             disabled={true}
                             value={recordedBy}
                             onChange={(e) => setRecordedBy(e.target.value)}
-                            className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none focus:border-[#ee317b] font-sans bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed`}
+                            className={`${purchaseFormInputClass} bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed`}
                           />
                         </div>
                       </div>
@@ -1498,28 +2179,6 @@ export default function PurchasesTab({
                     <span className="text-[10px] font-sans font-extrabold text-[#ee317b] uppercase tracking-widest block border-b border-stone-250 dark:border-[#2d2024] pb-1.5">
                       {editingPurchase ? 'Edit Ledger Item Parameters' : 'Step 2: Add New Item to batch'}
                     </span>
-
-                    {/* Category input */}
-                    <div>
-                      <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                        Expense Category
-                        {isExactItemMatchedFromCatalog && <Lock className="w-3 h-3 text-[#ee317b]" title="Locked to catalog item category" />}
-                      </label>
-                      <SearchableSelect
-                        value={expenseCategory}
-                        disabled={isExactItemMatchedFromCatalog}
-                        onChange={(e) => setExpenseCategory(e.target.value)}
-                        className={`w-full px-2.5 py-2 text-xs border rounded-md outline-none font-sans ${
-                          isExactItemMatchedFromCatalog 
-                            ? 'bg-stone-100 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed' 
-                            : 'bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] cursor-pointer'
-                        }`}
-                      >
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                      </SearchableSelect>
-                    </div>
 
                     {/* Search Suggestive Autocompleting Item Name Input */}
                     <div className="relative">
@@ -1539,9 +2198,12 @@ export default function PurchasesTab({
                             }
                           }
                         }}
-                        className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-950 dark:text-white border border-stone-300 dark:border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
+                        className={purchaseFormInputClass}
                         placeholder="Type products (e.g. CMYK toner, Kraft backing...)"
                       />
+                      <div className="mt-1 text-[10px] font-sans text-gray-500">
+                        Category: <span className="text-[#ee317b]">{displayedItemCategory || 'Choose an item from the catalog'}</span>
+                      </div>
 
                       {/* Suggestions Floating Popup Dropdown container */}
                       <AnimatePresence>
@@ -1593,7 +2255,7 @@ export default function PurchasesTab({
                           required
                           value={quantity || ''}
                           onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
+                          className={purchaseFormInputClass}
                         />
                       </div>
 
@@ -1606,7 +2268,7 @@ export default function PurchasesTab({
                           required
                           value={unitPrice || ''}
                           onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                          className="w-full px-2.5 py-2 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans"
+                          className={purchaseFormInputClass}
                         />
                       </div>
                     </div>
@@ -1671,7 +2333,7 @@ export default function PurchasesTab({
                         value={notesOrDescription}
                         onChange={(e) => setNotesOrDescription(e.target.value)}
                         rows={1.5}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#ee317b] font-sans resize-none"
+                        className={`${purchaseFormInputClass} resize-none`}
                         placeholder="Add manufacturer invoice number, roll weights, etc."
                       />
                     </div>
@@ -1685,7 +2347,7 @@ export default function PurchasesTab({
                           className="w-full py-2.5 bg-[#1f2d1e] hover:bg-[#2d422a] text-[#71b536] border border-[#71b536]/30 font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all"
                         >
                           <Check className="w-4 h-4" />
-                          + Confirm &amp; Add Item to Batch List
+                          Confirm &amp; Add Another Item to Batch
                         </button>
                       </div>
                     )}
@@ -1716,7 +2378,6 @@ export default function PurchasesTab({
                           <thead>
                             <tr className="bg-[#181818] text-gray-500 uppercase text-[9px] border-b border-[#222222]">
                               <th className="p-2">Item Product</th>
-                              <th className="p-2">Category</th>
                               <th className="p-2 text-right">Qty</th>
                               <th className="p-2 text-right">Unit Price</th>
                               <th className="p-2 text-center">Taxes</th>
@@ -1728,9 +2389,9 @@ export default function PurchasesTab({
                             {pendingBatchItems.map((item, idx) => (
                               <tr key={item.tempId} className="hover:bg-[#151515]">
                                 <td className="p-2 font-semibold text-white max-w-[120px] truncate" title={item.itemOrService}>
-                                  {item.itemOrService}
+                                  <span className="block truncate">{item.itemOrService}</span>
+                                  <span className="block text-[9px] font-normal text-pink-400 truncate">{item.expenseCategory}</span>
                                 </td>
-                                <td className="p-2 text-pink-400 max-w-[100px] truncate">{item.expenseCategory}</td>
                                 <td className="p-2 text-right text-white font-bold">{item.quantity}</td>
                                 <td className="p-2 text-right">{item.unitPrice.toLocaleString()}</td>
                                 <td className="p-2 text-center">
@@ -1906,6 +2567,145 @@ export default function PurchasesTab({
           </div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {warningMessage && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 8 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+              className="w-full max-w-sm bg-[#121212] border border-[#ee317b]/40 shadow-2xl rounded-md overflow-hidden"
+            >
+              <div className="px-5 py-4 bg-[#181818] border-b border-[#262626] flex items-center gap-2">
+                <div className="w-8 h-8 rounded-md bg-[#ee317b]/10 text-[#ee317b] flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-white text-sm font-sans font-bold uppercase tracking-wider">Action Needed</h3>
+                  <p className="text-[10px] text-gray-500 font-sans">Complete the highlighted requirement before continuing.</p>
+                </div>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-sm text-gray-300 font-sans leading-relaxed">{warningMessage}</p>
+              </div>
+              <div className="px-5 py-4 bg-[#181818] border-t border-[#262626] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setWarningMessage('')}
+                  className="px-4 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold rounded-md cursor-pointer transition-colors"
+                >
+                  OK
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMobileFilters && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileFilters(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#262626] rounded-t-xl z-50 p-4 md:hidden pb-10"
+            >
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-gray-400 font-bold text-[11px] uppercase tracking-wider">Ledger Options</span>
+                <button onClick={() => setShowMobileFilters(false)} className="p-1 text-gray-500 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Category</label>
+                  <SearchableSelect
+                    value={selectedCategoryFilter}
+                    onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                    className="w-full bg-[#181818] border border-[#262626] text-white rounded-md text-xs"
+                  >
+                    <option value="All">All Categories</option>
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </SearchableSelect>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Account</label>
+                  <SearchableSelect
+                    value={selectedBankFilter}
+                    onChange={(e) => setSelectedBankFilter(e.target.value)}
+                    className="w-full bg-[#181818] border border-[#262626] text-white rounded-md text-xs"
+                  >
+                    <option value="All">All Bank Methods</option>
+                    {bankAccounts.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </SearchableSelect>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Recorded By</label>
+                  <SearchableSelect
+                    value={selectedRecordedByFilter}
+                    onChange={(e) => setSelectedRecordedByFilter(e.target.value)}
+                    className="w-full bg-[#181818] border border-[#262626] text-white rounded-md text-xs"
+                  >
+                    <option value="All">All Recorders</option>
+                    {recordedByOptions.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </SearchableSelect>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Date Interval</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={expenseIntervalStart}
+                      onChange={(e) => setExpenseIntervalStart(e.target.value)}
+                      className="min-w-0 bg-[#181818] border border-[#262626] text-white rounded-md text-xs px-2 py-2 outline-none"
+                      title="From date"
+                    />
+                    <input
+                      type="date"
+                      value={expenseIntervalEnd}
+                      onChange={(e) => setExpenseIntervalEnd(e.target.value)}
+                      className="min-w-0 bg-[#181818] border border-[#262626] text-white rounded-md text-xs px-2 py-2 outline-none"
+                      title="To date"
+                    />
+                  </div>
+                </div>
+                {activeLedgerFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryFilter('All');
+                      setSelectedBankFilter('All');
+                      setSelectedRecordedByFilter('All');
+                      setExpenseIntervalStart('');
+                      setExpenseIntervalEnd('');
+                    }}
+                    className="w-full py-2 bg-[#ee317b]/10 text-[#ee317b] hover:bg-[#ee317b]/20 rounded-md font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <FloatingAddButton onClick={handleOpenAddForm} title="Add bulk purchases" />
 
     </div>
   );

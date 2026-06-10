@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
@@ -188,6 +188,48 @@ export default function PerformanceTab({
     setEditingBankId(null);
   };
 
+  const handleConfirmBulkDelete = () => {
+    onDeleteBankAccount(selectedBankIds);
+    setSelectedBankIds([]);
+    setShowBulkDeleteConfirm(false);
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
+      if (event.key === 'Escape') {
+        if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          setShowBulkDeleteConfirm(false);
+        } else if (deletingBankId) {
+          event.preventDefault();
+          setDeletingBankId(null);
+        } else if (editingBankId) {
+          event.preventDefault();
+          setEditingBankId(null);
+        } else if (isAddingBank) {
+          event.preventDefault();
+          setIsAddingBank(false);
+        }
+      }
+
+      if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
+        if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          handleConfirmBulkDelete();
+        } else if (deletingBankId) {
+          event.preventDefault();
+          onDeleteBankAccount(deletingBankId);
+          setDeletingBankId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showBulkDeleteConfirm, deletingBankId, editingBankId, isAddingBank, selectedBankIds]);
+
   // Dynamic filtering of customers for interval analysis
   const filteredCustomersForInterval = customers.filter(c => {
     const orderDate = c.advancePaymentDate || c.deliveryDate || '';
@@ -295,7 +337,7 @@ export default function PerformanceTab({
               className="flex items-center gap-1.5 px-3 py-1 bg-[#2E181D] hover:bg-rose-900/40 border border-rose-900/40 text-rose-400 text-xs font-sans transition-all cursor-pointer rounded-md"
             >
               <RefreshCw className="w-3 h-3" />
-              Reset Filters
+              Reset
             </button>
           )}
         </div>
@@ -469,7 +511,7 @@ export default function PerformanceTab({
           <div className="flex items-center justify-between">
             <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Spent (Expenses)</span>
             {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? (
-              <span className="text-[10px] bg-[#3B1E11] text-[#E07A5F] font-sans px-2 py-0.5 rounded-md border border-[#E07A5F]/20">Filtered interval</span>
+              <span className="text-[10px] bg-[#3B1E11] text-[#E07A5F] font-sans px-2 py-0.5 rounded-md border border-[#E07A5F]/20">Selected interval</span>
             ) : (
               <span className="text-[10px] bg-[#1A1A40] text-[#7096FF] font-sans px-2 py-0.5 rounded-md border border-[#7096FF]/20">All-time sum</span>
             )}
@@ -480,7 +522,7 @@ export default function PerformanceTab({
           </p>
           <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-450 font-sans">
             <span>
-              {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? 'Filtered Costs' : 'All Registered Costs'}
+              {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? 'Selected Costs' : 'All Registered Costs'}
             </span>
             <span>
               {filteredPurchasesForInterval.length === purchases.length
@@ -913,18 +955,18 @@ export default function PerformanceTab({
 
           {/* Simple Leaderboard Table */}
           <div className="overflow-hidden border border-[#262626] rounded-md">
-            <table className="w-full text-left text-sm font-sans border-collapse">
+            <table className="w-full text-left text-xs font-sans border-collapse">
               <thead>
-                <tr className="bg-[#181818] text-[11px] font-sans tracking-wider text-gray-400 border-b border-[#262626]">
-                  <th className="py-2.5 px-3">Staff Member</th>
-                  <th className="py-2.5 px-3 text-center">Orders Completed</th>
-                  <th className="py-2.5 px-3 text-right">Total Gross (ETB)</th>
+                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Staff Member</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center">Orders Completed</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 text-right">Total Gross (ETB)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-350">
                 {employeeLeaderboard.map((emp, idx) => (
                   <tr key={emp.name} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-white flex items-center gap-2">
+                    <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white flex items-center gap-2">
                       <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold font-sans ${
                         idx === 0 ? 'bg-[#31111E] text-[#ee317b]' : 
                         idx === 1 ? 'bg-[#262626] text-white' : 
@@ -934,8 +976,8 @@ export default function PerformanceTab({
                       </span>
                       {emp.name}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-sans text-gray-400">{emp.completed}</td>
-                    <td className="py-2.5 px-3 text-right font-sans font-medium text-white">{emp.totalGross.toLocaleString()} ETB</td>
+                    <td className="py-2 px-3 border-r border-[#262626] text-center font-sans text-gray-400">{emp.completed}</td>
+                    <td className="py-2 px-3 text-right font-sans font-medium text-white">{emp.totalGross.toLocaleString()} ETB</td>
                   </tr>
                 ))}
                 {employeeLeaderboard.length === 0 && (
@@ -994,23 +1036,23 @@ export default function PerformanceTab({
 
           {/* Simple Marketing Channel Table */}
           <div className="overflow-hidden border border-[#262626] rounded-md">
-            <table className="w-full text-left text-sm font-sans border-collapse">
+            <table className="w-full text-left text-xs font-sans border-collapse">
               <thead>
-                <tr className="bg-[#181818] text-[11px] font-sans tracking-wider text-gray-400 border-b border-[#262626]">
-                  <th className="py-2.5 px-3">Lead Channel</th>
-                  <th className="py-2.5 px-3 text-center">Total Leads</th>
-                  <th className="py-2.5 px-3 text-right">Total Revenue (ETB)</th>
+                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Lead Channel</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center">Total Leads</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 text-right">Total Revenue (ETB)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
                 {marketingPerformance.map((lead) => (
                   <tr key={lead.channel} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-white flex items-center gap-2">
+                    <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-[#71b536] rounded-md"></span>
                       {lead.channel}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-sans text-gray-400">{lead.totalLeads}</td>
-                    <td className="py-2.5 px-3 text-right font-sans font-medium text-white">{lead.totalRevenue.toLocaleString()} ETB</td>
+                    <td className="py-2 px-3 border-r border-[#262626] text-center font-sans text-gray-400">{lead.totalLeads}</td>
+                    <td className="py-2 px-3 text-right font-sans font-medium text-white">{lead.totalRevenue.toLocaleString()} ETB</td>
                   </tr>
                 ))}
                 {marketingPerformance.length === 0 && (
@@ -1143,11 +1185,7 @@ export default function PerformanceTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    onDeleteBankAccount(selectedBankIds);
-                    setSelectedBankIds([]);
-                    setShowBulkDeleteConfirm(false);
-                  }}
+                  onClick={handleConfirmBulkDelete}
                   className="px-4 py-1.5 text-xs bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold uppercase tracking-widest cursor-pointer font-sans"
                 >
                   Delete Selected

@@ -153,54 +153,69 @@ export function TableToolbar({
           {desktopLeftControls}
         </div>
 
-        {/* Right Side: Filters, Search, Switcher, Create Button */}
+        {/* Right Side: Search and actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {desktopRightControls}
-
           {/* Search control in toolbar */}
           <div ref={searchWrapperRef} className="relative flex items-center">
-            {!(isSearchExpanded || searchQuery) ? (
-              <button
-                type="button"
-                onClick={() => setIsSearchExpanded(true)}
-                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] hover:text-white transition-colors cursor-pointer text-xs font-medium font-sans"
-                title="Search database"
-              >
-                <Search className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <div className="relative flex items-center bg-transparent transition-all">
-                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1">
-                  <Search className="h-3.5 w-3.5" />
-                </div>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Type to search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setIsSearchExpanded(false);
-                    }
-                  }}
-                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 shadow-none w-[180px] font-sans placeholder-gray-600 focus:placeholder-gray-500"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setIsSearchExpanded(false);
+            <AnimatePresence initial={false}>
+              {!(isSearchExpanded || searchQuery) ? (
+                <motion.button
+                  key="search-btn"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.1 }}
+                  type="button"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                  title="Search database"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="search-input-wrapper"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                  className="relative flex items-center bg-transparent overflow-hidden"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <Search className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Type to search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchExpanded(false);
+                      }
                     }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                )}
-              </div>
-            )}
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                      title="Clear search"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {desktopRightControls}
         </div>
       </div>
     </>
@@ -215,10 +230,35 @@ export function DataTableWrapper({ children, className = "" }: { children: React
   );
 }
 
-export function DataTable({ children }: { children: ReactNode }) {
+export function DataTable({
+  children,
+  className = "",
+  onLongPressFreeze,
+}: {
+  children: ReactNode;
+  className?: string;
+  onLongPressFreeze?: (target: 'header' | 'firstColumn') => void;
+}) {
+  const handleDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
+    if (!onLongPressFreeze) return;
+
+    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
+    if (!cell) return;
+
+    const isHeader = cell.tagName.toLowerCase() === 'th';
+    const isFirstColumn = cell.cellIndex === 0;
+    if (!isHeader && !isFirstColumn) return;
+
+    const target = isHeader ? 'header' : 'firstColumn';
+    onLongPressFreeze(target);
+  };
+
   return (
     <div className="overflow-x-auto scrollbar-none-x">
-      <table className="w-full text-left border-collapse font-sans text-xs">
+      <table
+        className={`w-full text-left border-collapse font-sans text-xs ${className}`}
+        onDoubleClick={handleDoubleClick}
+      >
         {children}
       </table>
     </div>

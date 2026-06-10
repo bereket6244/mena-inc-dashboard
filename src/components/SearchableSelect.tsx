@@ -7,6 +7,8 @@ interface SearchableSelectProps {
   onChange: (e: any) => void;
   children: ReactNode;
   className?: string;
+  inputClassName?: string;
+  placeholder?: string;
   disabled?: boolean;
 }
 
@@ -15,6 +17,8 @@ export default function SearchableSelect({
   onChange,
   children,
   className = "",
+  inputClassName = "",
+  placeholder = "Select...",
   disabled = false
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -144,8 +148,9 @@ export default function SearchableSelect({
           ref={inputRef}
           type="text"
           disabled={disabled}
-          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left truncate ${disabled ? 'cursor-not-allowed' : 'cursor-text'} ${!selectedOption && !isOpen ? 'text-gray-500' : ''}`}
-          placeholder="Select..."
+          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left truncate ${disabled ? 'cursor-not-allowed' : 'cursor-text'} ${!selectedOption && !isOpen ? 'text-gray-500' : ''} ${inputClassName}`}
+          style={inputClassName.includes('text-center') ? { textAlign: 'center' } : undefined}
+          placeholder={placeholder}
           value={isOpen ? searchTerm : (selectedOption ? selectedOption.label : "")}
           onChange={(e) => {
             if (!disabled && !isOpen) setIsOpen(true);

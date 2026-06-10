@@ -1,8 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PageLayout, TableToolbar, DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
+import { SharedDataTableLayout, SharedTh, SharedTd, SharedTr } from './shared/SharedDataTableLayout';
+import { FloatingAddButton } from './shared/TabLayout';
 import { 
   Plus, 
+  ArrowDown,
+  ArrowUp,
   Sparkles, 
   Edit3, 
   TrendingDown, 
@@ -11,7 +14,7 @@ import {
   CheckCircle, 
   Search,
   X,
-  RefreshCw,
+  RotateCcw,
   Info,
   Layers,
   Database,
@@ -23,6 +26,12 @@ import {
 
 import { Customer, PaperStock, EmployeeUser } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+
+const INVENTORY_SORT_FIELDS = ['recordedOrder', 'name', 'remaining', 'initialStock', 'consumed'] as const;
+type InventoryColumnSortField = Exclude<typeof INVENTORY_SORT_FIELDS[number], 'recordedOrder'>;
+type InventorySortField = typeof INVENTORY_SORT_FIELDS[number];
+const INVENTORY_SORT_BY_STORAGE_KEY = 'ui.inventory.sortBy';
+const INVENTORY_SORT_DIRECTION_STORAGE_KEY = 'ui.inventory.sortDirection';
 
 interface InventoryTabProps {
   paperStocks: PaperStock[];
@@ -39,57 +48,6 @@ export default function InventoryTab({
 }: InventoryTabProps) {
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const searchWrapperRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
-  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
-
-  // Focus search input on expansion
-  useEffect(() => {
-    if (isSearchExpanded) {
-      if (searchInputRef.current) searchInputRef.current.focus();
-      if (mobileSearchInputRef.current) mobileSearchInputRef.current.focus();
-    }
-  }, [isSearchExpanded]);
-
-  // Click outside search container should close it if query is empty
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      let outsideDesktop = true;
-      let outsideMobile = true;
-      if (searchWrapperRef.current && searchWrapperRef.current.contains(e.target as Node)) {
-        outsideDesktop = false;
-      }
-      if (mobileSearchWrapperRef.current && mobileSearchWrapperRef.current.contains(e.target as Node)) {
-        outsideMobile = false;
-      }
-      if (outsideDesktop && outsideMobile && !searchQuery) {
-        setIsSearchExpanded(false);
-      }
-    };
-    if (isSearchExpanded) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSearchExpanded, searchQuery]);
-
-  // Handle escape key to close search input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsSearchExpanded(false);
-      }
-    };
-    if (isSearchExpanded) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isSearchExpanded]);
 
   // State for Add/Edit Stock
   const [editingStock, setEditingStock] = useState<PaperStock | null>(null);
@@ -109,8 +67,48 @@ export default function InventoryTab({
   // Quick replenishment state
   const [replenishingStockId, setReplenishingStockId] = useState<string | null>(null);
   const [replenishAmount, setReplenishAmount] = useState<string>('');
+  const [sortBy, setSortBy] = useState<InventorySortField>(() => {
+    const savedSortBy = localStorage.getItem(INVENTORY_SORT_BY_STORAGE_KEY);
+    return INVENTORY_SORT_FIELDS.includes(savedSortBy as InventorySortField) ? savedSortBy as InventorySortField : 'name';
+  });
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => {
+    return localStorage.getItem(INVENTORY_SORT_DIRECTION_STORAGE_KEY) === 'desc' ? 'desc' : 'asc';
+  });
 
   const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    localStorage.setItem(INVENTORY_SORT_BY_STORAGE_KEY, sortBy);
+    localStorage.setItem(INVENTORY_SORT_DIRECTION_STORAGE_KEY, sortDirection);
+  }, [sortBy, sortDirection]);
+
+  const handleRecordedOrderSort = () => {
+    setSortBy('recordedOrder');
+    setSortDirection('asc');
+  };
+
+  const handleSort = (field: InventoryColumnSortField) => {
+    if (sortBy === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortBy(field);
+    setSortDirection(field === 'name' ? 'asc' : 'desc');
+  };
+
+  const SortHeader = ({ field, children, align = 'left' }: { field: InventoryColumnSortField; children: React.ReactNode; align?: 'left' | 'right' }) => {
+    const Icon = sortDirection === 'asc' ? ArrowUp : ArrowDown;
+    const justifyClass = align === 'right' ? 'justify-end' : 'justify-start';
+
+    return (
+      <span className={`inline-flex w-full items-center ${justifyClass} gap-1 whitespace-nowrap`}>
+        <span>{children}</span>
+        <span className="inline-flex w-3 shrink-0 justify-center text-[#ee317b]" aria-hidden="true">
+          {sortBy === field && <Icon className="h-3 w-3" strokeWidth={2.5} />}
+        </span>
+      </span>
+    );
+  };
 
   // Helper to compute Total Consumed for a specific stock name
   const computeTotalConsumed = (name: string): number => {
@@ -163,10 +161,6 @@ export default function InventoryTab({
       };
     }
   };
-
-  const filteredStocks = paperStocks.filter(stock => 
-    stock.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleAddStock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,251 +221,420 @@ export default function InventoryTab({
     setDeletingStockId(null);
   };
 
+  const handleConfirmReplenish = () => {
+    if (!replenishingStockId) return;
+    const parsedAmt = Math.max(0, parseFractionOrExpression(replenishAmount));
+    if (parsedAmt > 0) {
+      const updatedList = paperStocks.map(s => {
+        if (s.id === replenishingStockId) {
+          return {
+            ...s,
+            initialStock: s.initialStock + parsedAmt
+          };
+        }
+        return s;
+      });
+      onUpdateStocks(updatedList);
+      setReplenishingStockId(null);
+      setReplenishAmount('');
+    }
+  };
+
+  const handleConfirmBulkDelete = () => {
+    const remainingStocks = paperStocks.filter(s => !selectedStockIds.includes(s.id));
+    onUpdateStocks(remainingStocks);
+    setSelectedStockIds([]);
+    setShowBulkDeleteConfirm(false);
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
+      if (event.key === 'Escape') {
+        if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          setShowBulkDeleteConfirm(false);
+        } else if (deletingStockId) {
+          event.preventDefault();
+          setDeletingStockId(null);
+        } else if (replenishingStockId) {
+          event.preventDefault();
+          setReplenishingStockId(null);
+        } else if (editingStock) {
+          event.preventDefault();
+          setEditingStock(null);
+        } else if (showAddForm) {
+          event.preventDefault();
+          setShowAddForm(false);
+        }
+      }
+
+      if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
+        if (showBulkDeleteConfirm) {
+          event.preventDefault();
+          handleConfirmBulkDelete();
+        } else if (deletingStockId) {
+          event.preventDefault();
+          handleDeleteStock(deletingStockId);
+        } else if (replenishingStockId) {
+          event.preventDefault();
+          handleConfirmReplenish();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showBulkDeleteConfirm, deletingStockId, replenishingStockId, editingStock, showAddForm, paperStocks, selectedStockIds, replenishAmount]);
+
   // High-level statistics
-  const totalItems = paperStocks.length;
   const calculatedStocks = paperStocks.map(s => {
     const consumed = computeTotalConsumed(s.name);
     const remaining = s.initialStock - consumed;
     return { ...s, consumed, remaining };
   });
-
-  const lowStockCount = calculatedStocks.filter(s => s.remaining < 50 && s.remaining > 0).length;
-  const outOfStockCount = calculatedStocks.filter(s => s.remaining <= 0).length;
-  const totalInitial = paperStocks.reduce((sum, s) => sum + s.initialStock, 0);
-  const totalRemaining = calculatedStocks.reduce((sum, s) => sum + Math.max(0, s.remaining), 0);
+  const filteredStocks = calculatedStocks
+    .filter(stock => stock.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'recordedOrder') return 0;
+      const direction = sortDirection === 'asc' ? 1 : -1;
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name) * direction;
+      }
+      return (a[sortBy] - b[sortBy]) * direction;
+    });
 
   return (
-    <PageLayout id="inventory-tab-pnl">
-
-      <TableToolbar
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        mobileLeftControls={null}
-        mobileRightControls={null}
-        desktopLeftControls={null}
-        desktopRightControls={
-          <>
-            <div className="h-4 w-px bg-[#262626] mx-1 hidden md:block"></div>
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={() => setShowAddForm(true)}
-                className="hidden md:flex items-center gap-1.5 bg-[#ee317b] text-black px-2.5 py-1.5 rounded text-[11px] font-bold font-sans shadow-lg shadow-[#ee317b]/10 hover:bg-white hover:text-black transition-all cursor-pointer group"
-              >
-                <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                <span>Create</span>
-              </button>
-            ) : (
-              <div className="text-[11px] font-bold font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5 rounded-md">
-                <Lock className="w-3 h-3 text-[#ee317b]" />
-                <span>READ-ONLY</span>
-              </div>
-            )}
-          </>
-        }
-      />
-
-      {/* Selected Stock Bulk Action Ribbon */}
-      {/* Selected Stock Bulk Action Ribbon removed */}
-
-      {/* Quick Create New Stock Variant Modal */}
-      <AnimatePresence>
-        {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#121212] border border-[#ee317b]/50 rounded-md p-6 max-w-md w-full shadow-none"
+    <SharedDataTableLayout
+      id="inventory-tab-pnl"
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      tablePreferenceKey="ui.inventory.table"
+      mobileRightControls={
+        <button
+          type="button"
+          onClick={handleRecordedOrderSort}
+          className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+            sortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+          }`}
+          title="Recorded order"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      }
+      desktopRightControls={
+        <>
+          <button
+            type="button"
+            onClick={handleRecordedOrderSort}
+            className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+              sortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+            }`}
+            title="Recorded order"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setShowAddForm(true)}
+              className="text-[11px] font-sans font-bold text-black bg-[#ee317b] hover:bg-[#ee317b]/80 rounded px-2.5 py-1.5 flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer"
             >
-              <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 ">
-                <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-[#ee317b]" />
-                  Restock Item
-                </span>
-                <button 
-                  onClick={() => setShowAddForm(false)} 
-                  className="text-gray-500 hover:text-white cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
-                  <input
-                    id="field-new-stock-name"
-                    type="text"
-                    required
-                    placeholder="e.g. Bronze wave"
-                    value={newStockName}
-                    onChange={(e) => setNewStockName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial on Hand (expression enabled)</label>
-                  <input
-                    id="field-new-stock-initial"
-                    type="text"
-                    required
-                    placeholder="e.g. 500 or 100 * 5"
-                    value={newStockInitial}
-                    onChange={(e) => setNewStockInitial(cleanLeadingZeros(e.target.value))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = parseFractionOrExpression(newStockInitial);
-                        setNewStockInitial(val.toString());
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
-                  />
-                  <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                    Parsed: {parseFractionOrExpression(newStockInitial)}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 justify-end pt-2 items-center">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <div className="text-[11px] font-bold font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5 rounded-md">
+              <Lock className="w-3 h-3 text-[#ee317b]" />
+              <span>READ-ONLY</span>
+            </div>
+          )}
+        </>
+      }
+      selectedItemsBar={
+        <div className="relative z-30">
+          <AnimatePresence>
+            {selectedStockIds.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="hidden md:flex bg-[#ee317b]/10 border border-[#ee317b]/30 py-1.5 px-3 rounded-md items-center justify-between gap-4 text-xs font-sans z-30 overflow-x-auto"
+              >
+                <div className="flex items-center gap-2.5 text-white shrink-0">
+                  <CheckSquare className="w-4 h-4 text-[#ee317b]" />
+                  <span className="font-bold">{selectedStockIds.length} Selected</span>
                   <button
                     type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
+                    onClick={() => setSelectedStockIds([])}
+                    className="px-2 py-0.5 bg-[#1C1C1C] hover:bg-[#262626] border border-[#262626] text-gray-400 hover:text-white rounded text-[10px] uppercase font-sans font-bold cursor-pointer transition-colors ml-1"
+                    title="Deselect All Selected Items"
                   >
-                    Close
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer rounded"
-                  >
-                    Add Stock
+                    Deselect All
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    className="px-3 py-1 bg-[#31111E] hover:bg-[#4a1a2d] border border-rose-900/50 text-[#ee317b] font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      }
+      tableHeaders={
+        <>
+          <SharedTh isIndex>#</SharedTh>
+          <SharedTh align="center" width="2.5rem">
+            <input
+              type="checkbox"
+              checked={filteredStocks.length > 0 && selectedStockIds.length === filteredStocks.length}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedStockIds(filteredStocks.map(stock => stock.id));
+                } else {
+                  setSelectedStockIds([]);
+                }
+              }}
+              className="accent-[#ee317b] cursor-pointer"
+              title="Select/Deselect all rows"
+            />
+          </SharedTh>
+          <SharedTh className="cursor-pointer select-none" onClick={() => handleSort('name')}>
+            <SortHeader field="name">Stock Name</SortHeader>
+          </SharedTh>
+          <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('remaining')}>
+            <SortHeader field="remaining" align="right">Stock on Hand</SortHeader>
+          </SharedTh>
+          <SharedTh align="right" className="hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort('initialStock')}>
+            <SortHeader field="initialStock" align="right">Initial</SortHeader>
+          </SharedTh>
+          <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('consumed')}>
+            <SortHeader field="consumed" align="right">Total Consumed</SortHeader>
+          </SharedTh>
+          <SharedTh align="center" width="10rem">Actions</SharedTh>
+        </>
+      }
+      tableBody={
+        <>
+          {filteredStocks.map((stock, index) => {
+              const isSelected = selectedStockIds.includes(stock.id);
+              const isOutOfStock = stock.remaining <= 0;
+              const isLowStock = stock.remaining < 50 && stock.remaining > 0;
 
-      {/* Main Inventory Board Grid */}
-      <div className="w-full">
-        
-        {/* List of Stocks - Responsive scroll table */}
-        <DataTableWrapper className="mb-28 md:mb-0 !border-t md:!border md:!rounded-md">
+              let rowClass = '';
+              if (isOutOfStock) {
+                rowClass = 'out-of-stock-row bg-[#2E181D]/40 hover:bg-[#2E181D]/60';
+              } else if (isLowStock) {
+                rowClass = 'low-stock-row bg-[#112918]/20 hover:bg-[#112918]/40';
+              }
 
-          <DataTable>
-            
-              <thead>
-                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Stock Name</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Stock on Hand</th>
-                  <th className="hidden md:table-cell py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Initial</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Total Consumed</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Status Alert</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center w-40">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#262626] text-gray-300 font-sans">
-                {calculatedStocks.filter(stock => stock.name.toLowerCase().includes(searchQuery.toLowerCase())).map((stock, index) => {
-                  const status = getStatus(stock.remaining);
-                  const isSelected = selectedStockIds.includes(stock.id);
-                  const isOutOfStock = stock.remaining <= 0;
-                  const isLowStock = stock.remaining < 50 && stock.remaining > 0;
-                  
-                  let rowClass = 'group transition-colors border-b border-[#262626]';
-                  if (isSelected) {
-                    rowClass += ' bg-[#121912]/20 border-l-2 border-[#71b536]';
-                  } else if (isOutOfStock) {
-                    rowClass += ' bg-[#2E181D]/40 hover:bg-[#2E181D]/60';
-                  } else if (isLowStock) {
-                    rowClass += ' bg-[#112918]/20 hover:bg-[#112918]/40';
-                  } else {
-                    rowClass += ' hover:bg-[#1a1a1a]';
+              return (
+                <React.Fragment key={stock.id}>
+                <SharedTr isSelected={isSelected} className={rowClass}>
+                  <SharedTd isIndex>{index + 1}</SharedTd>
+                  <SharedTd align="center" className="bg-[#151515]/45">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedStockIds(prev => [...prev, stock.id]);
+                        } else {
+                          setSelectedStockIds(prev => prev.filter(id => id !== stock.id));
+                        }
+                      }}
+                      className="accent-[#ee317b] cursor-pointer"
+                      title="Select stock"
+                    />
+                  </SharedTd>
+                  <SharedTd className="font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">
+                    {stock.name}
+                  </SharedTd>
+                  <SharedTd
+                    align="right"
+                    className={`font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}
+                  >
+                    {stock.remaining.toLocaleString()}
+                  </SharedTd>
+                  <SharedTd align="right" className="hidden md:table-cell text-gray-300 group-hover:bg-[#1a1a1a] transition-colors">
+                    {stock.initialStock.toLocaleString()}
+                  </SharedTd>
+                  <SharedTd align="right" className="text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
+                    {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}
+                  </SharedTd>
+                  <SharedTd align="center" className="group-hover:bg-[#1a1a1a] transition-colors">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplenishingStockId(stock.id);
+                          setReplenishAmount('');
+                        }}
+                        className="bg-transparent text-[#71b536] hover:bg-[#71b536]/10 p-1 rounded-md border border-[#71b536]/20 text-[10px] tracking-wider transition-colors font-sans cursor-pointer flex items-center gap-0.5"
+                        title={`Add to "${stock.name}" Stock`}
+                      >
+                        <Plus className="w-3 h-3" />
+                        Refill
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingStock(stock);
+                          setEditInitialInput(stock.initialStock.toString());
+                        }}
+                        className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
+                        title={`Update Initial Purchase of "${stock.name}"`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingStockId(stock.id)}
+                        className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
+                        title={`Delete "${stock.name}" entirely from system`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </SharedTd>
+                </SharedTr>
+                </React.Fragment>
+              );
+            })}
+          {filteredStocks.length === 0 && (
+            <SharedTr>
+              <SharedTd className="text-gray-500" align="center">
+                <span className="block" style={{ minWidth: '48rem' }}>
+                  No inventory records matching this criteria.
+                </span>
+              </SharedTd>
+            </SharedTr>
+          )}
+        </>
+      }
+      modals={
+        <>
+          <AnimatePresence>
+            {selectedStockIds.length > 0 && (
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
+              >
+                <div className="flex justify-between items-center text-xs font-bold text-[#ee317b] mb-1 px-1">
+                  <span>{selectedStockIds.length} Selected Stocks</span>
+                  <button type="button" onClick={() => setSelectedStockIds([])} className="text-gray-400 font-normal underline">Clear Selection</button>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    className="bg-[#2E181D] border border-red-900/40 text-red-400 py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showAddForm && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+                onClick={(e) => {
+                  if (e.currentTarget === e.target) {
+                    setShowAddForm(false);
                   }
-
-                  return (
-                    <tr 
-                      key={stock.id} 
-                      className={rowClass}
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-[#121212] border border-[#ee317b]/50 rounded-md p-6 max-w-md w-full shadow-none"
+                >
+                  <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4">
+                    <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
+                      <Plus className="w-4 h-4 text-[#ee317b]" />
+                      Restock Item
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddForm(false)}
+                      className="text-gray-500 hover:text-white cursor-pointer"
                     >
-                      {/* Index */}
-                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">
-                        {index + 1}
-                      </td>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                      {/* Name */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">{stock.name}</td>
-                      
-                      {/* Remaining On Hand */}
-                      <td className={`py-2 px-3 border-r border-[#262626] font-sans text-right font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
-                        {stock.remaining.toLocaleString()}
-                      </td>
+                  <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
+                      <input
+                        id="field-new-stock-name"
+                        type="text"
+                        required
+                        placeholder="e.g. Bronze wave"
+                        value={newStockName}
+                        onChange={(e) => setNewStockName(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
+                      />
+                    </div>
 
-                      {/* Initial */}
-                      <td className="hidden md:table-cell py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300 group-hover:bg-[#1a1a1a] transition-colors">{stock.initialStock.toLocaleString()}</td>
-                      
-                      {/* Consumed */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
-                        {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}
-                      </td>
-                      
-                      {/* Status badge */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-left group-hover:bg-[#1a1a1a] transition-colors">
-                        <span className={`inline-block px-2 py-0.5 border text-[10px] font-bold ${status.classes}`}>
-                          {status.text}
-                        </span>
-                      </td>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial on Hand (expression enabled)</label>
+                      <input
+                        id="field-new-stock-initial"
+                        type="text"
+                        required
+                        placeholder="e.g. 500 or 100 * 5"
+                        value={newStockInitial}
+                        onChange={(e) => setNewStockInitial(cleanLeadingZeros(e.target.value))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = parseFractionOrExpression(newStockInitial);
+                            setNewStockInitial(val.toString());
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                      />
+                      <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                        Parsed: {parseFractionOrExpression(newStockInitial)}
+                      </div>
+                    </div>
 
-                      {/* EDIT & DELETE & REPLENISH buttons */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-center group-hover:bg-[#1a1a1a] transition-colors">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplenishingStockId(stock.id);
-                              setReplenishAmount('');
-                            }}
-                            className="bg-transparent text-[#71b536] hover:bg-[#71b536]/10 p-1 rounded-md border border-[#71b536]/20 text-[10px] tracking-wider transition-colors font-sans cursor-pointer flex items-center gap-0.5"
-                            title={`Add to "${stock.name}" Stock`}
-                          >
-                            <Plus className="w-3 h-3" />
-                            Refill
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingStock(stock);
-                              setEditInitialInput(stock.initialStock.toString());
-                            }}
-                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
-                            title={`Update Initial Purchase of "${stock.name}"`}
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingStockId(stock.id)}
-                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
-                            title={`Delete "${stock.name}" entirely from system`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </DataTable>
-          </DataTableWrapper>
+                    <div className="flex gap-2 justify-end pt-2 items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddForm(false)}
+                        className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer rounded"
+                      >
+                        Add Stock
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
-        {/* CONTROLLER MODALS */}
-        <div>
-          
-          {/* Quick Edit Sheet Stock Initial State */}
           <AnimatePresence>
             {editingStock && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
@@ -481,72 +644,72 @@ export default function InventoryTab({
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-[#121212] border border-[#262626] rounded-md p-6 max-w-md w-full shadow-none"
                 >
-                <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 ">
-                  <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-[#ee317b]" />
-                    Adjust Initial Stock
-                  </span>
-                  <button 
-                    onClick={() => setEditingStock(null)} 
-                    className="text-gray-500 hover:text-white cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleEditStockSubmit} className="space-y-4 font-sans text-xs text-gray-300">
-                  <div>
-                    <span className="text-gray-500 block mb-1 uppercase tracking-wider">Stock Name (Read-Only)</span>
-                    <p className="bg-[#181818] px-3 py-2 text-white border border-[#262626]">
-                      {editingStock.name}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-initial-stock">Initial Quantity (expression enabled)</label>
-                    <input
-                      id="field-initial-stock"
-                      type="text"
-                      required
-                      placeholder="e.g. 500 or 100 * 5"
-                      value={editInitialInput}
-                      onChange={(e) => setEditInitialInput(cleanLeadingZeros(e.target.value))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = parseFractionOrExpression(editInitialInput);
-                          setEditInitialInput(val.toString());
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
-                    />
-                    <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                      Parsed: {parseFractionOrExpression(editInitialInput)}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-2 ">
+                  <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4">
+                    <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-[#ee317b]" />
+                      Adjust Initial Stock
+                    </span>
                     <button
                       type="button"
                       onClick={() => setEditingStock(null)}
-                      className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
+                      className="text-gray-500 hover:text-white cursor-pointer"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer"
-                    >
-                      Save Stock
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
-                </form>
+
+                  <form onSubmit={handleEditStockSubmit} className="space-y-4 font-sans text-xs text-gray-300">
+                    <div>
+                      <span className="text-gray-500 block mb-1 uppercase tracking-wider">Stock Name (Read-Only)</span>
+                      <p className="bg-[#181818] px-3 py-2 text-white border border-[#262626]">
+                        {editingStock.name}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-initial-stock">Initial Quantity (expression enabled)</label>
+                      <input
+                        id="field-initial-stock"
+                        type="text"
+                        required
+                        placeholder="e.g. 500 or 100 * 5"
+                        value={editInitialInput}
+                        onChange={(e) => setEditInitialInput(cleanLeadingZeros(e.target.value))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = parseFractionOrExpression(editInitialInput);
+                            setEditInitialInput(val.toString());
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                      />
+                      <div className="text-[10px] text-gray-500 mt-1 font-sans">
+                        Parsed: {parseFractionOrExpression(editInitialInput)}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingStock(null)}
+                        className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer"
+                      >
+                        Save Stock
+                      </button>
+                    </div>
+                  </form>
                 </motion.div>
               </div>
             )}
           </AnimatePresence>
 
-          {/* Quick Replenish Sheet Stock */}
           <AnimatePresence>
             {replenishingStockId && (() => {
               const stock = paperStocks.find(s => s.id === replenishingStockId);
@@ -559,187 +722,155 @@ export default function InventoryTab({
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="bg-[#121212] border border-[#71b536]/30 rounded-md p-6 max-w-md w-full shadow-none space-y-4"
                   >
-                  <div className="flex justify-between items-center border-b border-[#262626] pb-3 ">
-                    <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5" />
-                      Add More to Stock
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setReplenishingStockId(null)}
-                      className="text-gray-400 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-400 font-sans">
-                    Refill warehouse category <strong className="text-white">"{stock.name}"</strong> by adding directly to current initial count.
-                  </p>
-
-                  <div className="space-y-3 font-sans">
-                    <div>
-                      <label className="block text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Quantity to Add (expression enabled)</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 500 or 1000"
-                        value={replenishAmount}
-                        onChange={(e) => setReplenishAmount(cleanLeadingZeros(e.target.value))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = parseFractionOrExpression(replenishAmount);
-                            setReplenishAmount(val.toString());
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#71b536]"
-                      />
+                    <div className="flex justify-between items-center border-b border-[#262626] pb-3">
+                      <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
+                        <Plus className="w-3.5 h-3.5" />
+                        Add More to Stock
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setReplenishingStockId(null)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const parsedAmt = Math.max(0, parseFractionOrExpression(replenishAmount));
-                        if (parsedAmt > 0) {
-                          const updatedList = paperStocks.map(s => {
-                            if (s.id === replenishingStockId) {
-                              return {
-                                ...s,
-                                initialStock: s.initialStock + parsedAmt
-                              };
+                    <p className="text-xs text-gray-400 font-sans">
+                      Refill warehouse category <strong className="text-white">"{stock.name}"</strong> by adding directly to current initial count.
+                    </p>
+
+                    <div className="space-y-3 font-sans">
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Quantity to Add (expression enabled)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 500 or 1000"
+                          value={replenishAmount}
+                          onChange={(e) => setReplenishAmount(cleanLeadingZeros(e.target.value))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = parseFractionOrExpression(replenishAmount);
+                              setReplenishAmount(val.toString());
                             }
-                            return s;
-                          });
-                          onUpdateStocks(updatedList);
-                          setReplenishingStockId(null);
-                        }
-                      }}
-                      className="w-full py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold font-sans tracking-wider cursor-pointer"
-                    >
-                      Confirm Stock Replenishment
-                    </button>
-                  </div>
+                          }}
+                          className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#71b536]"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleConfirmReplenish}
+                        className="w-full py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold font-sans tracking-wider cursor-pointer"
+                      >
+                        Confirm Stock Replenishment
+                      </button>
+                    </div>
                   </motion.div>
                 </div>
               );
             })()}
           </AnimatePresence>
 
-
-
-          {/* Guidelines info card helper */}
-
-
-        </div>
-
-      </div>
-
-      {/* Non-blocking premium delete confirmation modal for inventory paper stocks */}
-      <AnimatePresence>
-        {deletingStockId && (() => {
-          const targetStock = paperStocks.find(s => s.id === deletingStockId);
-          if (!targetStock) return null;
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
-                    <AlertTriangle className="w-6 h-6 animate-pulse" />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Remove Paper Stock?</h3>
-                    <p className="text-xs text-gray-400 leading-relaxed font-sans">
-                      Are you sure you want to completely remove the paper stock <span className="text-white font-semibold font-sans">"{targetStock.name}"</span>?
-                    </p>
-                    <p className="text-xs text-[#F87171] leading-relaxed font-sans">
-                      Warning: Removing this paper variant from warehouse will break active visual automatic calculations for customers ordering this paper type.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setDeletingStockId(null)}
-                    className="px-3.5 py-1.5 border border-[#262626] text-gray-400 hover:text-white hover:bg-[#1C1C1C] transition-all cursor-pointer"
+          <AnimatePresence>
+            {deletingStockId && (() => {
+              const targetStock = paperStocks.find(s => s.id === deletingStockId);
+              if (!targetStock) return null;
+              return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
                   >
-                    Cancel Action
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteStock(deletingStockId)}
-                    className="px-4 py-1.5 bg-[#F87171] hover:bg-[#EF4444] text-black font-bold transition-all cursor-pointer"
-                  >
-                    Confirm Delete
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          );
-        })()}
-      </AnimatePresence>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
+                        <AlertTriangle className="w-6 h-6 animate-pulse" />
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Remove Paper Stock?</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                          Are you sure you want to completely remove the paper stock <span className="text-white font-semibold font-sans">"{targetStock.name}"</span>?
+                        </p>
+                        <p className="text-xs text-[#F87171] leading-relaxed font-sans">
+                          Warning: Removing this paper variant from warehouse will break active visual automatic calculations for customers ordering this paper type.
+                        </p>
+                      </div>
+                    </div>
 
-      {/* Non-blocking bulk delete confirmation modal for inventory paper stocks */}
-      <AnimatePresence>
-        {showBulkDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
-                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                    <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setDeletingStockId(null)}
+                        className="px-3.5 py-1.5 border border-[#262626] text-gray-400 hover:text-white hover:bg-[#1C1C1C] transition-all cursor-pointer"
+                      >
+                        Cancel Action
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteStock(deletingStockId)}
+                        className="px-4 py-1.5 bg-[#F87171] hover:bg-[#EF4444] text-black font-bold transition-all cursor-pointer"
+                      >
+                        Confirm Delete
+                      </button>
+                    </div>
+                  </motion.div>
                 </div>
-                <div className="space-y-2 text-left">
-                  <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Bulk-Remove Stocks?</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed font-sans">
-                    Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedStockIds.length}</span> selected paper stockroom files?
-                  </p>
-                  <p className="text-xs text-[#F87171] leading-relaxed font-sans">
-                    Warning: This action is irreversible. Deleting warehouses values will affect calculations for customer orders bound to these materials!
-                  </p>
-                </div>
-              </div>
+              );
+            })()}
+          </AnimatePresence>
 
-              <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowBulkDeleteConfirm(false)}
-                  className="px-3.5 py-1.5 border border-[#262626] text-gray-400 hover:text-white hover:bg-[#1C1C1C] transition-all cursor-pointer"
+          <AnimatePresence>
+            {showBulkDeleteConfirm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-[#121212] border border-[#F87171] p-6 max-w-md w-full text-gray-300 font-sans shadow-none rounded-md"
                 >
-                  Cancel Action
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const remainingStocks = paperStocks.filter(s => !selectedStockIds.includes(s.id));
-                    onUpdateStocks(remainingStocks);
-                    setSelectedStockIds([]);
-                    setShowBulkDeleteConfirm(false);
-                  }}
-                  className="px-4 py-1.5 bg-[#F87171] hover:bg-[#EF4444] text-black font-bold transition-all cursor-pointer"
-                >
-                  Yes, Delete Selected
-                </button>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-[#2E181D] text-[#F87171] rounded-md">
+                      <AlertTriangle className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <h3 className="font-sans text-base font-bold text-white uppercase tracking-wider">Bulk-Remove Stocks?</h3>
+                      <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                        Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedStockIds.length}</span> selected paper stockroom files?
+                      </p>
+                      <p className="text-xs text-[#F87171] leading-relaxed font-sans">
+                        Warning: This action is irreversible. Deleting warehouses values will affect calculations for customer orders bound to these materials!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-6 font-sans text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkDeleteConfirm(false)}
+                      className="px-3.5 py-1.5 border border-[#262626] text-gray-400 hover:text-white hover:bg-[#1C1C1C] transition-all cursor-pointer"
+                    >
+                      Cancel Action
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmBulkDelete}
+                      className="px-4 py-1.5 bg-[#F87171] hover:bg-[#EF4444] text-black font-bold transition-all cursor-pointer"
+                    >
+                      Yes, Delete Selected
+                    </button>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-    {/* Mobile FAB for Add Stock */}
-      {isAdmin && (
-        <FloatingAddButton onClick={() => setShowAddForm(true)} title="Restock Item" />
-      )}
-
-    </PageLayout>
+            )}
+          </AnimatePresence>
+        </>
+      }
+      fab={
+        isAdmin ? <FloatingAddButton onClick={() => setShowAddForm(true)} title="Restock Item" /> : undefined
+      }
+    />
   );
 }

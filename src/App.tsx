@@ -287,6 +287,30 @@ export default function App() {
   const [staffError, setStaffError] = useState('');
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+
+      if (isMobileMenuOpen) {
+        event.preventDefault();
+        setIsMobileMenuOpen(false);
+      } else if (showStaffModal) {
+        event.preventDefault();
+        setShowStaffModal(false);
+        setEditingEmployee(null);
+      } else if (showDbConfigModal) {
+        event.preventDefault();
+        setShowDbConfigModal(false);
+      } else if (showInstallGuideModal) {
+        event.preventDefault();
+        setShowInstallGuideModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isMobileMenuOpen, showStaffModal, showDbConfigModal, showInstallGuideModal]);
+
   const handleCreateStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffName.trim() || !newStaffUser.trim() || !newStaffPass.trim()) {
