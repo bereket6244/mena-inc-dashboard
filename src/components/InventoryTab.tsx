@@ -57,6 +57,7 @@ export default function InventoryTab({
 
   // Math expression string inputs for the numerical inventory editing fields
   const [editInitialInput, setEditInitialInput] = useState<string>('');
+  const [editStockNameInput, setEditStockNameInput] = useState<string>('');
 
   // Non-blocking custom delete tracking ID for paper stocks
   const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
@@ -205,8 +206,16 @@ export default function InventoryTab({
     e.preventDefault();
     if (!editingStock) return;
 
+    const trimmedName = editStockNameInput.trim();
+    if (!trimmedName) return;
+
+    const duplicateName = paperStocks.some(s =>
+      s.id !== editingStock.id && s.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicateName) return;
+
     const evaluatedVal = Math.max(0, parseFractionOrExpression(editInitialInput));
-    const finalStockItem = { ...editingStock, initialStock: evaluatedVal };
+    const finalStockItem = { ...editingStock, name: trimmedName, initialStock: evaluatedVal };
 
     const updated = paperStocks.map(s => 
       s.id === editingStock.id ? finalStockItem : s
@@ -487,10 +496,11 @@ export default function InventoryTab({
                         type="button"
                         onClick={() => {
                           setEditingStock(stock);
+                          setEditStockNameInput(stock.name);
                           setEditInitialInput(stock.initialStock.toString());
                         }}
                         className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
-                        title={`Update Initial Purchase of "${stock.name}"`}
+                        title={`Edit "${stock.name}"`}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -647,7 +657,7 @@ export default function InventoryTab({
                   <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4">
                     <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-[#ee317b]" />
-                      Adjust Initial Stock
+                      Edit Stock Item
                     </span>
                     <button
                       type="button"
@@ -660,10 +670,20 @@ export default function InventoryTab({
 
                   <form onSubmit={handleEditStockSubmit} className="space-y-4 font-sans text-xs text-gray-300">
                     <div>
-                      <span className="text-gray-500 block mb-1 uppercase tracking-wider">Stock Name (Read-Only)</span>
-                      <p className="bg-[#181818] px-3 py-2 text-white border border-[#262626]">
-                        {editingStock.name}
-                      </p>
+                      <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-edit-stock-name">Stock Name</label>
+                      <input
+                        id="field-edit-stock-name"
+                        type="text"
+                        required
+                        value={editStockNameInput}
+                        onChange={(e) => setEditStockNameInput(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
+                      />
+                      {paperStocks.some(s => s.id !== editingStock.id && s.name.trim().toLowerCase() === editStockNameInput.trim().toLowerCase()) && (
+                        <div className="text-[10px] text-[#F87171] mt-1 font-sans">
+                          Another stock item already uses this name.
+                        </div>
+                      )}
                     </div>
 
                     <div>

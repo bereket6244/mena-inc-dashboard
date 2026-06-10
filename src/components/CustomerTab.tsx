@@ -757,12 +757,12 @@ export default function CustomerTab({
   }, [isSearchExpanded, searchQuery]);
 
   // Form Fields State
-  const [clientType, setClientType] = useState<string>('Individual');
+  const [clientType, setClientType] = useState<string>('');
   const [clientName, setClientName] = useState('');
   const [phone, setPhone] = useState('');
-  const [acquisitionSource, setAcquisitionSource] = useState<Customer['acquisitionSource']>('Repeat');
+  const [acquisitionSource, setAcquisitionSource] = useState<Customer['acquisitionSource']>('');
    const [orderTakenBy, setOrderTakenBy] = useState<Customer['orderTakenBy']>(currentUser?.name || 'Bereket');
-  const [productType, setProductType] = useState(productTypes[0]?.name || '');
+  const [productType, setProductType] = useState('');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProductInput, setNewProductInput] = useState('');
   const [isAddingClientType, setIsAddingClientType] = useState(false);
@@ -895,12 +895,12 @@ export default function CustomerTab({
   const handleOpenCreate = () => {
     setEditingCustomer(null);
     setFormStep(1);
-    setClientType('Individual');
+    setClientType('');
     setClientName('');
     setPhone('');
-    setAcquisitionSource('Repeat');
+    setAcquisitionSource('');
     setOrderTakenBy(currentUser?.name || 'Bereket');
-    setProductType(productTypes[0]?.name || '');
+    setProductType('');
     setQuantity(0);
     setUnitPrice(0);
     setAdvancePayment(0);
@@ -1114,11 +1114,11 @@ export default function CustomerTab({
 
     // Keep the core customer details that persist (name, phone, clientType, channel, agent, dates)
     // but reset the product-specific and sheet-deduction configurations for the next item order
-    setProductType('Pocket Card');
+    setProductType('');
     setQuantity(0);
-    setUnitPrice(85);
+    setUnitPrice(0);
     setQtyInput('');
-    setPriceInput('85');
+    setPriceInput('');
     setDeliveryDate('');
     
     // Reset standard layout deductions
@@ -2439,6 +2439,7 @@ export default function CustomerTab({
                                   onChange={(e) => setClientType(e.target.value as Customer['clientType'])}
                                   className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                                 >
+                                  <option value="">Select client type...</option>
                                   {clientTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                                 </SearchableSelect>
                                 {clientType && (
@@ -2508,6 +2509,7 @@ export default function CustomerTab({
                                   onChange={(e) => setAcquisitionSource(e.target.value as Customer['acquisitionSource'])}
                                   className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                                 >
+                                  <option value="">Select lead channel...</option>
                                   {acquisitionChannels.map(s => <option key={s} value={s}>{s}</option>)}
                                 </SearchableSelect>
                                 {acquisitionSource && (
@@ -2600,6 +2602,7 @@ export default function CustomerTab({
                                   onChange={(e) => setProductType(e.target.value)}
                                   className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                                 >
+                                  <option value="">Select product type...</option>
                                   {productTypes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                                 </SearchableSelect>
                                 {productType && (

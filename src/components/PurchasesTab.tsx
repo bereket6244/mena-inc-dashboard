@@ -11,7 +11,6 @@ import {
   FolderPlus, 
   Tag, 
   X, 
-  ArrowUpDown, 
   Briefcase,
   Banknote,
   PlusCircle,
@@ -277,6 +276,25 @@ export default function PurchasesTab({
       setSortBy(field);
       setIsSortAsc(true);
     }
+  };
+
+  const SortablePurchaseHeader = ({ field, children, align = 'left', className = '' }: { field: PurchaseColumnSortField; children: React.ReactNode; align?: 'left' | 'center' | 'right'; className?: string }) => {
+    const alignClass = align === 'right' ? 'justify-end text-right' : align === 'center' ? 'justify-center text-center' : 'justify-start text-left';
+    const arrow = isSortAsc ? '\u2191' : '\u2193';
+
+    return (
+      <th
+        className={`py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] ${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} cursor-pointer select-none ${className}`}
+        onClick={() => handleSort(field)}
+      >
+        <span className={`inline-flex w-full items-center ${alignClass} gap-1 whitespace-nowrap`}>
+          <span>{children}</span>
+          <span className="inline-flex w-3 shrink-0 justify-center text-[#ee317b]" aria-hidden="true">
+            {sortBy === field ? arrow : ''}
+          </span>
+        </span>
+      </th>
+    );
   };
 
   const handlePurchaseTableDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
@@ -1804,24 +1822,12 @@ export default function PurchasesTab({
                         title="Select all page purchases"
                       />
                     </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('itemOrService')}>
-                      Item / Service <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('expenseCategory')}>
-                      Category <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('quantity')}>
-                      Qty <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('unitPrice')}>
-                      Unit P. (ETB) <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right cursor-pointer" onClick={() => handleSort('totalPrice')}>
-                      Total Charged (ETB) <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
-                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left cursor-pointer" onClick={() => handleSort('purchaseDate')}>
-                      Date <ArrowUpDown className="w-3 h-3 inline ml-0.5" />
-                    </th>
+                    <SortablePurchaseHeader field="itemOrService">Item / Service</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="expenseCategory">Category</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="quantity" align="right">Qty</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="unitPrice" align="right">Unit P. (ETB)</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="totalPrice" align="right">Total Charged (ETB)</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="purchaseDate">Date</SortablePurchaseHeader>
                     <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Payment Account</th>
                     <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Recorded By</th>
                     <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-32">Actions</th>
