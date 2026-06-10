@@ -240,139 +240,35 @@ export default function InventoryTab({
   const totalRemaining = calculatedStocks.reduce((sum, s) => sum + Math.max(0, s.remaining), 0);
 
   return (
-    <div className="space-y-6 " id="inventory-tab-pnl">
+    <PageLayout id="inventory-tab-pnl">
 
-      {/* Mobile-only Top Search Bar */}
-      <div className="md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
-        <div ref={mobileSearchWrapperRef} className="relative flex flex-1 w-full items-center justify-end h-7 select-none">
-          <AnimatePresence initial={false}>
-            {!(isSearchExpanded || searchQuery) ? (
-              <motion.button
-                key="search-btn"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.1 }}
-                type="button"
-                onClick={() => setIsSearchExpanded(true)}
-                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
-                title="Search database"
-              >
-                <Search className="w-3.5 h-3.5" />
-              </motion.button>
-            ) : (
-              <motion.div
-                key="search-input-wrapper"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: '100%', opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="relative flex w-full items-center bg-transparent overflow-hidden"
-              >
-                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
-                  <Search className="h-3.5 w-3.5" />
-                </div>
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  placeholder="Type to search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setIsSearchExpanded(false);
-                    }
-                  }}
-                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setIsSearchExpanded(false);
-                    }}
-                    className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
-                    title="Clear search"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Notion-style Database Toolbar (Desktop/Tablet) */}
-      <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
-        {/* Left Side: Empty view space matching Notion's layout */}
-        <div className="flex items-center text-gray-400 font-medium"></div>
-
-        {/* Right Side: Search, Create Button */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div ref={searchWrapperRef} className="hidden md:flex items-center">
-            {!(isSearchExpanded || searchQuery) ? (
+      <TableToolbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        mobileLeftControls={null}
+        mobileRightControls={null}
+        desktopLeftControls={null}
+        desktopRightControls={
+          <>
+            <div className="h-4 w-px bg-[#262626] mx-1 hidden md:block"></div>
+            {isAdmin ? (
               <button
                 type="button"
-                onClick={() => setIsSearchExpanded(true)}
-                className="bg-transparent text-gray-300 px-2 py-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer"
-                title="Search database"
+                onClick={() => setShowAddForm(true)}
+                className="hidden md:flex items-center gap-1.5 bg-[#ee317b] text-black px-2.5 py-1.5 rounded text-[11px] font-bold font-sans shadow-lg shadow-[#ee317b]/10 hover:bg-white hover:text-black transition-all cursor-pointer group"
               >
-                <Search className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                <span>Create</span>
               </button>
             ) : (
-              <div className="relative flex items-center bg-[#181818] border border-[#262626] rounded-md transition-all h-7 w-48 overflow-hidden">
-                <div className="flex items-center justify-center w-7 h-full text-gray-400">
-                  <Search className="h-3.5 w-3.5" />
-                </div>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setIsSearchExpanded(false);
-                    }
-                  }}
-                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full h-full"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setIsSearchExpanded(false);
-                    }}
-                    className="w-7 h-full flex items-center justify-center text-gray-500 hover:text-white transition-colors focus:outline-none cursor-pointer"
-                    title="Clear search"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
+              <div className="text-[11px] font-bold font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5 rounded-md">
+                <Lock className="w-3 h-3 text-[#ee317b]" />
+                <span>READ-ONLY</span>
               </div>
             )}
-          </div>
-          
-          {isAdmin ? (
-            <button
-              type="button"
-              onClick={() => setShowAddForm(true)}
-              className="hidden md:flex items-center gap-1.5 bg-white hover:bg-gray-200 text-black px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">New</span>
-            </button>
-          ) : (
-            <div className="text-xs font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5 rounded-md">
-              <Lock className="w-3 h-3 text-[#ee317b]" />
-              <span className="hidden lg:inline">READ-ONLY</span>
-            </div>
-          )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Selected Stock Bulk Action Ribbon */}
       {/* Selected Stock Bulk Action Ribbon removed */}
@@ -462,10 +358,10 @@ export default function InventoryTab({
       <div className="w-full">
         
         {/* List of Stocks - Responsive scroll table */}
-        <div className="bg-[#121212] border border-[#262626] rounded-md shadow-none overflow-hidden">
+        <DataTableWrapper>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs font-sans">
+          <DataTable>
+            
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
@@ -568,9 +464,8 @@ export default function InventoryTab({
                   );
                 })}
               </tbody>
-            </table>
-          </div>
-        </div>
+            </DataTable>
+          </DataTableWrapper>
 
         {/* CONTROLLER MODALS */}
         <div>
@@ -841,18 +736,9 @@ export default function InventoryTab({
 
     {/* Mobile FAB for Add Stock */}
       {isAdmin && (
-        <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="bg-[#ee317b] text-black rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
-            title="Add stock"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
+        <FloatingAddButton onClick={() => setShowAddForm(true)} title="Restock Item" />
       )}
 
-    </div>
+    </PageLayout>
   );
 }
