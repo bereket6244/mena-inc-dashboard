@@ -1278,19 +1278,21 @@ export default function CustomerTab({
           </div>
 
           {/* Filters toggle button (no word 'filter') */}
-          <button
-            type="button"
-            onClick={() => setShowMobileFilters(true)}
-            className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative"
-            title="Database Filters"
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
-                {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
-              </span>
-            )}
-          </button>
+          {!(isSearchExpanded || searchQuery) && (
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters(true)}
+              className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative"
+              title="Database Filters"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
