@@ -1238,7 +1238,7 @@ export default function CustomerTab({
                 <motion.div
                   key="search-input-wrapper"
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 140, opacity: 1 }}
+                  animate={{ width: 280, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ type: "spring", damping: 25, stiffness: 250 }}
                   className="relative flex items-center bg-transparent overflow-hidden"
@@ -1257,7 +1257,7 @@ export default function CustomerTab({
                         setIsSearchExpanded(false);
                       }
                     }}
-                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-20 pl-0.5"
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
                   />
                   {searchQuery && (
                     <button
