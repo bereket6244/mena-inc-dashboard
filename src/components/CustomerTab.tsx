@@ -142,13 +142,16 @@ interface CustomerTabProps {
   productTypes: ProductType[];
   clientTypes: { id: string; name: string }[];
   onAddProductType: (prod: ProductType) => Promise<void> | void;
+  onUpdateProductType: (prod: ProductType) => Promise<void> | void;
   onDeleteProductType: (ids: string[]) => Promise<void> | void;
   onAddClientType: (type: { id: string; name: string }) => void;
+  onUpdateClientType: (type: { id: string; name: string }) => void;
   onDeleteClientType: (ids: string[]) => void;
   onAddCustomer: (customer: Customer) => void;
   onUpdateCustomer: (customer: Customer) => void;
   onDeleteCustomer: (id: string) => void;
   onBulkUpdateCustomers: (updatedList: Customer[]) => void;
+  onUpdateStocks: (stocks: PaperStock[]) => void;
   currentUser: EmployeeUser | null;
   employees: EmployeeUser[];
   showGlobalProforma?: boolean;
@@ -162,13 +165,16 @@ export default function CustomerTab({
   productTypes,
   clientTypes,
   onAddProductType,
+  onUpdateProductType,
   onDeleteProductType,
   onAddClientType,
+  onUpdateClientType,
   onDeleteClientType,
   onAddCustomer, 
   onUpdateCustomer, 
   onDeleteCustomer,
   onBulkUpdateCustomers,
+  onUpdateStocks,
   currentUser,
   employees,
   showGlobalProforma,
@@ -767,8 +773,13 @@ export default function CustomerTab({
   const [newProductInput, setNewProductInput] = useState('');
   const [isAddingClientType, setIsAddingClientType] = useState(false);
   const [newClientTypeInput, setNewClientTypeInput] = useState('');
+  const [selectedClientTypeIds, setSelectedClientTypeIds] = useState<string[]>([]);
+  const [editingClientTypeId, setEditingClientTypeId] = useState<string | null>(null);
+  const [editingClientTypeName, setEditingClientTypeName] = useState('');
   const [showProductManager, setShowProductManager] = useState(false);
   const [newManagerProductInput, setNewManagerProductInput] = useState('');
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductName, setEditingProductName] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
@@ -793,6 +804,9 @@ export default function CustomerTab({
   });
   const [newChannelInput, setNewChannelInput] = useState('');
   const [isAddingChannel, setIsAddingChannel] = useState(false);
+  const [selectedChannelNames, setSelectedChannelNames] = useState<string[]>([]);
+  const [editingChannelName, setEditingChannelName] = useState<string | null>(null);
+  const [editingChannelValue, setEditingChannelValue] = useState('');
 
   // Secure ledger data alignment states
   const [advancePaymentDate, setAdvancePaymentDate] = useState<string>('');
@@ -831,6 +845,8 @@ export default function CustomerTab({
   });
 
   const [formError, setFormError] = useState('');
+  const [newInlineStockName, setNewInlineStockName] = useState('');
+  const [newInlineStockAmount, setNewInlineStockAmount] = useState('');
 
   const computeTotalConsumed = (name: string): number => {
     let consumed = 0;
@@ -890,6 +906,283 @@ export default function CustomerTab({
     setNewClientTypeInput('');
     setIsAddingClientType(false);
   };
+
+  const handleRenameClientType = (typeId: string) => {
+    const cleaned = editingClientTypeName.trim();
+    const target = clientTypes.find(type => type.id === typeId);
+    if (!cleaned || !target) return;
+    if (clientTypes.some(type => type.id !== typeId && type.name.toLowerCase() === cleaned.toLowerCase())) {
+      setFormError('Client type already exists.');
+      return;
+    }
+    onUpdateClientType({ ...target, name: cleaned });
+    if (clientType === target.name) setClientType(cleaned);
+    onBulkUpdateCustomers(customers.map(customer =>
+      customer.clientType === target.name ? { ...customer, clientType: cleaned } : customer
+    ));
+    setEditingClientTypeId(null);
+    setEditingClientTypeName('');
+    setFormError('');
+  };
+
+  const handleDeleteSelectedClientTypes = () => {
+    if (selectedClientTypeIds.length === 0) return;
+    const deletedNames = clientTypes.filter(type => selectedClientTypeIds.includes(type.id)).map(type => type.name);
+    onDeleteClientType(selectedClientTypeIds);
+    if (deletedNames.includes(clientType)) setClientType('');
+    onBulkUpdateCustomers(customers.map(customer =>
+      deletedNames.includes(customer.clientType) ? { ...customer, clientType: '' } : customer
+    ));
+    setSelectedClientTypeIds([]);
+  };
+
+  const handleRenameChannel = (oldName: string) => {
+    const cleaned = editingChannelValue.trim();
+    if (!cleaned) return;
+    if (acquisitionChannels.some(channel => channel !== oldName && channel.toLowerCase() === cleaned.toLowerCase())) {
+      setFormError('Lead channel already exists.');
+      return;
+    }
+    const updatedChannels = acquisitionChannels.map(channel => channel === oldName ? cleaned : channel);
+    setAcquisitionChannels(updatedChannels);
+    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updatedChannels));
+    if (acquisitionSource === oldName) setAcquisitionSource(cleaned as Customer['acquisitionSource']);
+    onBulkUpdateCustomers(customers.map(customer =>
+      customer.acquisitionSource === oldName ? { ...customer, acquisitionSource: cleaned as Customer['acquisitionSource'] } : customer
+    ));
+    setEditingChannelName(null);
+    setEditingChannelValue('');
+    setFormError('');
+  };
+
+  const handleDeleteSelectedChannels = () => {
+    if (selectedChannelNames.length === 0) return;
+    const updatedChannels = acquisitionChannels.filter(channel => !selectedChannelNames.includes(channel));
+    setAcquisitionChannels(updatedChannels);
+    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updatedChannels));
+    if (selectedChannelNames.includes(acquisitionSource)) setAcquisitionSource('');
+    onBulkUpdateCustomers(customers.map(customer =>
+      selectedChannelNames.includes(customer.acquisitionSource) ? { ...customer, acquisitionSource: '' as Customer['acquisitionSource'] } : customer
+    ));
+    setSelectedChannelNames([]);
+  };
+
+  const handleRenameProductType = async (productId: string) => {
+    const cleaned = editingProductName.trim();
+    const target = productTypes.find(product => product.id === productId);
+    if (!cleaned || !target) return;
+    if (productTypes.some(product => product.id !== productId && product.name.toLowerCase() === cleaned.toLowerCase())) {
+      setFormError('Product type already exists.');
+      return;
+    }
+    await onUpdateProductType({ ...target, name: cleaned });
+    if (productType === target.name) setProductType(cleaned);
+    onBulkUpdateCustomers(customers.map(customer =>
+      customer.productType === target.name ? { ...customer, productType: cleaned } : customer
+    ));
+    setEditingProductId(null);
+    setEditingProductName('');
+    setFormError('');
+  };
+
+  const managerPanelClass = "flex-1 bg-[#121212] border border-[#ee317b]/40 rounded-md p-2 space-y-2";
+  const managerInputClass = "flex-1 bg-[#181818] border border-[#262626] text-white text-xs outline-none font-sans px-2 py-1 rounded";
+  const managerIconButtonClass = "p-1 text-gray-500 hover:text-white hover:bg-[#262626] rounded cursor-pointer";
+
+  const renderClientTypeManager = () => (
+    <div className={managerPanelClass}>
+      <div className="flex gap-1">
+        <input
+          type="text"
+          placeholder="New client type..."
+          value={newClientTypeInput}
+          onChange={(e) => setNewClientTypeInput(e.target.value)}
+          className={managerInputClass}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddClientTypeInline();
+            }
+          }}
+        />
+        <button type="button" onClick={handleAddClientTypeInline} className="px-2 text-[#71b536] font-bold text-xs">Add</button>
+      </div>
+      {selectedClientTypeIds.length > 0 && (
+        <button type="button" onClick={handleDeleteSelectedClientTypes} className="w-full py-1 bg-[#421A1D] text-red-300 text-[10px] font-bold rounded">Delete Selected ({selectedClientTypeIds.length})</button>
+      )}
+      <div className="max-h-28 overflow-y-auto space-y-1">
+        {clientTypes.map(type => (
+          <div key={type.id} className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2 py-1 rounded">
+            <input
+              type="checkbox"
+              checked={selectedClientTypeIds.includes(type.id)}
+              onChange={(e) => setSelectedClientTypeIds(prev => e.target.checked ? [...prev, type.id] : prev.filter(id => id !== type.id))}
+              className="accent-[#ee317b]"
+            />
+            {editingClientTypeId === type.id ? (
+              <input
+                value={editingClientTypeName}
+                onChange={(e) => setEditingClientTypeName(e.target.value)}
+                className={managerInputClass}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameClientType(type.id);
+                  if (e.key === 'Escape') setEditingClientTypeId(null);
+                }}
+              />
+            ) : (
+              <span className="flex-1 text-white text-xs truncate">{type.name}</span>
+            )}
+            {editingClientTypeId === type.id ? (
+              <button type="button" onClick={() => handleRenameClientType(type.id)} className={managerIconButtonClass}><Check className="w-3 h-3" /></button>
+            ) : (
+              <button type="button" onClick={() => { setEditingClientTypeId(type.id); setEditingClientTypeName(type.name); }} className={managerIconButtonClass}><Edit3 className="w-3 h-3" /></button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderChannelManager = () => (
+    <div className={managerPanelClass}>
+      <div className="flex gap-1">
+        <input
+          type="text"
+          placeholder="New channel..."
+          value={newChannelInput}
+          onChange={(e) => setNewChannelInput(e.target.value)}
+          className={managerInputClass}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const cleaned = newChannelInput.trim();
+              if (cleaned && !acquisitionChannels.includes(cleaned)) {
+                const updated = [...acquisitionChannels, cleaned];
+                setAcquisitionChannels(updated);
+                localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+                setAcquisitionSource(cleaned as Customer['acquisitionSource']);
+              }
+              setNewChannelInput('');
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const cleaned = newChannelInput.trim();
+            if (cleaned && !acquisitionChannels.includes(cleaned)) {
+              const updated = [...acquisitionChannels, cleaned];
+              setAcquisitionChannels(updated);
+              localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
+              setAcquisitionSource(cleaned as Customer['acquisitionSource']);
+            }
+            setNewChannelInput('');
+          }}
+          className="px-2 text-[#71b536] font-bold text-xs"
+        >
+          Add
+        </button>
+      </div>
+      {selectedChannelNames.length > 0 && (
+        <button type="button" onClick={handleDeleteSelectedChannels} className="w-full py-1 bg-[#421A1D] text-red-300 text-[10px] font-bold rounded">Delete Selected ({selectedChannelNames.length})</button>
+      )}
+      <div className="max-h-28 overflow-y-auto space-y-1">
+        {acquisitionChannels.map(channel => (
+          <div key={channel} className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2 py-1 rounded">
+            <input
+              type="checkbox"
+              checked={selectedChannelNames.includes(channel)}
+              onChange={(e) => setSelectedChannelNames(prev => e.target.checked ? [...prev, channel] : prev.filter(name => name !== channel))}
+              className="accent-[#ee317b]"
+            />
+            {editingChannelName === channel ? (
+              <input
+                value={editingChannelValue}
+                onChange={(e) => setEditingChannelValue(e.target.value)}
+                className={managerInputClass}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameChannel(channel);
+                  if (e.key === 'Escape') setEditingChannelName(null);
+                }}
+              />
+            ) : (
+              <span className="flex-1 text-white text-xs truncate">{channel}</span>
+            )}
+            {editingChannelName === channel ? (
+              <button type="button" onClick={() => handleRenameChannel(channel)} className={managerIconButtonClass}><Check className="w-3 h-3" /></button>
+            ) : (
+              <button type="button" onClick={() => { setEditingChannelName(channel); setEditingChannelValue(channel); }} className={managerIconButtonClass}><Edit3 className="w-3 h-3" /></button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const handleDeleteSelectedProductTypes = async () => {
+    if (selectedProductIds.length === 0) return;
+    const deletedNames = productTypes.filter(product => selectedProductIds.includes(product.id)).map(product => product.name);
+    await onDeleteProductType(selectedProductIds);
+    if (deletedNames.includes(productType)) setProductType('');
+    onBulkUpdateCustomers(customers.map(customer =>
+      deletedNames.includes(customer.productType) ? { ...customer, productType: '' } : customer
+    ));
+    setSelectedProductIds([]);
+  };
+
+  const renderProductTypeManager = () => (
+    <div className={managerPanelClass}>
+      <div className="flex gap-1">
+        <input
+          type="text"
+          placeholder="New product..."
+          value={newProductInput}
+          onChange={(e) => setNewProductInput(e.target.value)}
+          className={managerInputClass}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              await handleAddProductInline();
+            }
+          }}
+        />
+        <button type="button" onClick={handleAddProductInline} className="px-2 text-[#71b536] font-bold text-xs">Add</button>
+      </div>
+      {selectedProductIds.length > 0 && (
+        <button type="button" onClick={handleDeleteSelectedProductTypes} className="w-full py-1 bg-[#421A1D] text-red-300 text-[10px] font-bold rounded">Delete Selected ({selectedProductIds.length})</button>
+      )}
+      <div className="max-h-28 overflow-y-auto space-y-1">
+        {productTypes.map(product => (
+          <div key={product.id} className="flex items-center gap-1.5 bg-[#181818] border border-[#262626] px-2 py-1 rounded">
+            <input
+              type="checkbox"
+              checked={selectedProductIds.includes(product.id)}
+              onChange={(e) => setSelectedProductIds(prev => e.target.checked ? [...prev, product.id] : prev.filter(id => id !== product.id))}
+              className="accent-[#ee317b]"
+            />
+            {editingProductId === product.id ? (
+              <input
+                value={editingProductName}
+                onChange={(e) => setEditingProductName(e.target.value)}
+                className={managerInputClass}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameProductType(product.id);
+                  if (e.key === 'Escape') setEditingProductId(null);
+                }}
+              />
+            ) : (
+              <span className="flex-1 text-white text-xs truncate">{product.name}</span>
+            )}
+            {editingProductId === product.id ? (
+              <button type="button" onClick={() => handleRenameProductType(product.id)} className={managerIconButtonClass}><Check className="w-3 h-3" /></button>
+            ) : (
+              <button type="button" onClick={() => { setEditingProductId(product.id); setEditingProductName(product.name); }} className={managerIconButtonClass}><Edit3 className="w-3 h-3" /></button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   // Open form for Create
   const handleOpenCreate = () => {
@@ -1179,6 +1472,39 @@ export default function CustomerTab({
     onBulkUpdateCustomers(remaining);
     setSelectedCustomerIds([]);
     setShowBulkDeleteConfirm(false);
+  };
+
+  const handleAddStockFromOrder = () => {
+    const trimmedName = newInlineStockName.trim();
+    const parsedAmount = Math.max(0, parseFractionOrExpression(newInlineStockAmount));
+
+    if (!trimmedName) {
+      setFormError('Stock item name is required.');
+      return;
+    }
+    if (parsedAmount <= 0) {
+      setFormError('Stock amount must be greater than zero.');
+      return;
+    }
+
+    const existing = paperStocks.find(stock => stock.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (existing) {
+      onUpdateStocks(paperStocks.map(stock =>
+        stock.id === existing.id
+          ? { ...stock, initialStock: stock.initialStock + parsedAmount }
+          : stock
+      ));
+    } else {
+      onUpdateStocks([...paperStocks, {
+        id: 'p_' + Date.now(),
+        name: trimmedName,
+        initialStock: parsedAmount,
+      }]);
+    }
+
+    setNewInlineStockName('');
+    setNewInlineStockAmount('');
+    setFormError('');
   };
 
   useEffect(() => {
@@ -2357,7 +2683,7 @@ export default function CustomerTab({
                     onClick={() => setFormStep(2)}
                     className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 2 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
-                    2. Primary Papers
+                    2. Primary Items
                   </button>
                   <button
                     type="button"
@@ -2463,28 +2789,7 @@ export default function CustomerTab({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
-                                <input
-                                  type="text"
-                                  placeholder="New client type..."
-                                  value={newClientTypeInput}
-                                  onChange={(e) => setNewClientTypeInput(e.target.value)}
-                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans w-full"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleAddClientTypeInline();
-                                    }
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={handleAddClientTypeInline}
-                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
-                                >
-                                  Add
-                                </button>
-                              </div>
+                              renderClientTypeManager()
                             )}
                           </div>
                         </div>
@@ -2531,46 +2836,7 @@ export default function CustomerTab({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
-                                <input
-                                  type="text"
-                                  placeholder="New channel..."
-                                  value={newChannelInput}
-                                  onChange={(e) => setNewChannelInput(e.target.value)}
-                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      const cleaned = newChannelInput.trim();
-                                      if (cleaned && !acquisitionChannels.includes(cleaned)) {
-                                        const updated = [...acquisitionChannels, cleaned];
-                                        setAcquisitionChannels(updated);
-                                        localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                        setAcquisitionSource(cleaned);
-                                      }
-                                      setNewChannelInput('');
-                                      setIsAddingChannel(false);
-                                    }
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const cleaned = newChannelInput.trim();
-                                    if (cleaned && !acquisitionChannels.includes(cleaned)) {
-                                      const updated = [...acquisitionChannels, cleaned];
-                                      setAcquisitionChannels(updated);
-                                      localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                      setAcquisitionSource(cleaned);
-                                    }
-                                    setNewChannelInput('');
-                                    setIsAddingChannel(false);
-                                  }}
-                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
-                                >
-                                  Add
-                                </button>
-                              </div>
+                              renderChannelManager()
                             )}
                           </div>
                         </div>
@@ -2626,28 +2892,7 @@ export default function CustomerTab({
                                 )}
                               </div>
                             ) : (
-                              <div className="flex-1 flex gap-1 items-center bg-[#121212] border border-[#ee317b] rounded-md px-2 py-1">
-                                <input
-                                  type="text"
-                                  placeholder="New product..."
-                                  value={newProductInput}
-                                  onChange={(e) => setNewProductInput(e.target.value)}
-                                  className="flex-1 bg-transparent text-white text-xs outline-none font-sans"
-                                  onKeyDown={async (e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      await handleAddProductInline();
-                                    }
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={handleAddProductInline}
-                                  className="text-[#ee317b] hover:text-pink-400 font-bold px-2 text-xs"
-                                >
-                                  Add
-                                </button>
-                              </div>
+                              renderProductTypeManager()
                             )}
                           </div>
                         </div>
@@ -2902,14 +3147,47 @@ export default function CustomerTab({
 
                 {formStep === 2 && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Paper Stock Deduction</h4>
+                    <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Primary Stock Item Deduction</h4>
 
-                    {/* Paper Type 1 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
-                      <span className="text-[10px] text-[#ee317b] tracking-wider uppercase font-bold block">First Layout Stock Deduction</span>
+                      <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">Add Stock Item Here</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_auto] gap-2">
+                        <input
+                          type="text"
+                          value={newInlineStockName}
+                          onChange={(e) => setNewInlineStockName(e.target.value)}
+                          placeholder="New stock item name..."
+                          className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#71b536] rounded-md outline-none font-sans"
+                        />
+                        <input
+                          type="text"
+                          value={newInlineStockAmount}
+                          onChange={(e) => setNewInlineStockAmount(cleanLeadingZeros(e.target.value))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddStockFromOrder();
+                            }
+                          }}
+                          placeholder="Amount"
+                          className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#71b536] rounded-md outline-none font-sans"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddStockFromOrder}
+                          className="px-3 py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold rounded-md cursor-pointer"
+                        >
+                          Add Stock
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Primary Item 1 */}
+                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
+                      <span className="text-[10px] text-[#ee317b] tracking-wider uppercase font-bold block">First Layout Item Deduction</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 1</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Primary Item 1</label>
                           <SearchableSelect
                             value={paperType1}
                             onChange={(e) => setPaperType1(e.target.value)}
@@ -2930,7 +3208,7 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Items consumed per card/piece</label>
                           <input
                             type="text"
                             value={amount1}
@@ -2955,19 +3233,19 @@ export default function CustomerTab({
                           />
                           {paperType1 !== 'None' && amount1 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Math.ceil(parseFractionOrExpression(amount1) * quantity)} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount1) * quantity)} items consumed
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Paper Type 2 */}
+                    {/* Primary Item 2 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
-                      <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Second Layout Stock</span>
+                      <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Second Layout Item</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 2</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Primary Item 2</label>
                           <SearchableSelect
                             value={paperType2}
                             onChange={(e) => setPaperType2(e.target.value)}
@@ -2988,7 +3266,7 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Items consumed per card/piece</label>
                           <input
                             type="text"
                             value={amount2}
@@ -3014,19 +3292,19 @@ export default function CustomerTab({
                           />
                           {paperType2 !== 'None' && amount2 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Math.ceil(parseFractionOrExpression(amount2) * quantity)} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount2) * quantity)} items consumed
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Paper Type 3 */}
+                    {/* Primary Item 3 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
-                      <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Third Layout Stock</span>
+                      <span className="text-[10px] text-gray-400 tracking-wider uppercase font-bold block">Optional Third Layout Item</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Paper Type 3</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Primary Item 3</label>
                           <SearchableSelect
                             value={paperType3}
                             onChange={(e) => setPaperType3(e.target.value)}
@@ -3047,7 +3325,7 @@ export default function CustomerTab({
                           </SearchableSelect>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Sheets consumed per card/piece</label>
+                          <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1">Items consumed per card/piece</label>
                           <input
                             type="text"
                             value={amount3}
@@ -3073,7 +3351,7 @@ export default function CustomerTab({
                           />
                           {paperType3 !== 'None' && amount3 && (
                             <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                              {Math.ceil(parseFractionOrExpression(amount3) * quantity)} sheets consumed
+                              {Math.ceil(parseFractionOrExpression(amount3) * quantity)} items consumed
                             </div>
                           )}
                         </div>

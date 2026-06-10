@@ -955,6 +955,16 @@ export default function App() {
     }).catch(() => {});
   };
 
+  const handleUpdateProductType = (updatedProd: ProductType) => {
+    const updated = productTypes.map(prod => prod.id === updatedProd.id ? updatedProd : prod);
+    setProductTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
+
+    import('./lib/dbService').then(({ saveProductTypeDoc }) => {
+      saveProductTypeDoc(updatedProd).catch(() => {});
+    }).catch(() => {});
+  };
+
   const handleDeleteProductType = async (ids: string[]) => {
     if (ids.length === 0) return;
     try {
@@ -974,6 +984,16 @@ export default function App() {
 
     import('./lib/dbService').then(({ saveClientTypeDoc }) => {
       saveClientTypeDoc(newType).catch(() => {});
+    }).catch(() => {});
+  };
+
+  const handleUpdateClientType = (updatedType: ClientType) => {
+    const updated = clientTypes.map(type => type.id === updatedType.id ? updatedType : type);
+    setClientTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
+
+    import('./lib/dbService').then(({ saveClientTypeDoc }) => {
+      saveClientTypeDoc(updatedType).catch(() => {});
     }).catch(() => {});
   };
 
@@ -1722,13 +1742,16 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               productTypes={productTypes}
               clientTypes={clientTypes}
               onAddProductType={handleAddProductType}
+              onUpdateProductType={handleUpdateProductType}
               onDeleteProductType={handleDeleteProductType}
               onAddClientType={handleAddClientType}
+              onUpdateClientType={handleUpdateClientType}
               onDeleteClientType={handleDeleteClientType}
               onAddCustomer={handleAddCustomer}
               onUpdateCustomer={handleEditCustomer}
               onDeleteCustomer={handleDeleteCustomer}
               onBulkUpdateCustomers={handleBulkUpdateCustomers}
+              onUpdateStocks={handleUpdateStocks}
               currentUser={currentUser}
               employees={employees}
               showGlobalProforma={showGlobalProforma}

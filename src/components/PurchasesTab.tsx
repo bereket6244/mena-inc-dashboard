@@ -22,7 +22,7 @@ import {
   Download,
   Filter,
   RotateCcw,
-  AlertTriangle
+  AlertCircle
 } from 'lucide-react';
 
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
@@ -97,6 +97,10 @@ export default function PurchasesTab({
     const saved = localStorage.getItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY);
     return saved === null ? true : saved === 'true';
   });
+  const purchaseLongPressTimerRef = useRef<number | null>(null);
+  const purchaseDraggedColumnRef = useRef<number | null>(null);
+  const purchaseTableRef = useRef<HTMLTableElement>(null);
+  const [purchaseLockNotice, setPurchaseLockNotice] = useState('');
 
   // Form management for custom Purchase
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -297,8 +301,7 @@ export default function PurchasesTab({
     );
   };
 
-  const handlePurchaseTableDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
-    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
+  const triggerPurchaseTableFreeze = (cell: HTMLTableCellElement | null) => {
     if (!cell) return;
 
     const isHeader = cell.tagName.toLowerCase() === 'th';
@@ -308,15 +311,48 @@ export default function PurchasesTab({
     const target = isHeader ? 'header' : 'firstColumn';
     if (target === 'header') {
       setFreezePurchaseHeader(prev => !prev);
+      setPurchaseLockNotice('Header lock toggled');
     } else {
       setFreezePurchaseFirstColumn(prev => !prev);
+      setPurchaseLockNotice('First column lock toggled');
     }
+    window.setTimeout(() => setPurchaseLockNotice(''), 1400);
+    navigator.vibrate?.(35);
+  };
+
+  const handlePurchaseTableDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
+    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
+    triggerPurchaseTableFreeze(cell);
+  };
+
+  const clearPurchaseLongPressTimer = () => {
+    if (purchaseLongPressTimerRef.current) {
+      window.clearTimeout(purchaseLongPressTimerRef.current);
+      purchaseLongPressTimerRef.current = null;
+    }
+  };
+
+  const movePurchaseColumn = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    Array.from(table.rows).forEach(row => {
+      const cells = Array.from(row.children);
+      const fromCell = cells[fromIndex];
+      const toCell = cells[toIndex];
+      if (!fromCell || !toCell) return;
+      row.insertBefore(fromCell, fromIndex < toIndex ? toCell.nextSibling : toCell);
+    });
   };
 
   useEffect(() => {
     localStorage.setItem(PURCHASE_SORT_BY_STORAGE_KEY, sortBy);
     localStorage.setItem(PURCHASE_SORT_ASC_STORAGE_KEY, String(isSortAsc));
   }, [sortBy, isSortAsc]);
+
+  useEffect(() => {
+    purchaseTableRef.current?.querySelectorAll('th').forEach(th => {
+      th.setAttribute('draggable', 'true');
+    });
+  }, [purchases.length, sortBy, isSortAsc]);
 
   useEffect(() => {
     localStorage.setItem(PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY, String(isMobileCategoriesCollapsed));
@@ -829,7 +865,6 @@ export default function PurchasesTab({
       if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
         if (warningMessage) {
           event.preventDefault();
-          setWarningMessage('');
         } else if (showBulkDeleteConfirm) {
           event.preventDefault();
           handleBulkDelete();
@@ -1792,10 +1827,48 @@ export default function PurchasesTab({
 
           {/* Table Spreadsheet View */}
           <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
+              <AnimatePresence>
+                {purchaseLockNotice && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-md border border-[#ee317b]/40 bg-[#181818] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#ee317b] shadow-xl"
+                  >
+                    <Lock className="w-3 h-3" />
+                    {purchaseLockNotice}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <table
+                ref={purchaseTableRef}
                 className={`w-full text-left border-collapse font-sans text-xs min-w-[900px] alternating-table-rows ${freezePurchaseHeader ? 'freeze-header-table' : ''} ${freezePurchaseFirstColumn ? 'freeze-first-column-table' : ''}`}
                 onDoubleClick={handlePurchaseTableDoubleClick}
+                onDragStart={(event) => {
+                  const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
+                  purchaseDraggedColumnRef.current = header?.cellIndex ?? null;
+                  event.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(event) => {
+                  if ((event.target as HTMLElement).closest('th')) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
+                  const fromIndex = purchaseDraggedColumnRef.current;
+                  if (!header || fromIndex === null) return;
+                  event.preventDefault();
+                  movePurchaseColumn(event.currentTarget, fromIndex, header.cellIndex);
+                  purchaseDraggedColumnRef.current = null;
+                }}
+                onTouchStart={(event) => {
+                  const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
+                  clearPurchaseLongPressTimer();
+                  purchaseLongPressTimerRef.current = window.setTimeout(() => triggerPurchaseTableFreeze(cell), 650);
+                }}
+                onTouchEnd={clearPurchaseLongPressTimer}
+                onTouchMove={clearPurchaseLongPressTimer}
+                onTouchCancel={clearPurchaseLongPressTimer}
               >
                 <thead>
                   <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
@@ -2120,6 +2193,13 @@ export default function PurchasesTab({
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {warningMessage && (
+                <div className="mx-6 mt-4 bg-[#31111E] border border-[#ee317b]/30 p-3 rounded-md text-[#F87171] text-xs flex items-center gap-2 font-sans">
+                  <AlertCircle className="w-4 h-4 text-[#F87171] flex-shrink-0" />
+                  <span>{warningMessage}</span>
+                </div>
+              )}
 
               {/* Form Inputs Container */}
                <div className="flex-1 p-6 space-y-5 overflow-y-auto overscroll-contain">
@@ -2567,42 +2647,6 @@ export default function PurchasesTab({
                   className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
                 >
                   Save Item
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {warningMessage && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0, y: 8 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.96, opacity: 0, y: 8 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-              className="w-full max-w-sm bg-[#121212] border border-[#ee317b]/40 shadow-2xl rounded-md overflow-hidden"
-            >
-              <div className="px-5 py-4 bg-[#181818] border-b border-[#262626] flex items-center gap-2">
-                <div className="w-8 h-8 rounded-md bg-[#ee317b]/10 text-[#ee317b] flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-white text-sm font-sans font-bold uppercase tracking-wider">Action Needed</h3>
-                  <p className="text-[10px] text-gray-500 font-sans">Complete the highlighted requirement before continuing.</p>
-                </div>
-              </div>
-              <div className="px-5 py-4">
-                <p className="text-sm text-gray-300 font-sans leading-relaxed">{warningMessage}</p>
-              </div>
-              <div className="px-5 py-4 bg-[#181818] border-t border-[#262626] flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setWarningMessage('')}
-                  className="px-4 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold rounded-md cursor-pointer transition-colors"
-                >
-                  OK
                 </button>
               </div>
             </motion.div>
