@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PageLayout, TableToolbar, DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
 import { 
   Plus, 
   Sparkles, 
