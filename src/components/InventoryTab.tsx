@@ -304,29 +304,32 @@ export default function InventoryTab({
         </div>
       </div>
 
-      {/* Control Bar & Selection Bar */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+      {/* Notion-style Database Toolbar (Desktop/Tablet) */}
+      <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+        {/* Left Side: Empty view space matching Notion's layout */}
+        <div className="flex items-center text-gray-400 font-medium"></div>
+
+        {/* Right Side: Search, Create Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <div ref={searchWrapperRef} className="hidden md:flex items-center">
             {!(isSearchExpanded || searchQuery) ? (
               <button
                 type="button"
                 onClick={() => setIsSearchExpanded(true)}
-                className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] hover:text-white transition-colors cursor-pointer text-xs font-medium font-sans border border-[#262626]"
+                className="bg-transparent text-gray-300 px-2 py-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer"
                 title="Search database"
               >
-                <Search className="w-3.5 h-3.5 mr-1" />
-                <span>Search</span>
+                <Search className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <div className="relative flex items-center bg-transparent transition-all">
-                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1">
+              <div className="relative flex items-center bg-[#181818] border border-[#262626] rounded-md transition-all h-7 w-48 overflow-hidden">
+                <div className="flex items-center justify-center w-7 h-full text-gray-400">
                   <Search className="h-3.5 w-3.5" />
                 </div>
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Type to search..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -334,7 +337,7 @@ export default function InventoryTab({
                       setIsSearchExpanded(false);
                     }
                   }}
-                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-32 focus:w-44 transition-all pl-1"
+                  className="bg-transparent text-xs text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full h-full"
                 />
                 {searchQuery && (
                   <button
@@ -343,7 +346,7 @@ export default function InventoryTab({
                       setSearchQuery('');
                       setIsSearchExpanded(false);
                     }}
-                    className="ml-1.5 text-gray-500 hover:text-white transition-colors focus:outline-none"
+                    className="w-7 h-full flex items-center justify-center text-gray-500 hover:text-white transition-colors focus:outline-none cursor-pointer"
                     title="Clear search"
                   >
                     <X className="w-3 h-3" />
@@ -353,27 +356,19 @@ export default function InventoryTab({
             )}
           </div>
           
-          {/* Select all button removed */}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-
-
           {isAdmin ? (
-            <div className="flex items-stretch sm:items-center gap-2 ">
-              <button
-                type="button"
-                onClick={() => setShowAddForm(true)}
-                className="hidden md:flex text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] border border-[#ee317b] rounded-md px-3.5 py-1.5 items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Add Stock
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddForm(true)}
+              className="hidden md:flex items-center gap-1.5 bg-white hover:bg-gray-200 text-black px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">New</span>
+            </button>
           ) : (
-            <div className="text-xs font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-[#ee317b]" />
-              EMPLOYEE ACCESS: Inventory is READ-ONLY
+            <div className="text-xs font-sans text-gray-500 bg-[#151515] border border-[#262626] px-3 py-1.5 flex items-center gap-1.5 rounded-md">
+              <Lock className="w-3 h-3 text-[#ee317b]" />
+              <span className="hidden lg:inline">READ-ONLY</span>
             </div>
           )}
         </div>
