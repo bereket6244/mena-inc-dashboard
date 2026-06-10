@@ -402,7 +402,7 @@ export default function InventoryTab({
 
               <form onSubmit={handleAddStock} className="space-y-4 font-sans text-xs text-gray-300">
                 <div>
-                  <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
+                  <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-name">Variant Name</label>
                   <input
                     id="field-new-stock-name"
                     type="text"
@@ -410,12 +410,12 @@ export default function InventoryTab({
                     placeholder="e.g. Bronze wave"
                     value={newStockName}
                     onChange={(e) => setNewStockName(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
+                    className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial on Hand (expression enabled)</label>
+                  <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-new-stock-initial">Initial on Hand (expression enabled)</label>
                   <input
                     id="field-new-stock-initial"
                     type="text"
@@ -430,7 +430,7 @@ export default function InventoryTab({
                         setNewStockInitial(val.toString());
                       }
                     }}
-                    className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                   />
                   <div className="text-[10px] text-gray-500 mt-1 font-sans">
                     Parsed: {parseFractionOrExpression(newStockInitial)}
@@ -462,8 +462,8 @@ export default function InventoryTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* List of Stocks - Responsive scroll table */}
-        <div className="bg-[#121212] border border-[#262626] rounded-md lg:col-span-2 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#262626] flex items-center justify-between bg-[#181818]">
+        <div className="bg-[#121212] border border-[#262626] rounded-md lg:col-span-2 shadow-none overflow-hidden">
+          <div className="p-4 border-b border-[#262626] bg-[#181818] flex items-center justify-between">
             <span className="font-sans font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2">
               <Database className="w-4 h-4 text-[#ee317b]" />
               <span className="hidden md:inline">Warehouse ledger</span>
@@ -475,14 +475,14 @@ export default function InventoryTab({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs font-sans">
               <thead>
-                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans uppercase tracking-wider">
-                  <th className="py-3 px-3 text-center w-10 text-gray-500 font-medium">#</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400">Stock Name</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400 text-right">Stock on Hand</th>
-                  <th className="hidden md:table-cell py-3 px-4 font-semibold text-gray-400 text-right">Initial</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400 text-right">Total Consumed</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400">Status Alert</th>
-                  <th className="py-3 px-4 text-center w-40">Actions</th>
+                <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
+                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Stock Name</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Stock on Hand</th>
+                  <th className="hidden md:table-cell py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Initial</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-right">Total Consumed</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Status Alert</th>
+                  <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-center w-40">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300 font-sans">
@@ -492,15 +492,15 @@ export default function InventoryTab({
                   const isOutOfStock = stock.remaining <= 0;
                   const isLowStock = stock.remaining < 50 && stock.remaining > 0;
                   
-                  let rowClass = 'transition-colors';
+                  let rowClass = 'group transition-colors border-b border-[#262626]';
                   if (isSelected) {
                     rowClass += ' bg-[#121912]/20 border-l-2 border-[#71b536]';
                   } else if (isOutOfStock) {
-                    rowClass += ' out-of-stock-row';
+                    rowClass += ' bg-[#2E181D]/40 hover:bg-[#2E181D]/60';
                   } else if (isLowStock) {
-                    rowClass += ' low-stock-row';
+                    rowClass += ' bg-[#112918]/20 hover:bg-[#112918]/40';
                   } else {
-                    rowClass += ' hover:bg-[#181818]';
+                    rowClass += ' hover:bg-[#1a1a1a]';
                   }
 
                   return (
@@ -509,35 +509,35 @@ export default function InventoryTab({
                       className={rowClass}
                     >
                       {/* Index */}
-                      <td className="py-3 px-3 text-center text-gray-500 font-medium text-[10px]">
+                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-center border-r border-[#262626] text-gray-500 font-medium text-[10px] md:text-xs sticky left-0 z-10 bg-[#121212] group-hover:bg-[#1a1a1a] transition-colors">
                         {index + 1}
                       </td>
 
                       {/* Name */}
-                      <td className="py-3 px-4 font-sans font-bold text-white">{stock.name}</td>
+                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] whitespace-nowrap font-bold text-white group-hover:bg-[#1a1a1a] transition-colors">{stock.name}</td>
                       
                       {/* Remaining On Hand */}
-                      <td className={`py-3 px-4 text-right font-bold ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
+                      <td className={`py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
                         {stock.remaining.toLocaleString()}
                       </td>
 
                       {/* Initial */}
-                      <td className="hidden md:table-cell py-3 px-4 text-right">{stock.initialStock.toLocaleString()}</td>
+                      <td className="hidden md:table-cell py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right group-hover:bg-[#1a1a1a] transition-colors">{stock.initialStock.toLocaleString()}</td>
                       
                       {/* Consumed */}
-                      <td className="py-3 px-4 text-right text-yellow-400/90 font-medium bg-yellow-950/5">
+                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
                         {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}
                       </td>
                       
                       {/* Status badge */}
-                      <td className="py-3 px-4">
+                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-left group-hover:bg-[#1a1a1a] transition-colors">
                         <span className={`inline-block px-2 py-0.5 border text-[10px] font-bold ${status.classes}`}>
                           {status.text}
                         </span>
                       </td>
 
                       {/* EDIT & DELETE & REPLENISH buttons */}
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-center group-hover:bg-[#1a1a1a] transition-colors">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
@@ -614,17 +614,14 @@ export default function InventoryTab({
                   </div>
 
                   <div>
-                    <label className="block text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-initial-stock">Initial Quantity (expression enabled)</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-initial-stock">Initial Quantity (expression enabled)</label>
                     <input
                       id="field-initial-stock"
                       type="text"
                       required
-                      placeholder="e.g. 500+250"
+                      placeholder="e.g. 500 or 100 * 5"
                       value={editInitialInput}
-                      onChange={(e) => {
-                        const cleaned = cleanLeadingZeros(e.target.value);
-                        setEditInitialInput(cleaned);
-                      }}
+                      onChange={(e) => setEditInitialInput(cleanLeadingZeros(e.target.value))}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -632,7 +629,7 @@ export default function InventoryTab({
                           setEditInitialInput(val.toString());
                         }
                       }}
-                      className="w-full px-3 py-2 bg-[#181818] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                      className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                     />
                     <div className="text-[10px] text-gray-500 mt-1 font-sans">
                       Parsed: {parseFractionOrExpression(editInitialInput)}
@@ -697,7 +694,14 @@ export default function InventoryTab({
                         placeholder="e.g. 500 or 1000"
                         value={replenishAmount}
                         onChange={(e) => setReplenishAmount(cleanLeadingZeros(e.target.value))}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#181818] text-white border border-[#262626] rounded-md outline-none focus:border-[#71b536]"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = parseFractionOrExpression(replenishAmount);
+                            setReplenishAmount(val.toString());
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#71b536]"
                       />
                     </div>
 
@@ -845,10 +849,10 @@ export default function InventoryTab({
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="bg-[#ee317b] text-white rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
+            className="bg-[#ee317b] text-black rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
             title="Add stock"
           >
-            <Plus className="w-6 h-6" strokeWidth={2.5} />
+            <Plus className="w-5 h-5" />
           </button>
         </div>
       )}
