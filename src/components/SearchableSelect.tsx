@@ -7,13 +7,15 @@ interface SearchableSelectProps {
   onChange: (e: any) => void;
   children: ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function SearchableSelect({
   value,
   onChange,
   children,
-  className = ""
+  className = "",
+  disabled = false
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,29 +134,30 @@ export default function SearchableSelect({
     <div className={`relative font-sans ${className}`} ref={wrapperRef}>
       {/* Trigger / Input Field */}
       <div 
-        className="relative w-full h-full min-h-[30px] flex items-center transition-colors bg-transparent"
+        className={`relative w-full h-full min-h-[30px] flex items-center transition-colors bg-transparent ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
         style={{ backgroundColor: 'inherit' }}
         onClick={() => {
-          if (!isOpen) setIsOpen(true);
+          if (!disabled && !isOpen) setIsOpen(true);
         }}
       >
         <input
           ref={inputRef}
           type="text"
-          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left truncate cursor-text ${!selectedOption && !isOpen ? 'text-gray-500' : ''}`}
+          disabled={disabled}
+          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left truncate ${disabled ? 'cursor-not-allowed' : 'cursor-text'} ${!selectedOption && !isOpen ? 'text-gray-500' : ''}`}
           placeholder="Select..."
           value={isOpen ? searchTerm : (selectedOption ? selectedOption.label : "")}
           onChange={(e) => {
-            if (!isOpen) setIsOpen(true);
+            if (!disabled && !isOpen) setIsOpen(true);
             setSearchTerm(e.target.value);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => { if (!disabled) setIsOpen(true); }}
         />
         <div 
-          className="absolute right-0 top-0 h-full w-8 flex items-center justify-center cursor-pointer"
+          className={`absolute right-0 top-0 h-full w-8 flex items-center justify-center ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           onClick={(e) => {
             e.stopPropagation();
-            setIsOpen(!isOpen);
+            if (!disabled) setIsOpen(!isOpen);
           }}
         >
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-[#ee317b]' : 'text-gray-500'}`} />
