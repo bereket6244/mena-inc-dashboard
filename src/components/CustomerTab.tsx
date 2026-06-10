@@ -4126,10 +4126,12 @@ export default function CustomerTab({
                   <div className="relative w-44 h-28 flex items-center justify-end">
                     
                     {/* The signature row */}
-                    <div className="absolute left-0 bottom-4 font-sans text-[9px] text-right pr-6 space-y-1">
-                      <p className="font-bold text-gray-800 uppercase">AUTHORIZED PLC STAMP</p>
-                      <p className="text-gray-500 text-[8px]">Mena Inc Conversion Division</p>
-                    </div>
+                    {applyDigitalStamp && (
+                      <div className="absolute left-0 bottom-4 font-sans text-[9px] text-right pr-6 space-y-1">
+                        <p className="font-bold text-gray-800 uppercase">AUTHORIZED PLC STAMP</p>
+                        <p className="text-gray-500 text-[8px]">Mena inc trading PLC</p>
+                      </div>
+                    )}
 
                     {/* SVG Rounded Double Circle Stamp overlapping signature or Premium Real Stamp Photo overlay */}
                     {applyDigitalStamp && (
