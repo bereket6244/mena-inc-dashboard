@@ -1480,7 +1480,7 @@ export default function CustomerTab({
             <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">Index</th>
+                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
                   <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs">
                     <input
                       type="checkbox"

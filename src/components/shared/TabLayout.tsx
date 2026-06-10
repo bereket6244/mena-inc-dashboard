@@ -209,7 +209,7 @@ export function TableToolbar({
 
 export function DataTableWrapper({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-[#121212] border border-[#262626] rounded-md shadow-none overflow-hidden">
+    <div className="bg-[#121212] border border-[#262626] shadow-none overflow-hidden">
       {children}
     </div>
   );
