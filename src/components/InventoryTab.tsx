@@ -459,18 +459,10 @@ export default function InventoryTab({
       </AnimatePresence>
 
       {/* Main Inventory Board Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="w-full">
         
         {/* List of Stocks - Responsive scroll table */}
-        <div className="bg-[#121212] border border-[#262626] rounded-md lg:col-span-2 shadow-none overflow-hidden">
-          <div className="p-4 border-b border-[#262626] bg-[#181818] flex items-center justify-between">
-            <span className="font-sans font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2">
-              <Database className="w-4 h-4 text-[#ee317b]" />
-              <span className="hidden md:inline">Warehouse ledger</span>
-              <span className="md:hidden">Stock</span>
-            </span>
-            <span className="hidden md:inline text-[10px] font-sans text-gray-500 uppercase">Interactive Deduct System</span>
-          </div>
+        <div className="bg-[#121212] border border-[#262626] rounded-md shadow-none overflow-hidden">
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs font-sans">
@@ -580,18 +572,19 @@ export default function InventoryTab({
           </div>
         </div>
 
-        {/* SIDE BAR / SUBMIT FORMS CONTROLLER */}
-        <div className="space-y-6">
+        {/* CONTROLLER MODALS */}
+        <div>
           
           {/* Quick Edit Sheet Stock Initial State */}
           <AnimatePresence>
             {editingStock && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 15 }}
-                className="bg-[#121212] border border-[#262626] rounded-md p-4 shadow-none"
-              >
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-[#121212] border border-[#262626] rounded-md p-6 max-w-md w-full shadow-none"
+                >
                 <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4 ">
                   <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-[#ee317b]" />
@@ -652,7 +645,8 @@ export default function InventoryTab({
                     </button>
                   </div>
                 </form>
-              </motion.div>
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
 
@@ -662,12 +656,13 @@ export default function InventoryTab({
               const stock = paperStocks.find(s => s.id === replenishingStockId);
               if (!stock) return null;
               return (
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 15 }}
-                  className="bg-[#121212] border border-[#71b536]/30 rounded-md p-4 shadow-none space-y-4"
-                >
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-[#121212] border border-[#71b536]/30 rounded-md p-6 max-w-md w-full shadow-none space-y-4"
+                  >
                   <div className="flex justify-between items-center border-b border-[#262626] pb-3 ">
                     <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
                       <Plus className="w-3.5 h-3.5" />
@@ -728,7 +723,8 @@ export default function InventoryTab({
                       Confirm Stock Replenishment
                     </button>
                   </div>
-                </motion.div>
+                  </motion.div>
+                </div>
               );
             })()}
           </AnimatePresence>
