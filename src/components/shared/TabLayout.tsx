@@ -207,9 +207,9 @@ export function TableToolbar({
   );
 }
 
-export function DataTableWrapper({ children }: { children: ReactNode }) {
+export function DataTableWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
   return (
-    <div className="bg-[#121212] border border-[#262626] shadow-none overflow-hidden">
+    <div className={`bg-[#121212] border border-[#262626] shadow-none overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -217,8 +217,8 @@ export function DataTableWrapper({ children }: { children: ReactNode }) {
 
 export function DataTable({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse text-xs font-sans">
+    <div className="overflow-x-auto scrollbar-none-x">
+      <table className="w-full text-left border-collapse font-sans text-xs">
         {children}
       </table>
     </div>

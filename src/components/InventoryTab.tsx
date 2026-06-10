@@ -359,7 +359,7 @@ export default function InventoryTab({
       <div className="w-full">
         
         {/* List of Stocks - Responsive scroll table */}
-        <DataTableWrapper>
+        <DataTableWrapper className="mb-28 md:mb-0 !border-t md:!border md:!rounded-md">
 
           <DataTable>
             
@@ -398,35 +398,35 @@ export default function InventoryTab({
                       className={rowClass}
                     >
                       {/* Index */}
-                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-center border-r border-[#262626] text-gray-500 font-medium text-[10px] md:text-xs sticky left-0 z-10 bg-[#121212] group-hover:bg-[#1a1a1a] transition-colors">
+                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">
                         {index + 1}
                       </td>
 
                       {/* Name */}
-                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] whitespace-nowrap font-bold text-white group-hover:bg-[#1a1a1a] transition-colors">{stock.name}</td>
+                      <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">{stock.name}</td>
                       
                       {/* Remaining On Hand */}
-                      <td className={`py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
+                      <td className={`py-2 px-3 border-r border-[#262626] font-sans text-right font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
                         {stock.remaining.toLocaleString()}
                       </td>
 
                       {/* Initial */}
-                      <td className="hidden md:table-cell py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right group-hover:bg-[#1a1a1a] transition-colors">{stock.initialStock.toLocaleString()}</td>
+                      <td className="hidden md:table-cell py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300 group-hover:bg-[#1a1a1a] transition-colors">{stock.initialStock.toLocaleString()}</td>
                       
                       {/* Consumed */}
-                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-right text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
+                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
                         {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}
                       </td>
                       
                       {/* Status badge */}
-                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-left group-hover:bg-[#1a1a1a] transition-colors">
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-left group-hover:bg-[#1a1a1a] transition-colors">
                         <span className={`inline-block px-2 py-0.5 border text-[10px] font-bold ${status.classes}`}>
                           {status.text}
                         </span>
                       </td>
 
                       {/* EDIT & DELETE & REPLENISH buttons */}
-                      <td className="py-1 md:py-2.5 px-2 md:px-3 text-[11px] md:text-xs border-r border-[#262626] text-center group-hover:bg-[#1a1a1a] transition-colors">
+                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-center group-hover:bg-[#1a1a1a] transition-colors">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"

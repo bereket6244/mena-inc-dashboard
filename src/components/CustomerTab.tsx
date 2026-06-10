@@ -1475,9 +1475,8 @@ export default function CustomerTab({
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border-t md:border border-[#262626] md:rounded-md overflow-hidden shadow-none mb-28 md:mb-0`}>
-        <div className="overflow-x-auto scrollbar-none-x">
-            <table className="w-full text-left border-collapse font-sans text-xs">
+      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
+        <DataTable>
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-[#ee317b] font-sans text-center w-8 text-[11px] md:text-xs">#</th>
@@ -1775,9 +1774,8 @@ export default function CustomerTab({
                   </tr>
                 )}
               </tbody>
-            </table>
-          </div>
-        </div>
+            </DataTable>
+      </DataTableWrapper>
 
       {/* RESPONSIVE CARDS VIEW */}
       <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mb-28 md:mb-0`}>
