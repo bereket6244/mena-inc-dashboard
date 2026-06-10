@@ -1291,7 +1291,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
               <img 
                 src="/mena-logo.png"
                 alt="Mena Logo" 
-                className="w-16 h-16 object-contain bg-[#181818] border border-[#262626] p-1 mx-auto"
+                className="w-16 h-16 object-contain mx-auto"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute -bottom-1 -right-1 bg-[#ee317b] text-black p-1 text-[9px] font-bold leading-none">
@@ -1381,7 +1381,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 <img 
                   src="/mena-logo.png"
                 alt="Mena Logo" 
-                className="w-6.5 h-6.5 md:w-8 md:h-8 object-contain bg-[#121212] border border-[#262626] p-0.5 rounded-md"
+                className="w-8 h-8 md:w-8 md:h-8 object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
@@ -1389,11 +1389,11 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                   if (fallback) fallback.classList.remove('hidden');
                 }}
               />
-              <div id="branding-icon-fallback" className="w-6 h-6 md:w-7 md:h-7 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
-                <Database className="w-3.5 h-3.5 md:w-4 md:h-4 text-black" />
+              <div id="branding-icon-fallback" className="w-8 h-8 md:w-7 md:h-7 rounded-md bg-[#ee317b] flex items-center justify-center text-white shadow-sm font-bold hidden">
+                <Database className="w-4 h-4 md:w-4 md:h-4 text-black" />
               </div>
               <div>
-                <h1 className="text-xs md:text-sm font-bold text-white tracking-tight font-sans">
+                <h1 className="text-sm md:text-sm font-bold text-white tracking-tight font-sans">
                   MENA INC.
                 </h1>
                 <p className="text-[9px] text-gray-500 font-sans tracking-wider uppercase hidden sm:block">Advanced Database &amp; Inventory System</p>
@@ -1405,10 +1405,10 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="w-6.5 h-6.5 md:w-8 md:h-8 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
+                  className="w-8 h-8 md:w-8 md:h-8 bg-[#181818] hover:bg-[#202020] border border-[#262626] rounded-full flex items-center justify-center cursor-pointer transition-colors focus:outline-none focus:border-[#ee317b]"
                   title="Profile Menu"
                 >
-                  <span className="text-[10px] md:text-xs text-white font-bold font-sans uppercase">
+                  <span className="text-xs md:text-xs text-white font-bold font-sans uppercase">
                     {currentUser.name.charAt(0)}
                   </span>
                 </button>
