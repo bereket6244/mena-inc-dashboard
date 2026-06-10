@@ -244,7 +244,7 @@ export default function InventoryTab({
 
       {/* Mobile-only Top Search Bar */}
       <div className="md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
-        <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
+        <div ref={mobileSearchWrapperRef} className="relative flex flex-1 w-full items-center justify-end h-7 select-none">
           <AnimatePresence initial={false}>
             {!(isSearchExpanded || searchQuery) ? (
               <motion.button
@@ -264,10 +264,10 @@ export default function InventoryTab({
               <motion.div
                 key="search-input-wrapper"
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 140, opacity: 1 }}
+                animate={{ width: '100%', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="relative flex items-center bg-transparent overflow-hidden"
+                className="relative flex w-full items-center bg-transparent overflow-hidden"
               >
                 <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
                   <Search className="h-3.5 w-3.5" />
@@ -283,7 +283,7 @@ export default function InventoryTab({
                       setIsSearchExpanded(false);
                     }
                   }}
-                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-20 pl-0.5"
+                  className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
                 />
                 {searchQuery && (
                   <button
@@ -387,10 +387,10 @@ export default function InventoryTab({
               <button
                 type="button"
                 onClick={() => setShowAddForm(true)}
-                className="text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] border border-[#ee317b] rounded-md px-3.5 py-1.5 flex items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
+                className="hidden md:flex text-xs font-sans font-bold text-white bg-[#ee317b] hover:bg-[#d61e63] border border-[#ee317b] rounded-md px-3.5 py-1.5 items-center justify-center gap-1.5 shadow-none transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                Add Paper Stock
+                Add Stock
               </button>
             </div>
           ) : (
@@ -516,9 +516,10 @@ export default function InventoryTab({
           <div className="px-5 py-4 border-b border-[#262626] flex items-center justify-between bg-[#181818]">
             <span className="font-sans font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2">
               <Database className="w-4 h-4 text-[#ee317b]" />
-              Paper Warehouse ledger
+              <span className="hidden md:inline">Paper Warehouse ledger</span>
+              <span className="md:hidden">Stock</span>
             </span>
-            <span className="text-[10px] font-sans text-gray-500 uppercase">Interactive Sheets Deduct System</span>
+            <span className="hidden md:inline text-[10px] font-sans text-gray-500 uppercase">Interactive Sheets Deduct System</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -540,10 +541,10 @@ export default function InventoryTab({
                       title="Select/Deselect all filtered rows"
                     />
                   </th>
-                  <th className="py-3 px-4 font-semibold text-gray-400">Paper Stock Name</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400 text-right">Initial Sheets</th>
-                  <th className="py-3 px-4 font-semibold text-gray-400 text-right">Total Consumed</th>
+                  <th className="py-3 px-4 font-semibold text-gray-400">Stock Name</th>
                   <th className="py-3 px-4 font-semibold text-gray-400 text-right">Stock on Hand</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-semibold text-gray-400 text-right">Initial Sheets</th>
+                  <th className="py-3 px-4 font-semibold text-gray-400 text-right">Total Consumed</th>
                   <th className="py-3 px-4 font-semibold text-gray-400">Status Alert</th>
                   <th className="py-3 px-4 text-center w-40">Actions</th>
                 </tr>
@@ -590,17 +591,17 @@ export default function InventoryTab({
                       {/* Name */}
                       <td className="py-3 px-4 font-sans font-bold text-white">{stock.name}</td>
                       
+                      {/* Remaining On Hand */}
+                      <td className={`py-3 px-4 text-right font-bold ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
+                        {stock.remaining.toLocaleString()}
+                      </td>
+
                       {/* Initial sheets */}
-                      <td className="py-3 px-4 text-right">{stock.initialStock.toLocaleString()}</td>
+                      <td className="hidden md:table-cell py-3 px-4 text-right">{stock.initialStock.toLocaleString()}</td>
                       
                       {/* Consumed Sheets */}
                       <td className="py-3 px-4 text-right text-yellow-400/90 font-medium bg-yellow-950/5">
                         {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}
-                      </td>
-                      
-                      {/* Remaining On Hand */}
-                      <td className={`py-3 px-4 text-right font-bold ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}>
-                        {stock.remaining.toLocaleString()}
                       </td>
                       
                       {/* Status badge */}
@@ -912,6 +913,20 @@ export default function InventoryTab({
           </div>
         )}
       </AnimatePresence>
+
+    {/* Mobile FAB for Add Stock */}
+      {isAdmin && (
+        <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 z-30 pointer-events-none">
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="bg-[#ee317b] text-white rounded-full p-3 shadow-lg shadow-[#ee317b]/15 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 pointer-events-auto"
+            title="Add stock"
+          >
+            <Plus className="w-6 h-6" strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
 
     </div>
   );
