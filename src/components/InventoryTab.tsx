@@ -444,7 +444,7 @@ export default function InventoryTab({
               if (isOutOfStock) {
                 rowClass = 'out-of-stock-row bg-[#2E181D]/40 hover:bg-[#2E181D]/60';
               } else if (isLowStock) {
-                rowClass = 'low-stock-row bg-[#112918]/20 hover:bg-[#112918]/40';
+                rowClass = 'low-stock-row bg-[#2D210F]/40 hover:bg-[#2D210F]/60';
               }
 
               return (
@@ -471,7 +471,13 @@ export default function InventoryTab({
                   </SharedTd>
                   <SharedTd
                     align="right"
-                    className={`font-bold group-hover:bg-[#1a1a1a] transition-colors ${stock.remaining <= 0 ? 'text-[#F87171] bg-[#2E181D]/10' : 'text-[#71b536]'}`}
+                    className={`font-bold group-hover:bg-[#1a1a1a] transition-colors ${
+                      stock.remaining <= 0
+                        ? 'text-[#F87171] bg-[#2E181D]/10'
+                        : stock.remaining < 50
+                          ? 'text-[#FACC15] bg-[#2D210F]/10'
+                          : 'text-[#71b536]'
+                    }`}
                   >
                     {stock.remaining.toLocaleString()}
                   </SharedTd>

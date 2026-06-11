@@ -340,20 +340,20 @@ input, textarea {
   caret-color: #000000 !important;
 }
 
-/* Low stock alerts are green */
+/* Low stock alerts are yellow */
 .low-stock-row {
-  background-color: rgba(16, 185, 129, 0.12) !important;
-  border-left: 2px solid #10B981 !important;
+  background-color: rgba(250, 204, 21, 0.12) !important;
+  border-left: 2px solid #FACC15 !important;
 }
 .low-stock-row td {
-  color: #c6f6d5 !important;
+  color: #FDE68A !important;
 }
 .light-theme .low-stock-row {
-  background-color: #E6F4EA !important;
-  border-left: 2px solid #137333 !important;
+  background-color: #FEF3C7 !important;
+  border-left: 2px solid #D97706 !important;
 }
 .light-theme .low-stock-row td {
-  color: #137333 !important;
+  color: #92400E !important;
 }
 
 /* Out of stock alerts are red */
@@ -373,10 +373,10 @@ input, textarea {
 }
 
 .alternating-table-rows tbody tr.low-stock-row:nth-child(even) td {
-  background-color: rgba(16, 185, 129, 0.16) !important;
+  background-color: rgba(250, 204, 21, 0.16) !important;
 }
 .alternating-table-rows tbody tr.low-stock-row:nth-child(odd) td {
-  background-color: rgba(16, 185, 129, 0.10) !important;
+  background-color: rgba(250, 204, 21, 0.10) !important;
 }
 .alternating-table-rows tbody tr.out-of-stock-row:nth-child(even) td {
   background-color: rgba(239, 68, 68, 0.18) !important;
@@ -385,10 +385,10 @@ input, textarea {
   background-color: rgba(239, 68, 68, 0.11) !important;
 }
 .light-theme .alternating-table-rows tbody tr.low-stock-row:nth-child(even) td {
-  background-color: #DDF1E3 !important;
+  background-color: #FDE68A !important;
 }
 .light-theme .alternating-table-rows tbody tr.low-stock-row:nth-child(odd) td {
-  background-color: #EAF7EE !important;
+  background-color: #FEF3C7 !important;
 }
 .light-theme .alternating-table-rows tbody tr.out-of-stock-row:nth-child(even) td {
   background-color: #F9DAD7 !important;
@@ -471,12 +471,12 @@ input, textarea {
 
 .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-select-column,
 .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #10271a !important;
+  background-color: #2D210F !important;
 }
 
 .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-select-column,
 .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #0d2015 !important;
+  background-color: #241A0C !important;
 }
 
 .alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(even) .inventory-select-column,
@@ -521,14 +521,14 @@ input, textarea {
 .light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(even) .customer-client-info-column,
 .light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-select-column,
 .light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #DDF1E3 !important;
+  background-color: #FDE68A !important;
 }
 
 .light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-select-column,
 .light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-client-info-column,
 .light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-select-column,
 .light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #EAF7EE !important;
+  background-color: #FEF3C7 !important;
 }
 
 .light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(even) .customer-select-column,
