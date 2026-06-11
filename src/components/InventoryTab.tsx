@@ -28,7 +28,7 @@ import {
 import { Customer, PaperStock, EmployeeUser } from '../types';
 import { computeStockConsumed, parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
-const INVENTORY_SORT_FIELDS = ['recordedOrder', 'name', 'remaining', 'initialStock', 'consumed'] as const;
+const INVENTORY_SORT_FIELDS = ['recordedOrder', 'name', 'remaining', 'consumed'] as const;
 type InventoryColumnSortField = Exclude<typeof INVENTORY_SORT_FIELDS[number], 'recordedOrder'>;
 type InventorySortField = typeof INVENTORY_SORT_FIELDS[number];
 const INVENTORY_SORT_BY_STORAGE_KEY = 'ui.inventory.sortBy';
@@ -424,9 +424,6 @@ export default function InventoryTab({
           <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('remaining')}>
             <SortHeader field="remaining" align="right">Stock on Hand</SortHeader>
           </SharedTh>
-          <SharedTh align="right" className="hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort('initialStock')}>
-            <SortHeader field="initialStock" align="right">Initial</SortHeader>
-          </SharedTh>
           <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('consumed')}>
             <SortHeader field="consumed" align="right">Total Consumed</SortHeader>
           </SharedTh>
@@ -480,9 +477,6 @@ export default function InventoryTab({
                     }`}
                   >
                     {stock.remaining.toLocaleString()}
-                  </SharedTd>
-                  <SharedTd align="right" className="hidden md:table-cell text-gray-300 group-hover:bg-[#1a1a1a] transition-colors">
-                    {stock.initialStock.toLocaleString()}
                   </SharedTd>
                   <SharedTd align="right" className="text-yellow-400/90 font-medium bg-yellow-950/5 group-hover:bg-[#1a1a1a] transition-colors">
                     {stock.consumed > 0 ? stock.consumed.toLocaleString() : '0'}

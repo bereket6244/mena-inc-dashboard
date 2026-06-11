@@ -29,8 +29,11 @@ export async function savePaperStockDoc(stock: PaperStock): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const payload: PaperStock = {
-        ...stock,
+        id: stock.id,
+        name: stock.name,
         initialStock: Number(stock.initialStock || 0),
+        isDeleted: stock.isDeleted,
+        deletedBy: stock.deletedBy,
       };
 
       const { error } = await supabase
@@ -50,8 +53,11 @@ export async function updatePaperStockDoc(stock: PaperStock): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
       const payload: PaperStock = {
-        ...stock,
+        id: stock.id,
+        name: stock.name,
         initialStock: Number(stock.initialStock || 0),
+        isDeleted: stock.isDeleted,
+        deletedBy: stock.deletedBy,
       };
 
       const { error } = await supabase
