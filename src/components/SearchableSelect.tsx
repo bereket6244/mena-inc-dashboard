@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 interface SearchableSelectProps {
+  id?: string;
   value: string;
   onChange: (e: any) => void;
   children: ReactNode;
@@ -16,6 +17,7 @@ export default function SearchableSelect({
   value,
   onChange,
   children,
+  id,
   className = "",
   inputClassName = "",
   placeholder = "Select...",
@@ -145,6 +147,7 @@ export default function SearchableSelect({
         }}
       >
         <input
+          id={id}
           ref={inputRef}
           type="text"
           disabled={disabled}

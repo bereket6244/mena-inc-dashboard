@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Customer, Purchase, BankAccount, PaperStock } from '../types';
+import { computeStockConsumed, getCustomerStockDisplayName } from '../utils';
 
 /**
  * Universal export function that generates a single .xlsx file 
@@ -39,9 +40,11 @@ export function exportAllDataToExcel(
       c.advancePayment, Math.max(0, remaining), getBankName(c.paymentMethodId),
       c.bankRemainingId ? getBankName(c.bankRemainingId) : 'N/A (Uncollected)',
       c.deliveryDate || 'N/A', c.advancePaymentDate || 'N/A', c.incompletionReason || 'N/A',
-      c.paperType1 || 'None', c.amount1 || 0, c.paperType2 || 'None', c.amount2 || 0,
-      c.paperType3 || 'None', c.amount3 || 0, c.entrancePaper || 'None', c.amount16 || 0,
-      c.ajabiPaper || 'None', c.amount9 || 0
+      getCustomerStockDisplayName(c, 'paperType1', paperStocks), c.amount1 || 0,
+      getCustomerStockDisplayName(c, 'paperType2', paperStocks), c.amount2 || 0,
+      getCustomerStockDisplayName(c, 'paperType3', paperStocks), c.amount3 || 0,
+      getCustomerStockDisplayName(c, 'entrancePaper', paperStocks), c.amount16 || 0,
+      getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks), c.amount9 || 0
     ];
   });
   
@@ -116,28 +119,7 @@ export function exportAllDataToExcel(
   ];
 
   const inventoryRows = paperStocks.map(s => {
-    let consumed = 0;
-    const lowerName = s.name.trim().toLowerCase();
-    
-    customers.forEach(c => {
-      const orderQty = Number(c.quantity || 0);
-      if (c.paperType1 && c.paperType1.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount1 || 0) * orderQty);
-      }
-      if (c.paperType2 && c.paperType2.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount2 || 0) * orderQty);
-      }
-      if (c.paperType3 && c.paperType3.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount3 || 0) * orderQty);
-      }
-      if (c.entrancePaper && c.entrancePaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount16 || 0) / 16);
-      }
-      if (c.ajabiPaper && c.ajabiPaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount9 || 0) / 9);
-      }
-    });
-
+    const consumed = computeStockConsumed(s, customers, paperStocks);
     const netStock = s.initialStock - consumed;
     
     let statusText = 'HEALTHY';

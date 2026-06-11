@@ -4,6 +4,7 @@ import { SharedDataTableLayout, SharedTh, SharedTd, SharedTr } from './shared/Sh
 import { FloatingAddButton } from './shared/TabLayout';
 import { 
   Plus, 
+  Minus,
   ArrowDown,
   ArrowUp,
   Sparkles, 
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react';
 
 import { Customer, PaperStock, EmployeeUser } from '../types';
-import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+import { computeStockConsumed, parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
 const INVENTORY_SORT_FIELDS = ['recordedOrder', 'name', 'remaining', 'initialStock', 'consumed'] as const;
 type InventoryColumnSortField = Exclude<typeof INVENTORY_SORT_FIELDS[number], 'recordedOrder'>;
@@ -56,9 +57,9 @@ export default function InventoryTab({
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Math expression string inputs for the numerical inventory editing fields
-  const [editInitialInput, setEditInitialInput] = useState<string>('');
   const [editStockNameInput, setEditStockNameInput] = useState<string>('');
   const [editStockError, setEditStockError] = useState<string>('');
+  const [inventoryMessage, setInventoryMessage] = useState<string>('');
 
   // Non-blocking custom delete tracking ID for paper stocks
   const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
@@ -66,9 +67,10 @@ export default function InventoryTab({
   // Multi-selection state for paper stocks
   const [selectedStockIds, setSelectedStockIds] = useState<string[]>([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-  // Quick replenishment state
-  const [replenishingStockId, setReplenishingStockId] = useState<string | null>(null);
-  const [replenishAmount, setReplenishAmount] = useState<string>('');
+  // Quick stock adjustment state
+  const [adjustingStockId, setAdjustingStockId] = useState<string | null>(null);
+  const [stockAdjustmentMode, setStockAdjustmentMode] = useState<'add' | 'subtract'>('add');
+  const [stockAdjustmentAmount, setStockAdjustmentAmount] = useState<string>('');
   const [sortBy, setSortBy] = useState<InventorySortField>(() => {
     const savedSortBy = localStorage.getItem(INVENTORY_SORT_BY_STORAGE_KEY);
     return INVENTORY_SORT_FIELDS.includes(savedSortBy as InventorySortField) ? savedSortBy as InventorySortField : 'name';
@@ -112,39 +114,6 @@ export default function InventoryTab({
     );
   };
 
-  // Helper to compute Total Consumed for a specific stock name
-  const computeTotalConsumed = (name: string): number => {
-    let consumed = 0;
-    const lowerName = name.trim().toLowerCase();
-    
-    customers.forEach(c => {
-      const orderQty = Number(c.quantity || 0);
-
-      // Paper 1 (multiplied by order quantity for 1-for-1 cards, rounded up if not natural / whole number)
-      if (c.paperType1 && c.paperType1.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount1 || 0) * orderQty);
-      }
-      // Paper 2 (multiplied by order quantity, rounded up if not natural / whole)
-      if (c.paperType2 && c.paperType2.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount2 || 0) * orderQty);
-      }
-      // Paper 3 (multiplied by order quantity, rounded up if not natural / whole)
-      if (c.paperType3 && c.paperType3.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount3 || 0) * orderQty);
-      }
-      // Entrance Paper (divided by 16 - rounded up to next whole number)
-      if (c.entrancePaper && c.entrancePaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount16 || 0) / 16);
-      }
-      // Ajabi Paper (divided by 9 - rounded up to next whole number)
-      if (c.ajabiPaper && c.ajabiPaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount9 || 0) / 9);
-      }
-    });
-
-    return consumed;
-  };
-
   const getStatus = (current: number) => {
     if (current <= 0) {
       return { 
@@ -162,15 +131,6 @@ export default function InventoryTab({
         classes: 'bg-[#112918] text-[#71b536] border-[#71b536]/20' 
       };
     }
-  };
-
-  const parseStockQuantityInput = (value: string): number | null => {
-    const trimmed = value.trim();
-    if (!trimmed || !/\d/.test(trimmed) || !/^[0-9+\-*/().\s]+$/.test(trimmed)) {
-      return null;
-    }
-    const parsed = Math.max(0, parseFractionOrExpression(trimmed));
-    return Number.isFinite(parsed) ? parsed : null;
   };
 
   const handleAddStock = (e: React.FormEvent) => {
@@ -230,21 +190,9 @@ export default function InventoryTab({
       return;
     }
 
-    if (!editInitialInput.trim()) {
-      setEditStockError('Initial quantity is required.');
-      return;
-    }
-
-    const evaluatedVal = parseStockQuantityInput(editInitialInput);
-    if (evaluatedVal === null) {
-      setEditStockError('Enter a valid quantity, like 500 or 100 * 5.');
-      return;
-    }
-
     const finalStockItem: PaperStock = {
       ...editingStock,
       name: trimmedName,
-      initialStock: evaluatedVal,
     };
 
     const updated = paperStocks.map(s => 
@@ -252,10 +200,12 @@ export default function InventoryTab({
     );
     try {
       await Promise.resolve(onUpdateStocks(updated));
-      const { savePaperStockDoc } = await import('../lib/dbService');
-      await savePaperStockDoc(finalStockItem);
+      const { updatePaperStockDoc } = await import('../lib/dbService');
+      await updatePaperStockDoc(finalStockItem);
       setEditStockError('');
       setEditingStock(null);
+      setInventoryMessage('Inventory item updated successfully.');
+      window.setTimeout(() => setInventoryMessage(''), 3000);
     } catch (error: any) {
       setEditStockError(`Saved locally, but the database update failed: ${error?.message || String(error)}`);
     }
@@ -267,22 +217,25 @@ export default function InventoryTab({
     setDeletingStockId(null);
   };
 
-  const handleConfirmReplenish = () => {
-    if (!replenishingStockId) return;
-    const parsedAmt = Math.max(0, parseFractionOrExpression(replenishAmount));
+  const handleConfirmStockAdjustment = () => {
+    if (!adjustingStockId) return;
+    const parsedAmt = Math.max(0, parseFractionOrExpression(stockAdjustmentAmount));
     if (parsedAmt > 0) {
       const updatedList = paperStocks.map(s => {
-        if (s.id === replenishingStockId) {
-          return {
-            ...s,
-            initialStock: s.initialStock + parsedAmt
-          };
-        }
-        return s;
+        if (s.id !== adjustingStockId) return s;
+        const nextInitialStock = stockAdjustmentMode === 'add'
+          ? s.initialStock + parsedAmt
+          : Math.max(0, s.initialStock - parsedAmt);
+        return {
+          ...s,
+          initialStock: nextInitialStock
+        };
       });
       onUpdateStocks(updatedList);
-      setReplenishingStockId(null);
-      setReplenishAmount('');
+      setInventoryMessage(stockAdjustmentMode === 'add' ? 'Stock amount added successfully.' : 'Stock amount subtracted successfully.');
+      window.setTimeout(() => setInventoryMessage(''), 3000);
+      setAdjustingStockId(null);
+      setStockAdjustmentAmount('');
     }
   };
 
@@ -304,9 +257,9 @@ export default function InventoryTab({
         } else if (deletingStockId) {
           event.preventDefault();
           setDeletingStockId(null);
-        } else if (replenishingStockId) {
+        } else if (adjustingStockId) {
           event.preventDefault();
-          setReplenishingStockId(null);
+          setAdjustingStockId(null);
         } else if (editingStock) {
           event.preventDefault();
           setEditingStock(null);
@@ -323,20 +276,20 @@ export default function InventoryTab({
         } else if (deletingStockId) {
           event.preventDefault();
           handleDeleteStock(deletingStockId);
-        } else if (replenishingStockId) {
+        } else if (adjustingStockId) {
           event.preventDefault();
-          handleConfirmReplenish();
+          handleConfirmStockAdjustment();
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showBulkDeleteConfirm, deletingStockId, replenishingStockId, editingStock, showAddForm, paperStocks, selectedStockIds, replenishAmount]);
+  }, [showBulkDeleteConfirm, deletingStockId, adjustingStockId, editingStock, showAddForm, paperStocks, selectedStockIds, stockAdjustmentAmount, stockAdjustmentMode]);
 
   // High-level statistics
   const calculatedStocks = paperStocks.map(s => {
-    const consumed = computeTotalConsumed(s.name);
+    const consumed = computeStockConsumed(s, customers, paperStocks);
     const remaining = s.initialStock - consumed;
     return { ...s, consumed, remaining };
   });
@@ -399,6 +352,19 @@ export default function InventoryTab({
       }
       selectedItemsBar={
         <div className="relative z-30">
+          <AnimatePresence>
+            {inventoryMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#71b536]/30 bg-[#112918] px-3 py-1.5 text-[11px] font-bold text-[#71b536]"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                {inventoryMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {selectedStockIds.length > 0 && (
               <motion.div
@@ -520,25 +486,36 @@ export default function InventoryTab({
                       <button
                         type="button"
                         onClick={() => {
-                          setReplenishingStockId(stock.id);
-                          setReplenishAmount('');
+                          setAdjustingStockId(stock.id);
+                          setStockAdjustmentMode('add');
+                          setStockAdjustmentAmount('');
                         }}
-                        className="bg-transparent text-[#71b536] hover:bg-[#71b536]/10 p-1 rounded-md border border-[#71b536]/20 text-[10px] tracking-wider transition-colors font-sans cursor-pointer flex items-center gap-0.5"
-                        title={`Add to "${stock.name}" Stock`}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-[#71b536]/25 bg-transparent text-[#71b536] hover:bg-[#71b536]/10 transition-colors cursor-pointer"
+                        title={`Add quantity to "${stock.name}"`}
                       >
-                        <Plus className="w-3 h-3" />
-                        Refill
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjustingStockId(stock.id);
+                          setStockAdjustmentMode('subtract');
+                          setStockAdjustmentAmount('');
+                        }}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-[#F87171]/25 bg-transparent text-[#F87171] hover:bg-[#2E181D]/40 transition-colors cursor-pointer"
+                        title={`Subtract quantity from "${stock.name}"`}
+                      >
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           setEditingStock(stock);
                           setEditStockNameInput(stock.name);
-                          setEditInitialInput(stock.initialStock.toString());
                           setEditStockError('');
                         }}
                         className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
-                        title={`Edit "${stock.name}"`}
+                        title={`Rename "${stock.name}"`}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -614,7 +591,7 @@ export default function InventoryTab({
                   <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4">
                     <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                       <Plus className="w-4 h-4 text-[#ee317b]" />
-                      Restock Item
+                      Add Stock Item
                     </span>
                     <button
                       type="button"
@@ -695,7 +672,7 @@ export default function InventoryTab({
                   <div className="flex justify-between items-center border-b border-[#262626] pb-3 mb-4">
                     <span className="font-sans font-bold text-white text-xs uppercase flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-[#ee317b]" />
-                      Edit Stock Item
+                      Rename Stock Item
                     </span>
                     <button
                       type="button"
@@ -728,25 +705,6 @@ export default function InventoryTab({
                           Another stock item already uses this name.
                         </div>
                       )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider" htmlFor="field-initial-stock">Initial Quantity (expression enabled)</label>
-                      <input
-                        id="field-initial-stock"
-                        type="text"
-                        required
-                        placeholder="e.g. 500 or 100 * 5"
-                        value={editInitialInput}
-                        onChange={(e) => {
-                          setEditInitialInput(cleanLeadingZeros(e.target.value));
-                          setEditStockError('');
-                        }}
-                        className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
-                      />
-                      <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                        Parsed: {parseFractionOrExpression(editInitialInput)}
-                      </div>
                       {editStockError && (
                         <div className="text-[10px] text-[#F87171] mt-1 font-sans">
                           {editStockError}
@@ -769,7 +727,7 @@ export default function InventoryTab({
                         type="submit"
                         className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer"
                       >
-                        Save Stock
+                        Save Name
                       </button>
                     </div>
                   </form>
@@ -779,25 +737,29 @@ export default function InventoryTab({
           </AnimatePresence>
 
           <AnimatePresence>
-            {replenishingStockId && (() => {
-              const stock = paperStocks.find(s => s.id === replenishingStockId);
+            {adjustingStockId && (() => {
+              const stock = paperStocks.find(s => s.id === adjustingStockId);
               if (!stock) return null;
+              const modeClasses = stockAdjustmentMode === 'add'
+                ? 'border-[#71b536]/30 text-[#71b536] focus:border-[#71b536]'
+                : 'border-[#F87171]/30 text-[#F87171] focus:border-[#F87171]';
+              const ActionIcon = stockAdjustmentMode === 'add' ? Plus : Minus;
               return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-[#121212] border border-[#71b536]/30 rounded-md p-6 max-w-md w-full shadow-none space-y-4"
+                    className={`bg-[#121212] border rounded-md p-6 max-w-md w-full shadow-none space-y-4 ${stockAdjustmentMode === 'add' ? 'border-[#71b536]/30' : 'border-[#F87171]/30'}`}
                   >
                     <div className="flex justify-between items-center border-b border-[#262626] pb-3">
-                      <span className="font-sans font-bold text-[#71b536] text-xs uppercase flex items-center gap-1.5">
-                        <Plus className="w-3.5 h-3.5" />
-                        Add More to Stock
+                      <span className={`font-sans font-bold text-xs uppercase flex items-center gap-1.5 ${stockAdjustmentMode === 'add' ? 'text-[#71b536]' : 'text-[#F87171]'}`}>
+                        <ActionIcon className="w-3.5 h-3.5" />
+                        {stockAdjustmentMode === 'add' ? 'Add Stock Amount' : 'Subtract Stock Amount'}
                       </span>
                       <button
                         type="button"
-                        onClick={() => setReplenishingStockId(null)}
+                        onClick={() => setAdjustingStockId(null)}
                         className="text-gray-400 hover:text-white"
                       >
                         <X className="w-4 h-4" />
@@ -805,34 +767,36 @@ export default function InventoryTab({
                     </div>
 
                     <p className="text-xs text-gray-400 font-sans">
-                      Refill warehouse category <strong className="text-white">"{stock.name}"</strong> by adding directly to current initial count.
+                      {stockAdjustmentMode === 'add' ? 'Add to' : 'Subtract from'} <strong className="text-white">"{stock.name}"</strong> without renaming or duplicating the stock item.
                     </p>
 
                     <div className="space-y-3 font-sans">
                       <div>
-                        <label className="block text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Quantity to Add (expression enabled)</label>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-wider mb-1">
+                          Quantity to {stockAdjustmentMode === 'add' ? 'Add' : 'Subtract'} (expression enabled)
+                        </label>
                         <input
                           type="text"
-                          placeholder="e.g. 500 or 1000"
-                          value={replenishAmount}
-                          onChange={(e) => setReplenishAmount(cleanLeadingZeros(e.target.value))}
+                          placeholder={stockAdjustmentMode === 'add' ? 'e.g. 500 or 1000' : 'e.g. 25 or 100 / 2'}
+                          value={stockAdjustmentAmount}
+                          onChange={(e) => setStockAdjustmentAmount(cleanLeadingZeros(e.target.value))}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
-                              const val = parseFractionOrExpression(replenishAmount);
-                              setReplenishAmount(val.toString());
+                              const val = parseFractionOrExpression(stockAdjustmentAmount);
+                              setStockAdjustmentAmount(val.toString());
                             }
                           }}
-                          className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#71b536]"
+                          className={`w-full px-3 py-2 text-sm bg-[#121212] border text-white rounded-md outline-none ${modeClasses}`}
                         />
                       </div>
 
                       <button
                         type="button"
-                        onClick={handleConfirmReplenish}
-                        className="w-full py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold font-sans tracking-wider cursor-pointer"
+                        onClick={handleConfirmStockAdjustment}
+                        className={`w-full py-1.5 text-xs font-bold font-sans tracking-wider cursor-pointer rounded ${stockAdjustmentMode === 'add' ? 'bg-[#71b536] hover:bg-[#5a932a] text-black' : 'bg-[#F87171] hover:bg-[#EF4444] text-black'}`}
                       >
-                        Confirm Stock Replenishment
+                        {stockAdjustmentMode === 'add' ? 'Add Amount' : 'Subtract Amount'}
                       </button>
                     </div>
                   </motion.div>
@@ -937,7 +901,7 @@ export default function InventoryTab({
         </>
       }
       fab={
-        isAdmin ? <FloatingAddButton onClick={() => setShowAddForm(true)} title="Restock Item" /> : undefined
+        isAdmin ? <FloatingAddButton onClick={() => setShowAddForm(true)} title="Add stock item" /> : undefined
       }
     />
   );

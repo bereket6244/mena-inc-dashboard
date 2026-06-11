@@ -51,14 +51,19 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "advancePayment" numeric DEFAULT 0,
   "paymentMethodId" text,
   "paperType1" text,
+  "paperType1Id" text REFERENCES public.paper_stocks(id),
   amount1 numeric DEFAULT 0,
   "paperType2" text,
+  "paperType2Id" text REFERENCES public.paper_stocks(id),
   amount2 numeric DEFAULT 0,
   "paperType3" text,
+  "paperType3Id" text REFERENCES public.paper_stocks(id),
   amount3 numeric DEFAULT 0,
   "entrancePaper" text,
+  "entrancePaperId" text REFERENCES public.paper_stocks(id),
   amount16 numeric DEFAULT 0,
   "ajabiPaper" text,
+  "ajabiPaperId" text REFERENCES public.paper_stocks(id),
   amount9 numeric DEFAULT 0,
   "deliveryDate" text,
   "advancePaymentDate" text,
@@ -92,3 +97,10 @@ CREATE TABLE IF NOT EXISTS public.product_types (
 
 ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
 
+-- Relationship columns for stock consumption. New records store stock IDs here;
+-- the older paper name columns are kept only so legacy rows can still be read.
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType1Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType2Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);

@@ -28,8 +28,7 @@ import {
   Printer
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
-import { generateReportPdf } from './utils/pdfExport';
-import { exportDashboardDataToExcel } from './utils/excelExport';
+import { resolveStockId } from './utils';
 import SearchableSelect from './components/SearchableSelect';
 import { 
   Customer, 
@@ -576,6 +575,21 @@ export default function App() {
         if (!repaired.advancePaymentDate) {
           repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
         }
+        const stockMappings = [
+          ['paperType1', 'paperType1Id'],
+          ['paperType2', 'paperType2Id'],
+          ['paperType3', 'paperType3Id'],
+          ['entrancePaper', 'entrancePaperId'],
+          ['ajabiPaper', 'ajabiPaperId'],
+        ] as const;
+        stockMappings.forEach(([nameField, idField]) => {
+          const currentId = repaired[idField];
+          if (typeof currentId === 'string' && currentId.trim()) return;
+          const resolvedId = resolveStockId(repaired[nameField], finalS);
+          if (resolvedId !== 'None') {
+            repaired[idField] = resolvedId;
+          }
+        });
         return repaired;
       });
       const finalB = await fetchAllBankAccounts(initialB);
@@ -1090,14 +1104,19 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "advancePayment" numeric DEFAULT 0,
   "paymentMethodId" text,
   "paperType1" text,
+  "paperType1Id" text REFERENCES public.paper_stocks(id),
   amount1 numeric DEFAULT 0,
   "paperType2" text,
+  "paperType2Id" text REFERENCES public.paper_stocks(id),
   amount2 numeric DEFAULT 0,
   "paperType3" text,
+  "paperType3Id" text REFERENCES public.paper_stocks(id),
   amount3 numeric DEFAULT 0,
   "entrancePaper" text,
+  "entrancePaperId" text REFERENCES public.paper_stocks(id),
   amount16 numeric DEFAULT 0,
   "ajabiPaper" text,
+  "ajabiPaperId" text REFERENCES public.paper_stocks(id),
   amount9 numeric DEFAULT 0,
   "deliveryDate" text,
   "advancePaymentDate" text,
@@ -1136,6 +1155,11 @@ CREATE TABLE IF NOT EXISTS public.client_types (
 
 -- Safely migrate existing tables by adding any new columns
 ALTER TABLE IF EXISTS public.employees ADD COLUMN IF NOT EXISTS "allowedTabs" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType1Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType2Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
 
 -- Soft delete columns migration
 DO $$

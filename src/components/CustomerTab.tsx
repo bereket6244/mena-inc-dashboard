@@ -51,6 +51,7 @@ import {
 import {
   parseFractionOrExpression,
   cleanLeadingZeros,
+  computeStockConsumed,
   createLinkUrl,
   createSmsUrl,
   createTelegramUrl,
@@ -58,7 +59,10 @@ import {
   createWhatsAppUrl,
   detectContactType,
   formatContactDisplay,
+  getCustomerStockDisplayName,
+  getCustomerStockId,
   normalizePhoneNumber,
+  resolveStockId,
   saveUsernameOpenPreference,
   UsernameOpenPreference,
 } from '../utils';
@@ -891,32 +895,29 @@ export default function CustomerTab({
   const [newInlineStockName, setNewInlineStockName] = useState('');
   const [newInlineStockAmount, setNewInlineStockAmount] = useState('');
 
-  const computeTotalConsumed = (name: string): number => {
-    let consumed = 0;
-    const lowerName = name.trim().toLowerCase();
-    
-    customers.forEach(c => {
-      const orderQty = Number(c.quantity || 0);
-
-      if (c.paperType1 && c.paperType1.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount1 || 0) * orderQty);
-      }
-      if (c.paperType2 && c.paperType2.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount2 || 0) * orderQty);
-      }
-      if (c.paperType3 && c.paperType3.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount3 || 0) * orderQty);
-      }
-      if (c.entrancePaper && c.entrancePaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount16 || 0) / 16);
-      }
-      if (c.ajabiPaper && c.ajabiPaper.trim().toLowerCase() === lowerName) {
-        consumed += Math.ceil(Number(c.amount9 || 0) / 9);
-      }
-    });
-
-    return consumed;
+  const computeTotalConsumed = (stockValue: string): number => {
+    const stockId = resolveStockId(stockValue, paperStocks);
+    const stock = paperStocks.find(s => s.id === stockId) ||
+      paperStocks.find(s => s.name.trim().toLowerCase() === stockValue.trim().toLowerCase());
+    return stock ? computeStockConsumed(stock, customers, paperStocks) : 0;
   };
+
+  const selectedStock = (stockValue: string) => {
+    const stockId = resolveStockId(stockValue, paperStocks);
+    return paperStocks.find(stock => stock.id === stockId);
+  };
+
+  const stockOptionRows = () => paperStocks.map(s => {
+    const remaining = s.initialStock - computeTotalConsumed(s.id);
+    let statusClass = '';
+    if (remaining <= 0) statusClass = 'text-[#F87171]';
+    else if (remaining < 50) statusClass = 'text-[#FACC15]';
+    return (
+      <option key={s.id} value={s.id} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+        {s.name}
+      </option>
+    );
+  });
 
   const handleAddProductInline = async () => {
     const cleaned = newProductInput.trim();
@@ -1287,16 +1288,16 @@ export default function CustomerTab({
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
     
-    setPaperType1(customer.paperType1);
+    setPaperType1(getCustomerStockId(customer, 'paperType1', paperStocks));
     setAmount1(customer.amount1.toString());
-    setPaperType2(customer.paperType2);
+    setPaperType2(getCustomerStockId(customer, 'paperType2', paperStocks));
     setAmount2(customer.amount2.toString());
-    setPaperType3(customer.paperType3);
+    setPaperType3(getCustomerStockId(customer, 'paperType3', paperStocks));
     setAmount3(customer.amount3.toString());
     
-    setEntrancePaper(customer.entrancePaper);
+    setEntrancePaper(getCustomerStockId(customer, 'entrancePaper', paperStocks));
     setAmount16(customer.amount16.toString());
-    setAjabiPaper(customer.ajabiPaper);
+    setAjabiPaper(getCustomerStockId(customer, 'ajabiPaper', paperStocks));
     setAmount9(customer.amount9.toString());
     setDeliveryDate(customer.deliveryDate);
 
@@ -1329,16 +1330,16 @@ export default function CustomerTab({
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
     
-    setPaperType1(customer.paperType1);
+    setPaperType1(getCustomerStockId(customer, 'paperType1', paperStocks));
     setAmount1(customer.amount1.toString());
-    setPaperType2(customer.paperType2);
+    setPaperType2(getCustomerStockId(customer, 'paperType2', paperStocks));
     setAmount2(customer.amount2.toString());
-    setPaperType3(customer.paperType3);
+    setPaperType3(getCustomerStockId(customer, 'paperType3', paperStocks));
     setAmount3(customer.amount3.toString());
     
-    setEntrancePaper(customer.entrancePaper);
+    setEntrancePaper(getCustomerStockId(customer, 'entrancePaper', paperStocks));
     setAmount16(customer.amount16.toString());
-    setAjabiPaper(customer.ajabiPaper);
+    setAjabiPaper(getCustomerStockId(customer, 'ajabiPaper', paperStocks));
     setAmount9(customer.amount9.toString());
     setDeliveryDate(customer.deliveryDate);
 
@@ -1383,6 +1384,11 @@ export default function CustomerTab({
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
     const finalAdvancePayment = Math.max(0, parseFractionOrExpression(advanceInput));
+    const paperType1Id = resolveStockId(paperType1, paperStocks);
+    const paperType2Id = resolveStockId(paperType2, paperStocks);
+    const paperType3Id = resolveStockId(paperType3, paperStocks);
+    const entrancePaperId = resolveStockId(entrancePaper, paperStocks);
+    const ajabiPaperId = resolveStockId(ajabiPaper, paperStocks);
 
     const payload: Customer = {
       id: editingCustomer ? editingCustomer.id : 'c_' + Date.now(),
@@ -1397,15 +1403,20 @@ export default function CustomerTab({
       unitPrice: finalUnitPrice,
       advancePayment: finalAdvancePayment,
       paymentMethodId: finalAdvancePayment > 0 ? paymentMethodId : '',
-      paperType1,
+      paperType1: '',
+      paperType1Id: paperType1Id === 'None' ? undefined : paperType1Id,
       amount1: Math.max(0, parseFractionOrExpression(amount1)),
-      paperType2,
+      paperType2: '',
+      paperType2Id: paperType2Id === 'None' ? undefined : paperType2Id,
       amount2: Math.max(0, parseFractionOrExpression(amount2)),
-      paperType3,
+      paperType3: '',
+      paperType3Id: paperType3Id === 'None' ? undefined : paperType3Id,
       amount3: Math.max(0, parseFractionOrExpression(amount3)),
-      entrancePaper,
+      entrancePaper: '',
+      entrancePaperId: entrancePaperId === 'None' ? undefined : entrancePaperId,
       amount16: Math.max(0, parseFractionOrExpression(amount16)),
-      ajabiPaper,
+      ajabiPaper: '',
+      ajabiPaperId: ajabiPaperId === 'None' ? undefined : ajabiPaperId,
       amount9: Math.max(0, parseFractionOrExpression(amount9)),
       deliveryDate,
       
@@ -1438,6 +1449,11 @@ export default function CustomerTab({
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
     const finalAdvancePayment = Math.max(0, parseFractionOrExpression(advanceInput));
+    const paperType1Id = resolveStockId(paperType1, paperStocks);
+    const paperType2Id = resolveStockId(paperType2, paperStocks);
+    const paperType3Id = resolveStockId(paperType3, paperStocks);
+    const entrancePaperId = resolveStockId(entrancePaper, paperStocks);
+    const ajabiPaperId = resolveStockId(ajabiPaper, paperStocks);
 
     const payload: Customer = {
       id: 'c_' + Date.now(),
@@ -1451,15 +1467,20 @@ export default function CustomerTab({
       unitPrice: finalUnitPrice,
       advancePayment: finalAdvancePayment,
       paymentMethodId: finalAdvancePayment > 0 ? paymentMethodId : '',
-      paperType1,
+      paperType1: '',
+      paperType1Id: paperType1Id === 'None' ? undefined : paperType1Id,
       amount1: Math.max(0, parseFractionOrExpression(amount1)),
-      paperType2,
+      paperType2: '',
+      paperType2Id: paperType2Id === 'None' ? undefined : paperType2Id,
       amount2: Math.max(0, parseFractionOrExpression(amount2)),
-      paperType3,
+      paperType3: '',
+      paperType3Id: paperType3Id === 'None' ? undefined : paperType3Id,
       amount3: Math.max(0, parseFractionOrExpression(amount3)),
-      entrancePaper,
+      entrancePaper: '',
+      entrancePaperId: entrancePaperId === 'None' ? undefined : entrancePaperId,
       amount16: Math.max(0, parseFractionOrExpression(amount16)),
-      ajabiPaper,
+      ajabiPaper: '',
+      ajabiPaperId: ajabiPaperId === 'None' ? undefined : ajabiPaperId,
       amount9: Math.max(0, parseFractionOrExpression(amount9)),
       deliveryDate,
       
@@ -1993,7 +2014,7 @@ export default function CustomerTab({
         }
         desktopRightControls={
           <>
-            <div className="relative z-20">
+            <div className="relative z-[1000]">
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
@@ -2014,11 +2035,11 @@ export default function CustomerTab({
               {showFilterPopover && (
                 <>
                   <div
-                    className="fixed inset-0 z-10 cursor-default"
+                    className="fixed inset-0 z-[990] cursor-default"
                     onClick={() => setShowFilterPopover(false)}
                   />
                   <div
-                    className="absolute right-0 mt-1.5 w-72 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-20 p-2.5 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                    className="absolute right-0 mt-1.5 w-72 z-[1001] rounded-lg border border-[#262626] bg-[#181818] p-2.5 text-xs font-sans text-gray-300 shadow-2xl flex flex-col gap-2.5"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between px-1">
@@ -2261,8 +2282,6 @@ export default function CustomerTab({
                   <SortableCustomerHeader field="paperType1" className="min-w-[210px] bg-[#31111E]/20">Material Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="advancePayment" className="min-w-[230px] text-[#71b536]">Payment Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="deliveryDate" className="min-w-[210px] bg-[#31111E]/5">Delivery / Status</SortableCustomerHeader>
-                  
-                  <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
@@ -2319,6 +2338,32 @@ export default function CustomerTab({
                           <span className="inline-flex max-w-[150px] text-[10px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md text-gray-400 truncate" title={c.acquisitionSource}>
                             {c.acquisitionSource || 'No source'}
                           </span>
+                          <div className="flex items-center gap-1 pt-0.5 font-sans">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDuplicate(c)}
+                              className="text-gray-400 hover:text-sky-400 hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Copy details to add another order for this client"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(c)}
+                              className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Edit Record"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCustomerId(c.id)}
+                              className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </td>
                       
@@ -2340,11 +2385,11 @@ export default function CustomerTab({
                       {/* Material Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] bg-[#31111E]/10 font-sans align-top min-w-[210px]">
                         <div className="space-y-0.5">
-                          {materialLine('P1', c.paperType1, c.amount1)}
-                          {materialLine('P2', c.paperType2, c.amount2)}
-                          {materialLine('P3', c.paperType3, c.amount3)}
-                          {materialLine('Entrance', c.entrancePaper, c.amount16)}
-                          {materialLine('Ajabi', c.ajabiPaper, c.amount9)}
+                          {materialLine('P1', getCustomerStockDisplayName(c, 'paperType1', paperStocks), c.amount1)}
+                          {materialLine('P2', getCustomerStockDisplayName(c, 'paperType2', paperStocks), c.amount2)}
+                          {materialLine('P3', getCustomerStockDisplayName(c, 'paperType3', paperStocks), c.amount3)}
+                          {materialLine('Entrance', getCustomerStockDisplayName(c, 'entrancePaper', paperStocks), c.amount16)}
+                          {materialLine('Ajabi', getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks), c.amount9)}
                         </div>
                       </td>
                       
@@ -2423,42 +2468,12 @@ export default function CustomerTab({
                           </div>
                         </div>
                       </td>
-                      
-                      {/* Actions */}
-                      <td className="py-1 px-2 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1 font-sans">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDuplicate(c)}
-                            className="text-gray-400 hover:text-sky-400 hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
-                            title="Add Another Order for Client (Duplicate details)"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(c)}
-                            className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
-                            title="Edit Record"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingCustomerId(c.id)}
-                            className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
-                            title="Delete Record"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   );
                 })}
                 {filteredCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 font-sans text-sm text-gray-500">
+                    <td colSpan={7} className="text-center py-10 font-sans text-sm text-gray-500">
                       No customer ledger logs matching this criteria.
                     </td>
                   </tr>
@@ -2610,66 +2625,61 @@ export default function CustomerTab({
                   <div className="bg-[#181818] border border-[#262626] rounded-md p-3 text-xs space-y-2">
                     <span className="font-sans text-[10px] text-gray-500 uppercase tracking-wider block font-bold">STOCK ROOM DEDUCTIONS</span>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 font-sans">
-                      {c.paperType1 !== 'None' && (() => {
-                        const raw = Math.ceil(c.amount1 * c.quantity);
-                        const ceiled = Math.ceil(c.amount1 * c.quantity);
+                      {getCustomerStockId(c, 'paperType1', paperStocks) !== 'None' && (() => {
+                        const sheets = Math.ceil(c.amount1 * c.quantity);
                         return (
                           <div>
                             <span className="text-gray-500 block text-[10px]">PAPER 1 (x Qty):</span>
                             <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {c.paperType1} ({raw === ceiled ? `${raw}` : `${raw} ➔ ${ceiled}`} sheets)
+                              {getCustomerStockDisplayName(c, 'paperType1', paperStocks)} ({sheets} sheets)
                             </span>
                           </div>
                         );
                       })()}
 
-                      {c.paperType2 !== 'None' && (() => {
-                        const raw = Math.ceil(c.amount2 * c.quantity);
-                        const ceiled = Math.ceil(c.amount2 * c.quantity);
+                      {getCustomerStockId(c, 'paperType2', paperStocks) !== 'None' && (() => {
+                        const sheets = Math.ceil(c.amount2 * c.quantity);
                         return (
                           <div>
                             <span className="text-gray-500 block text-[10px]">PAPER 2 (x Qty):</span>
                             <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {c.paperType2} ({raw === ceiled ? `${raw}` : `${raw} ➔ ${ceiled}`} sheets)
+                              {getCustomerStockDisplayName(c, 'paperType2', paperStocks)} ({sheets} sheets)
                             </span>
                           </div>
                         );
                       })()}
 
-                      {c.paperType3 !== 'None' && (() => {
-                        const raw = Math.ceil(c.amount3 * c.quantity);
-                        const ceiled = Math.ceil(c.amount3 * c.quantity);
+                      {getCustomerStockId(c, 'paperType3', paperStocks) !== 'None' && (() => {
+                        const sheets = Math.ceil(c.amount3 * c.quantity);
                         return (
                           <div>
                             <span className="text-gray-500 block text-[10px]">PAPER 3 (x Qty):</span>
                             <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {c.paperType3} ({raw === ceiled ? `${raw}` : `${raw} ➔ ${ceiled}`} sheets)
+                              {getCustomerStockDisplayName(c, 'paperType3', paperStocks)} ({sheets} sheets)
                             </span>
                           </div>
                         );
                       })()}
 
-                      {c.entrancePaper !== 'None' && (() => {
-                        const raw = Math.ceil(c.amount16 / 16);
-                        const ceiled = Math.ceil(c.amount16 / 16);
+                      {getCustomerStockId(c, 'entrancePaper', paperStocks) !== 'None' && (() => {
+                        const sheets = Math.ceil(c.amount16 / 16);
                         return (
                           <div>
                             <span className="text-gray-500 block text-[10px]">ENTRANCE (Pieces / 16):</span>
                             <span className="font-medium text-stone-200" title="Entrance pieces divided by 16, rounded up">
-                              {c.entrancePaper} ({raw === ceiled ? `${raw}` : `${raw} ➔ ${ceiled}`} sheets)
+                              {getCustomerStockDisplayName(c, 'entrancePaper', paperStocks)} ({sheets} sheets)
                             </span>
                           </div>
                         );
                       })()}
 
-                      {c.ajabiPaper !== 'None' && (() => {
-                        const raw = Math.ceil(c.amount9 / 9);
-                        const ceiled = Math.ceil(c.amount9 / 9);
+                      {getCustomerStockId(c, 'ajabiPaper', paperStocks) !== 'None' && (() => {
+                        const sheets = Math.ceil(c.amount9 / 9);
                         return (
                           <div>
                             <span className="text-gray-500 block text-[10px]">AJABI (Pieces / 9):</span>
                             <span className="font-medium text-stone-200" title="Ajabi pieces divided by 9, rounded up">
-                              {c.ajabiPaper} ({raw === ceiled ? `${raw}` : `${raw} ➔ ${ceiled}`} sheets)
+                              {getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks)} ({sheets} sheets)
                             </span>
                           </div>
                         );
@@ -2997,7 +3007,7 @@ export default function CustomerTab({
                                       const prod = productTypes.find(p => p.name === productType);
                                       if (prod) {
                                         if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
-                                          await onDeleteProductType(prod.id);
+                                          await onDeleteProductType([prod.id]);
                                           const remaining = productTypes.filter(p => p.id !== prod.id);
                                           setProductType(remaining[0]?.name || '');
                                         }
@@ -3314,12 +3324,12 @@ export default function CustomerTab({
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
-                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              const remaining = s.initialStock - computeTotalConsumed(s.id);
                               let statusClass = '';
                               if (remaining <= 0) statusClass = 'text-[#F87171]';
                               else if (remaining < 50) statusClass = 'text-[#FACC15]';
                               return (
-                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                <option key={s.id} value={s.id} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
                                   {s.name}
                                 </option>
                               );
@@ -3340,10 +3350,10 @@ export default function CustomerTab({
                             }}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none ${(() => {
                               if (!amount1 || paperType1 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const stock = paperStocks.find(p => p.name === paperType1);
+                              const stock = selectedStock(paperType1);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount1) * quantity);
-                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
@@ -3372,12 +3382,12 @@ export default function CustomerTab({
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
-                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              const remaining = s.initialStock - computeTotalConsumed(s.id);
                               let statusClass = '';
                               if (remaining <= 0) statusClass = 'text-[#F87171]';
                               else if (remaining < 50) statusClass = 'text-[#FACC15]';
                               return (
-                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                <option key={s.id} value={s.id} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
                                   {s.name}
                                 </option>
                               );
@@ -3399,10 +3409,10 @@ export default function CustomerTab({
                             disabled={paperType2 === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
                               if (!amount2 || paperType2 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const stock = paperStocks.find(p => p.name === paperType2);
+                              const stock = selectedStock(paperType2);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount2) * quantity);
-                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
@@ -3431,12 +3441,12 @@ export default function CustomerTab({
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
-                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              const remaining = s.initialStock - computeTotalConsumed(s.id);
                               let statusClass = '';
                               if (remaining <= 0) statusClass = 'text-[#F87171]';
                               else if (remaining < 50) statusClass = 'text-[#FACC15]';
                               return (
-                                <option key={s.id} value={s.name} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
+                                <option key={s.id} value={s.id} data-status={statusClass} data-amount={`(${remaining} sheets)`}>
                                   {s.name}
                                 </option>
                               );
@@ -3458,10 +3468,10 @@ export default function CustomerTab({
                             disabled={paperType3 === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
                               if (!amount3 || paperType3 === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const stock = paperStocks.find(p => p.name === paperType3);
+                              const stock = selectedStock(paperType3);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount3) * quantity);
-                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
@@ -3500,12 +3510,12 @@ export default function CustomerTab({
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
-                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              const remaining = s.initialStock - computeTotalConsumed(s.id);
                               let statusClass = '';
                               if (remaining <= 0) statusClass = 'text-[#F87171]';
                               else if (remaining < 50) statusClass = 'text-[#FACC15]';
                               return (
-                                <option key={s.id} value={s.name} data-status={statusClass}>
+                                <option key={s.id} value={s.id} data-status={statusClass}>
                                   {s.name} ({remaining} sheets)
                                 </option>
                               );
@@ -3527,10 +3537,10 @@ export default function CustomerTab({
                             disabled={entrancePaper === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
                               if (!amount16 || entrancePaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const stock = paperStocks.find(p => p.name === entrancePaper);
+                              const stock = selectedStock(entrancePaper);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount16) / 16);
-                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
@@ -3564,12 +3574,12 @@ export default function CustomerTab({
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
-                              const remaining = s.initialStock - computeTotalConsumed(s.name);
+                              const remaining = s.initialStock - computeTotalConsumed(s.id);
                               let statusClass = '';
                               if (remaining <= 0) statusClass = 'text-[#F87171]';
                               else if (remaining < 50) statusClass = 'text-[#FACC15]';
                               return (
-                                <option key={s.id} value={s.name} data-status={statusClass}>
+                                <option key={s.id} value={s.id} data-status={statusClass}>
                                   {s.name} ({remaining} sheets)
                                 </option>
                               );
@@ -3591,10 +3601,10 @@ export default function CustomerTab({
                             disabled={ajabiPaper === 'None'}
                             className={`w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border rounded-md outline-none disabled:opacity-40 disabled:cursor-not-allowed ${(() => {
                               if (!amount9 || ajabiPaper === 'None') return 'border-[#262626] focus:border-[#3a3a3a]';
-                              const stock = paperStocks.find(p => p.name === ajabiPaper);
+                              const stock = selectedStock(ajabiPaper);
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount9) / 9);
-                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.name) - consumed;
+                              const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
                               if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
                               if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
@@ -4862,7 +4872,7 @@ export default function CustomerTab({
                             type="button"
                             onClick={async () => {
                               if (window.confirm(`Are you sure you want to delete product type "${prod.name}"?`)) {
-                                await onDeleteProductType(prod.id);
+                                await onDeleteProductType([prod.id]);
                                 if (productType === prod.name) {
                                   setProductType(productTypes.find(p => p.id !== prod.id)?.name || '');
                                 }

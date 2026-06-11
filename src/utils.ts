@@ -1,3 +1,90 @@
+import type { Customer, PaperStock } from './types';
+
+export type CustomerStockField =
+  | 'paperType1'
+  | 'paperType2'
+  | 'paperType3'
+  | 'entrancePaper'
+  | 'ajabiPaper';
+
+export const CUSTOMER_STOCK_ID_FIELDS: Record<CustomerStockField, keyof Customer> = {
+  paperType1: 'paperType1Id',
+  paperType2: 'paperType2Id',
+  paperType3: 'paperType3Id',
+  entrancePaper: 'entrancePaperId',
+  ajabiPaper: 'ajabiPaperId',
+};
+
+export function resolveStockId(value: string | undefined, paperStocks: PaperStock[]): string {
+  const raw = (value || '').trim();
+  if (!raw || raw === 'None') return 'None';
+  if (paperStocks.some(stock => stock.id === raw)) return raw;
+  const byName = paperStocks.find(stock => stock.name.trim().toLowerCase() === raw.toLowerCase());
+  return byName?.id || raw;
+}
+
+export function getCustomerStockId(
+  customer: Customer,
+  field: CustomerStockField,
+  paperStocks: PaperStock[]
+): string {
+  const idField = CUSTOMER_STOCK_ID_FIELDS[field];
+  const idValue = customer[idField];
+  if (typeof idValue === 'string' && idValue.trim()) return resolveStockId(idValue, paperStocks);
+  return resolveStockId(customer[field], paperStocks);
+}
+
+export function getStockDisplayName(
+  value: string | undefined,
+  paperStocks: PaperStock[],
+  fallback = 'None'
+): string {
+  const raw = (value || '').trim();
+  if (!raw || raw === 'None') return 'None';
+  const stock = paperStocks.find(s => s.id === raw) ||
+    paperStocks.find(s => s.name.trim().toLowerCase() === raw.toLowerCase());
+  return stock?.name || fallback || raw;
+}
+
+export function getCustomerStockDisplayName(
+  customer: Customer,
+  field: CustomerStockField,
+  paperStocks: PaperStock[]
+): string {
+  const stockId = getCustomerStockId(customer, field, paperStocks);
+  const fallback = customer[field] || 'None';
+  return getStockDisplayName(stockId, paperStocks, fallback);
+}
+
+export function computeStockConsumed(
+  stock: PaperStock,
+  customers: Customer[],
+  paperStocks: PaperStock[]
+): number {
+  return customers.reduce((consumed, customer) => {
+    const orderQty = Number(customer.quantity || 0);
+    let next = consumed;
+
+    if (getCustomerStockId(customer, 'paperType1', paperStocks) === stock.id) {
+      next += Math.ceil(Number(customer.amount1 || 0) * orderQty);
+    }
+    if (getCustomerStockId(customer, 'paperType2', paperStocks) === stock.id) {
+      next += Math.ceil(Number(customer.amount2 || 0) * orderQty);
+    }
+    if (getCustomerStockId(customer, 'paperType3', paperStocks) === stock.id) {
+      next += Math.ceil(Number(customer.amount3 || 0) * orderQty);
+    }
+    if (getCustomerStockId(customer, 'entrancePaper', paperStocks) === stock.id) {
+      next += Math.ceil(Number(customer.amount16 || 0) / 16);
+    }
+    if (getCustomerStockId(customer, 'ajabiPaper', paperStocks) === stock.id) {
+      next += Math.ceil(Number(customer.amount9 || 0) / 9);
+    }
+
+    return next;
+  }, 0);
+}
+
 /**
  * Safe utility to parse standard numbers, fractions, and basic arithmetic expressions.
  * For example: "1/4", "1/2", "0.5", "1 + 1/2", etc.

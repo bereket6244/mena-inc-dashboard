@@ -46,6 +46,28 @@ export async function savePaperStockDoc(stock: PaperStock): Promise<void> {
   }
 }
 
+export async function updatePaperStockDoc(stock: PaperStock): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const payload: PaperStock = {
+        ...stock,
+        initialStock: Number(stock.initialStock || 0),
+      };
+
+      const { error } = await supabase
+        .from('paper_stocks')
+        .update(payload)
+        .eq('id', stock.id);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase updatePaperStockDoc failed:", err);
+      setSupabaseValidationError(`Database Update Error: ${err?.message || String(err)}. Stock changes were kept locally but could not be written to Supabase.`);
+      throw err;
+    }
+  }
+}
+
 export async function deletePaperStockDoc(id: string, deletedBy?: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -368,6 +390,10 @@ export async function deleteProductTypeDoc(idOrIds: string | string[], deletedBy
       console.error("Supabase deleteProductTypeDoc failed:", err);
     }
   }
+}
+
+export async function deleteProductTypes(ids: string[], deletedBy?: string): Promise<void> {
+  return deleteProductTypeDoc(ids, deletedBy);
 }
 
 // ============================================

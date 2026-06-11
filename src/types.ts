@@ -42,16 +42,21 @@ export interface Customer {
   
   // Paper specs
   paperType1: string;
+  paperType1Id?: string;
   amount1: number;
   paperType2: string;
+  paperType2Id?: string;
   amount2: number;
   paperType3: string;
+  paperType3Id?: string;
   amount3: number;
   
   // Special papers
   entrancePaper: string;
+  entrancePaperId?: string;
   amount16: number; // divided by 16
   ajabiPaper: string;
+  ajabiPaperId?: string;
   amount9: number;  // divided by 9
   
   deliveryDate: string;
