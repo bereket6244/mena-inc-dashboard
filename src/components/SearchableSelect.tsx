@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, PlusCircle } from 'lucide-react';
 
 interface SearchableSelectProps {
   id?: string;
@@ -11,6 +11,9 @@ interface SearchableSelectProps {
   inputClassName?: string;
   placeholder?: string;
   disabled?: boolean;
+  onCreateOption?: (searchTerm: string) => void;
+  createOptionLabel?: string;
+  createOptionBadge?: string;
 }
 
 export default function SearchableSelect({
@@ -21,7 +24,10 @@ export default function SearchableSelect({
   className = "",
   inputClassName = "",
   placeholder = "Select...",
-  disabled = false
+  disabled = false,
+  onCreateOption,
+  createOptionLabel = "Add item",
+  createOptionBadge
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -135,6 +141,9 @@ export default function SearchableSelect({
   const filteredOptions = options.filter(opt => 
     opt.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const trimmedSearchTerm = searchTerm.trim();
+  const hasExactMatch = options.some(opt => opt.label.toLowerCase() === trimmedSearchTerm.toLowerCase());
+  const showCreateOption = Boolean(onCreateOption && trimmedSearchTerm && !hasExactMatch);
 
   return (
     <div className={`relative font-sans ${className}`} ref={wrapperRef}>
@@ -180,29 +189,49 @@ export default function SearchableSelect({
           className="bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden"
         >
           <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 py-1">
-            {filteredOptions.length === 0 ? (
+            {filteredOptions.length === 0 && !showCreateOption ? (
               <div className="px-3 py-3 text-xs text-gray-500 text-center italic">
                 No matches found
               </div>
             ) : (
-              filteredOptions.map((opt, index) => (
-                <div
-                  key={`${opt.value}-${index}`}
-                  onClick={() => {
-                    onChange({ target: { value: opt.value } });
-                    setIsOpen(false);
-                  }}
-                  className={`px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
-                    ${opt.value === value 
-                      ? 'bg-[#ee317b]/10 border-l-2 border-[#ee317b] font-bold' 
-                      : 'hover:bg-[#262626] border-l-2 border-transparent'
-                    } ${opt.statusClass ? opt.statusClass : (opt.value === value ? 'text-[#ee317b]' : 'text-gray-300')}
-                  `}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {opt.amountText && <span className="opacity-70 whitespace-nowrap ml-2">{opt.amountText}</span>}
-                </div>
-              ))
+              <>
+                {filteredOptions.map((opt, index) => (
+                  <div
+                    key={`${opt.value}-${index}`}
+                    onClick={() => {
+                      onChange({ target: { value: opt.value } });
+                      setIsOpen(false);
+                    }}
+                    className={`px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
+                      ${opt.value === value 
+                        ? 'bg-[#ee317b]/10 border-l-2 border-[#ee317b] font-bold' 
+                        : 'hover:bg-[#262626] border-l-2 border-transparent'
+                      } ${opt.statusClass ? opt.statusClass : (opt.value === value ? 'text-[#ee317b]' : 'text-gray-300')}
+                    `}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {opt.amountText && <span className="opacity-70 whitespace-nowrap ml-2">{opt.amountText}</span>}
+                  </div>
+                ))}
+
+                {showCreateOption && (
+                  <div
+                    onClick={() => {
+                      onCreateOption?.(trimmedSearchTerm);
+                      setIsOpen(false);
+                    }}
+                    className="px-3 py-2.5 bg-[#ee317b]/10 hover:bg-[#ee317b]/20 text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626]"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <PlusCircle className="w-4 h-4 text-[#ee317b] shrink-0" />
+                      <span className="truncate">{createOptionLabel} <strong className="text-[#ee317b]">"{trimmedSearchTerm}"</strong></span>
+                    </div>
+                    {createOptionBadge && (
+                      <span className="text-[10px] text-[#ee317b] uppercase font-sans font-bold tracking-wider ml-2 shrink-0">{createOptionBadge}</span>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>,

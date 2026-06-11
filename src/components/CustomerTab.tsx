@@ -895,8 +895,6 @@ export default function CustomerTab({
   });
 
   const [formError, setFormError] = useState('');
-  const [newInlineStockName, setNewInlineStockName] = useState('');
-  const [newInlineStockAmount, setNewInlineStockAmount] = useState('');
 
   const computeTotalConsumed = (stockValue: string): number => {
     const stockId = resolveStockId(stockValue, paperStocks);
@@ -1629,36 +1627,28 @@ export default function CustomerTab({
     setShowBulkDeleteConfirm(false);
   };
 
-  const handleAddStockFromOrder = () => {
-    const trimmedName = newInlineStockName.trim();
-    const parsedAmount = Math.max(0, parseFractionOrExpression(newInlineStockAmount));
-
-    if (!trimmedName) {
-      setFormError('Stock item name is required.');
-      return;
-    }
-    if (parsedAmount <= 0) {
-      setFormError('Stock amount must be greater than zero.');
-      return;
-    }
+  const handleCreateStockFromSearch = (
+    stockName: string,
+    selectStock: (stockId: string) => void
+  ) => {
+    const trimmedName = stockName.trim();
+    if (!trimmedName) return;
 
     const existing = paperStocks.find(stock => stock.name.trim().toLowerCase() === trimmedName.toLowerCase());
     if (existing) {
-      onUpdateStocks(paperStocks.map(stock =>
-        stock.id === existing.id
-          ? { ...stock, initialStock: stock.initialStock + parsedAmount }
-          : stock
-      ));
-    } else {
-      onUpdateStocks([...paperStocks, {
-        id: 'p_' + Date.now(),
-        name: trimmedName,
-        initialStock: parsedAmount,
-      }]);
+      selectStock(existing.id);
+      setFormError('');
+      return;
     }
 
-    setNewInlineStockName('');
-    setNewInlineStockAmount('');
+    const newStock: PaperStock = {
+      id: 'p_' + Date.now(),
+      name: trimmedName,
+      initialStock: 0,
+    };
+
+    onUpdateStocks([...paperStocks, newStock]);
+    selectStock(newStock.id);
     setFormError('');
   };
 
@@ -3344,39 +3334,6 @@ export default function CustomerTab({
                   <div className="space-y-4">
                     <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5">Primary Stock Item Deduction</h4>
 
-                    <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
-                      <span className="text-[10px] text-[#71b536] tracking-wider uppercase font-bold block">Add Stock Item Here</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_auto] gap-2">
-                        <input
-                          type="text"
-                          value={newInlineStockName}
-                          onChange={(e) => setNewInlineStockName(e.target.value)}
-                          placeholder="New stock item name..."
-                          className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#71b536] rounded-md outline-none font-sans"
-                        />
-                        <input
-                          type="text"
-                          value={newInlineStockAmount}
-                          onChange={(e) => setNewInlineStockAmount(cleanLeadingZeros(e.target.value))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddStockFromOrder();
-                            }
-                          }}
-                          placeholder="Amount"
-                          className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#71b536] rounded-md outline-none font-sans"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddStockFromOrder}
-                          className="px-3 py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black text-xs font-bold rounded-md cursor-pointer"
-                        >
-                          Add Stock
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Primary Item 1 */}
                     <div className="bg-[#181818] border border-[#262626] rounded-md p-4 space-y-3 font-sans">
                       <span className="text-[10px] text-[#ee317b] tracking-wider uppercase font-bold block">First Layout Item Deduction</span>
@@ -3387,6 +3344,9 @@ export default function CustomerTab({
                             value={paperType1}
                             onChange={(e) => setPaperType1(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
+                            onCreateOption={(stockName) => handleCreateStockFromSearch(stockName, setPaperType1)}
+                            createOptionLabel="Add stock item"
+                            createOptionBadge="Inventory"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
@@ -3445,6 +3405,9 @@ export default function CustomerTab({
                             value={paperType2}
                             onChange={(e) => setPaperType2(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
+                            onCreateOption={(stockName) => handleCreateStockFromSearch(stockName, setPaperType2)}
+                            createOptionLabel="Add stock item"
+                            createOptionBadge="Inventory"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
@@ -3504,6 +3467,9 @@ export default function CustomerTab({
                             value={paperType3}
                             onChange={(e) => setPaperType3(e.target.value)}
                             className="w-full px-2.5 py-1.5 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans cursor-pointer"
+                            onCreateOption={(stockName) => handleCreateStockFromSearch(stockName, setPaperType3)}
+                            createOptionLabel="Add stock item"
+                            createOptionBadge="Inventory"
                           >
                             <option value="None">None</option>
                             {paperStocks.map(s => {
