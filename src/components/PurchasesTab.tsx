@@ -91,7 +91,7 @@ export default function PurchasesTab({
     return localStorage.getItem(PURCHASE_SORT_ASC_STORAGE_KEY) === 'true';
   });
   const [freezePurchaseHeader, setFreezePurchaseHeader] = useState(() => {
-    return localStorage.getItem(PURCHASE_FREEZE_HEADER_STORAGE_KEY) === 'true';
+    return true;
   });
   const [freezePurchaseFirstColumn, setFreezePurchaseFirstColumn] = useState(() => {
     const saved = localStorage.getItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY);

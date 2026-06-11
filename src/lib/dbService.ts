@@ -28,12 +28,20 @@ export async function fetchAllPaperStocks(localFallback: PaperStock[]): Promise<
 export async function savePaperStockDoc(stock: PaperStock): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
+      const payload: PaperStock = {
+        ...stock,
+        initialStock: Number(stock.initialStock || 0),
+      };
+
       const { error } = await supabase
         .from('paper_stocks')
-        .upsert(stock);
+        .upsert(payload, { onConflict: 'id' });
+
       if (error) throw error;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Supabase savePaperStockDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}. Stock changes were kept locally but could not be written to Supabase.`);
+      throw err;
     }
   }
 }

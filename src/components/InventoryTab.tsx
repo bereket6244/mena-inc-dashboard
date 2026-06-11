@@ -36,7 +36,7 @@ const INVENTORY_SORT_DIRECTION_STORAGE_KEY = 'ui.inventory.sortDirection';
 interface InventoryTabProps {
   paperStocks: PaperStock[];
   customers: Customer[];
-  onUpdateStocks: (stocks: PaperStock[]) => void;
+  onUpdateStocks: (stocks: PaperStock[]) => void | Promise<void>;
   currentUser: EmployeeUser | null;
 }
 
@@ -58,6 +58,7 @@ export default function InventoryTab({
   // Math expression string inputs for the numerical inventory editing fields
   const [editInitialInput, setEditInitialInput] = useState<string>('');
   const [editStockNameInput, setEditStockNameInput] = useState<string>('');
+  const [editStockError, setEditStockError] = useState<string>('');
 
   // Non-blocking custom delete tracking ID for paper stocks
   const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
@@ -163,6 +164,15 @@ export default function InventoryTab({
     }
   };
 
+  const parseStockQuantityInput = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed || !/\d/.test(trimmed) || !/^[0-9+\-*/().\s]+$/.test(trimmed)) {
+      return null;
+    }
+    const parsed = Math.max(0, parseFractionOrExpression(trimmed));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const handleAddStock = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStockName.trim()) return;
@@ -202,26 +212,53 @@ export default function InventoryTab({
     setNewStockInitial('');
   };
 
-  const handleEditStockSubmit = (e: React.FormEvent) => {
+  const handleEditStockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStock) return;
 
     const trimmedName = editStockNameInput.trim();
-    if (!trimmedName) return;
+    if (!trimmedName) {
+      setEditStockError('Stock name is required.');
+      return;
+    }
 
     const duplicateName = paperStocks.some(s =>
       s.id !== editingStock.id && s.name.trim().toLowerCase() === trimmedName.toLowerCase()
     );
-    if (duplicateName) return;
+    if (duplicateName) {
+      setEditStockError('Another stock item already uses this name.');
+      return;
+    }
 
-    const evaluatedVal = Math.max(0, parseFractionOrExpression(editInitialInput));
-    const finalStockItem = { ...editingStock, name: trimmedName, initialStock: evaluatedVal };
+    if (!editInitialInput.trim()) {
+      setEditStockError('Initial quantity is required.');
+      return;
+    }
+
+    const evaluatedVal = parseStockQuantityInput(editInitialInput);
+    if (evaluatedVal === null) {
+      setEditStockError('Enter a valid quantity, like 500 or 100 * 5.');
+      return;
+    }
+
+    const finalStockItem: PaperStock = {
+      ...editingStock,
+      name: trimmedName,
+      initialStock: evaluatedVal,
+    };
 
     const updated = paperStocks.map(s => 
       s.id === editingStock.id ? finalStockItem : s
     );
-    onUpdateStocks(updated);
-    setEditingStock(null);
+    try {
+      await Promise.resolve(onUpdateStocks(updated));
+      const { savePaperStockDoc } = await import('../lib/dbService');
+      await savePaperStockDoc(finalStockItem);
+      setEditStockError('');
+      setEditingStock(null);
+    } catch (error: any) {
+      setEditStockError(`Saved locally, but the database update failed: ${error?.message || String(error)}`);
+    }
   };
 
   const handleDeleteStock = (id: string) => {
@@ -400,7 +437,7 @@ export default function InventoryTab({
       tableHeaders={
         <>
           <SharedTh isIndex>#</SharedTh>
-          <SharedTh align="center" width="2.5rem">
+          <SharedTh align="center" width="2.5rem" className="inventory-select-column bg-[#181818]">
             <input
               type="checkbox"
               checked={filteredStocks.length > 0 && selectedStockIds.length === filteredStocks.length}
@@ -415,7 +452,7 @@ export default function InventoryTab({
               title="Select/Deselect all rows"
             />
           </SharedTh>
-          <SharedTh className="cursor-pointer select-none" onClick={() => handleSort('name')}>
+          <SharedTh className="inventory-stock-name-column bg-[#181818] cursor-pointer select-none" onClick={() => handleSort('name')}>
             <SortHeader field="name">Stock Name</SortHeader>
           </SharedTh>
           <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('remaining')}>
@@ -448,7 +485,7 @@ export default function InventoryTab({
                 <React.Fragment key={stock.id}>
                 <SharedTr isSelected={isSelected} className={rowClass}>
                   <SharedTd isIndex>{index + 1}</SharedTd>
-                  <SharedTd align="center" className="bg-[#151515]/45">
+                  <SharedTd align="center" className="inventory-select-column bg-[#151515]/45">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -463,7 +500,7 @@ export default function InventoryTab({
                       title="Select stock"
                     />
                   </SharedTd>
-                  <SharedTd className="font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">
+                  <SharedTd className="inventory-stock-name-column font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">
                     {stock.name}
                   </SharedTd>
                   <SharedTd
@@ -498,6 +535,7 @@ export default function InventoryTab({
                           setEditingStock(stock);
                           setEditStockNameInput(stock.name);
                           setEditInitialInput(stock.initialStock.toString());
+                          setEditStockError('');
                         }}
                         className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
                         title={`Edit "${stock.name}"`}
@@ -661,7 +699,10 @@ export default function InventoryTab({
                     </span>
                     <button
                       type="button"
-                      onClick={() => setEditingStock(null)}
+                      onClick={() => {
+                        setEditStockError('');
+                        setEditingStock(null);
+                      }}
                       className="text-gray-500 hover:text-white cursor-pointer"
                     >
                       <X className="w-4 h-4" />
@@ -676,7 +717,10 @@ export default function InventoryTab({
                         type="text"
                         required
                         value={editStockNameInput}
-                        onChange={(e) => setEditStockNameInput(e.target.value)}
+                        onChange={(e) => {
+                          setEditStockNameInput(e.target.value);
+                          setEditStockError('');
+                        }}
                         className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] placeholder-gray-600 font-sans"
                       />
                       {paperStocks.some(s => s.id !== editingStock.id && s.name.trim().toLowerCase() === editStockNameInput.trim().toLowerCase()) && (
@@ -694,25 +738,29 @@ export default function InventoryTab({
                         required
                         placeholder="e.g. 500 or 100 * 5"
                         value={editInitialInput}
-                        onChange={(e) => setEditInitialInput(cleanLeadingZeros(e.target.value))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = parseFractionOrExpression(editInitialInput);
-                            setEditInitialInput(val.toString());
-                          }
+                        onChange={(e) => {
+                          setEditInitialInput(cleanLeadingZeros(e.target.value));
+                          setEditStockError('');
                         }}
                         className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
                       />
                       <div className="text-[10px] text-gray-500 mt-1 font-sans">
                         Parsed: {parseFractionOrExpression(editInitialInput)}
                       </div>
+                      {editStockError && (
+                        <div className="text-[10px] text-[#F87171] mt-1 font-sans">
+                          {editStockError}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2 justify-end pt-2">
                       <button
                         type="button"
-                        onClick={() => setEditingStock(null)}
+                        onClick={() => {
+                          setEditStockError('');
+                          setEditingStock(null);
+                        }}
                         className="px-3 py-1.5 bg-transparent border border-transparent text-gray-400 hover:text-white cursor-pointer"
                       >
                         Cancel

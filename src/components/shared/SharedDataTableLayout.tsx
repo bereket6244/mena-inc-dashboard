@@ -39,13 +39,13 @@ export function SharedDataTableLayout({
   tablePreferenceKey,
 }: SharedDataTableLayoutProps) {
   const [freezeHeader, setFreezeHeader] = useState(() => {
-    return tablePreferenceKey ? localStorage.getItem(`${tablePreferenceKey}.freezeHeader`) === 'true' : false;
+    return true;
   });
   const [freezeFirstColumn, setFreezeFirstColumn] = useState(() => {
     const saved = tablePreferenceKey ? localStorage.getItem(`${tablePreferenceKey}.freezeFirstColumn`) : null;
     return saved === null ? true : saved === 'true';
   });
-  const tableStateClasses = `alternating-table-rows ${freezeHeader ? 'freeze-header-table' : ''} ${freezeFirstColumn ? 'freeze-first-column-table' : ''}`;
+  const tableStateClasses = `alternating-table-rows ${freezeHeader ? 'freeze-header-table' : ''} ${freezeFirstColumn ? 'freeze-first-column-table' : ''} ${freezeFirstColumn && tablePreferenceKey === 'ui.inventory.table' ? 'freeze-inventory-stock-table' : ''}`;
 
   useEffect(() => {
     if (!tablePreferenceKey) return;

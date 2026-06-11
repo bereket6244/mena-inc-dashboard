@@ -1578,7 +1578,7 @@ ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
      </div>
 
       {/* Main Core Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+      <main className="flex-1 max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
         {/* Navigation Tabs - Switched Order and made scrollable on Mobile for extreme responsiveness */}
         <div className="border-b border-[#262626] hidden md:block">

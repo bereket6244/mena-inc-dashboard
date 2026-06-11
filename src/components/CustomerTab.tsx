@@ -15,6 +15,9 @@ import {
   X, 
   AlertCircle, 
   Phone, 
+  MessageCircle,
+  Send,
+  ExternalLink,
   User, 
   Layers, 
   Sparkles,
@@ -45,7 +48,20 @@ import {
   BankAccount,
   ProductType
 } from '../types';
-import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+import {
+  parseFractionOrExpression,
+  cleanLeadingZeros,
+  createLinkUrl,
+  createSmsUrl,
+  createTelegramUrl,
+  createTelUrl,
+  createWhatsAppUrl,
+  detectContactType,
+  formatContactDisplay,
+  normalizePhoneNumber,
+  saveUsernameOpenPreference,
+  UsernameOpenPreference,
+} from '../utils';
 import SearchableSelect from './SearchableSelect';
 import { DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
 import { SharedDataTableLayout } from './shared/SharedDataTableLayout';
@@ -194,7 +210,7 @@ export default function CustomerTab({
     return localStorage.getItem(CUSTOMER_SORT_DIRECTION_STORAGE_KEY) === 'desc' ? 'desc' : 'asc';
   });
   const [freezeCustomerHeader, setFreezeCustomerHeader] = useState(() => {
-    return localStorage.getItem(CUSTOMER_FREEZE_HEADER_STORAGE_KEY) === 'true';
+    return true;
   });
   const [freezeCustomerFirstColumn, setFreezeCustomerFirstColumn] = useState(() => {
     const saved = localStorage.getItem(CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY);
@@ -215,6 +231,11 @@ export default function CustomerTab({
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [activeContactMenuId, setActiveContactMenuId] = useState<string | null>(null);
+  const [contactMenuPosition, setContactMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
+  const contactMenuRef = useRef<HTMLDivElement>(null);
+  const copiedContactTimerRef = useRef<number | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -264,6 +285,28 @@ export default function CustomerTab({
       receipt: filterReceipt,
     }));
   }, [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt]);
+
+  useEffect(() => {
+    if (!activeContactMenuId) return;
+
+    const handleOutsideContactMenu = (event: MouseEvent) => {
+      if (contactMenuRef.current && !contactMenuRef.current.contains(event.target as Node)) {
+        setActiveContactMenuId(null);
+        setContactMenuPosition(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideContactMenu);
+    return () => document.removeEventListener('mousedown', handleOutsideContactMenu);
+  }, [activeContactMenuId]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedContactTimerRef.current) {
+        window.clearTimeout(copiedContactTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleRecordedOrderSort = () => {
     setCustomerSortBy('recordedOrder');
@@ -1309,12 +1352,33 @@ export default function CustomerTab({
     setIsFormOpen(true);
   };
 
+  const validateAndFormatContactInput = (): string | null => {
+    const contactValue = phone.trim();
+    if (!contactValue) return '';
+
+    const contactType = detectContactType(contactValue);
+    if (contactType === 'phone' || contactType === 'invalid-phone') {
+      const normalized = normalizePhoneNumber(contactValue);
+      if (normalized.error) {
+        setFormError(normalized.error);
+        return null;
+      }
+      return normalized.normalized;
+    }
+
+    setFormError('');
+    return contactValue;
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim()) {
       setFormError('Client name is required.');
       return;
     }
+
+    const contactInfo = validateAndFormatContactInput();
+    if (contactInfo === null) return;
 
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
@@ -1324,7 +1388,7 @@ export default function CustomerTab({
       id: editingCustomer ? editingCustomer.id : 'c_' + Date.now(),
       clientType,
       clientName: clientName.trim(),
-      phone: phone.trim(),
+      phone: contactInfo,
       acquisitionSource,
       orderTakenBy,
       productType,
@@ -1368,6 +1432,9 @@ export default function CustomerTab({
       return;
     }
 
+    const contactInfo = validateAndFormatContactInput();
+    if (contactInfo === null) return;
+
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
     const finalAdvancePayment = Math.max(0, parseFractionOrExpression(advanceInput));
@@ -1376,7 +1443,7 @@ export default function CustomerTab({
       id: 'c_' + Date.now(),
       clientType,
       clientName: clientName.trim(),
-      phone: phone.trim(),
+      phone: contactInfo,
       acquisitionSource,
       orderTakenBy,
       productType,
@@ -1728,6 +1795,129 @@ export default function CustomerTab({
   }, [showProformaModal, isStandaloneProformaMode, standaloneClientName, standaloneClientPhone, currentUser, bankAccounts, proformaItemsToRender]);
 
   const formatMoney = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const getBankName = (id?: string) => id ? (bankAccounts.find(b => b.id === id)?.name || 'Unknown account') : 'Empty / Unpaid';
+  const getStatusLabel = (customer: Customer) => {
+    if (customer.deliveryDate && customer.bankRemainingId) return 'Completed';
+    if (customer.incompletionReason) return 'Incomplete';
+    return 'Pending';
+  };
+  const openExternalContactUrl = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  const handleUsernameAppChoice = (username: string, app: UsernameOpenPreference) => {
+    saveUsernameOpenPreference(app);
+    setActiveContactMenuId(null);
+    openExternalContactUrl(app === 'telegram' ? createTelegramUrl(username) : createWhatsAppUrl(username));
+  };
+  const copyContactToClipboard = async (value: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard?.writeText(value);
+    } catch (_) {
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  };
+  const showCopiedContactIndicator = (customerId: string) => {
+    setCopiedContactId(customerId);
+    if (copiedContactTimerRef.current) {
+      window.clearTimeout(copiedContactTimerRef.current);
+    }
+    copiedContactTimerRef.current = window.setTimeout(() => {
+      setCopiedContactId(null);
+      copiedContactTimerRef.current = null;
+    }, 1200);
+  };
+  const handleContactClick = async (customer: Customer, trigger: HTMLElement) => {
+    const contact = formatContactDisplay(customer.phone || '');
+    if (contact.type === 'empty' || contact.type === 'invalid-phone') return;
+    await copyContactToClipboard(contact.normalized || contact.raw || contact.display);
+    showCopiedContactIndicator(customer.id);
+    if (contact.type === 'link') {
+      openExternalContactUrl(createLinkUrl(contact.raw));
+      return;
+    }
+    const rect = trigger.getBoundingClientRect();
+    setContactMenuPosition({
+      top: Math.min(rect.bottom + 6, window.innerHeight - 12),
+      left: Math.min(rect.left, window.innerWidth - 190),
+    });
+    setActiveContactMenuId(activeContactMenuId === customer.id ? null : customer.id);
+  };
+  const miniLabel = (label: string, value: React.ReactNode, className = '', valueClass = 'text-gray-300') => (
+    <div className={`min-w-0 ${className}`}>
+      <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">{label}</span>
+      <span className={`block truncate text-[11px] leading-tight font-medium ${valueClass}`} title={typeof value === 'string' ? value : undefined}>{value || '-'}</span>
+    </div>
+  );
+  const materialLine = (label: string, paper: string, amount: number) => (
+    <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
+      <span className="truncate text-[10px] text-gray-400" title={paper || 'None'}><span className="text-gray-500">{label}</span> {paper || 'None'}</span>
+      <span className="shrink-0 text-[10px] font-semibold text-[#ee317b]">{amount || '-'}</span>
+    </div>
+  );
+  const ContactInfoControl = ({ customer }: { customer: Customer }) => {
+    const contact = formatContactDisplay(customer.phone || '');
+    const isMenuOpen = activeContactMenuId === customer.id;
+    const isCopied = copiedContactId === customer.id;
+    const menuWidth = contact.type === 'username' ? 176 : 144;
+    const menuLeft = contactMenuPosition ? Math.max(8, Math.min(contactMenuPosition.left, window.innerWidth - menuWidth - 8)) : 8;
+    const menuTop = contactMenuPosition ? Math.max(8, contactMenuPosition.top) : 8;
+
+    return (
+      <div className="relative flex max-w-[190px] items-center gap-1">
+        <button
+          type="button"
+          onClick={(event) => handleContactClick(customer, event.currentTarget)}
+          disabled={contact.type === 'empty' || contact.type === 'invalid-phone'}
+          className={`max-w-full inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] transition-colors ${
+            contact.type === 'invalid-phone'
+              ? 'border-red-900/50 bg-[#2E181D]/30 text-red-300 cursor-help'
+              : contact.type === 'empty'
+                ? 'border-[#262626] bg-[#181818] text-gray-500 cursor-default'
+                : 'border-[#262626] bg-[#181818] text-gray-300 hover:border-[#ee317b] hover:text-white cursor-pointer'
+          }`}
+          title={contact.error || contact.raw || 'No contact info'}
+        >
+          {contact.type === 'phone' ? <Phone className="w-3 h-3 shrink-0" /> : contact.type === 'link' ? <ExternalLink className="w-3 h-3 shrink-0" /> : <User className="w-3 h-3 shrink-0" />}
+          <span className="truncate">{contact.display}</span>
+        </button>
+        {isCopied && (
+          <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+            Copied
+          </span>
+        )}
+        {isMenuOpen && contact.type !== 'link' && contactMenuPosition && createPortal(
+          <div
+            ref={contactMenuRef}
+            className={`${contact.type === 'username' ? 'w-44' : 'w-36'} fixed z-[9999] rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl`}
+            style={{ top: menuTop, left: menuLeft }}
+          >
+            {contact.type === 'phone' ? (
+              <>
+                <button type="button" onClick={() => openExternalContactUrl(createTelUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Phone className="w-3 h-3" /> Call</button>
+                <button type="button" onClick={() => openExternalContactUrl(createSmsUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
+                <button type="button" onClick={() => openExternalContactUrl(createWhatsAppUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+              </>
+            ) : (
+              <>
+                <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Open username with</div>
+                <button type="button" onClick={() => handleUsernameAppChoice(contact.normalized, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                <button type="button" onClick={() => handleUsernameAppChoice(contact.normalized, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  };
 
   return (
     <SharedDataTableLayout
@@ -2037,9 +2227,9 @@ export default function CustomerTab({
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
+      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
         <DataTable
-          className={`alternating-table-rows ${freezeCustomerHeader ? 'freeze-header-table' : ''} ${freezeCustomerFirstColumn ? 'freeze-first-column-table' : ''}`}
+          className={`customer-ledger-table alternating-table-rows ${freezeCustomerHeader ? 'freeze-header-table' : ''} ${freezeCustomerFirstColumn ? 'freeze-first-column-table freeze-customer-info-table' : ''}`}
           onLongPressFreeze={(target) => {
             if (target === 'header') {
               setFreezeCustomerHeader(prev => !prev);
@@ -2051,7 +2241,7 @@ export default function CustomerTab({
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
-                  <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs">
+                  <th className="customer-select-column py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs bg-[#181818]">
                     <input
                       type="checkbox"
                       checked={filteredCustomers.length > 0 && selectedCustomerIds.length === filteredCustomers.length}
@@ -2066,37 +2256,11 @@ export default function CustomerTab({
                       title="Select/Deselect all rows"
                     />
                   </th>
-                  <SortableCustomerHeader field="clientType" className="hidden xl:table-cell">Client Type</SortableCustomerHeader>
-                  <SortableCustomerHeader field="clientName">Client Name</SortableCustomerHeader>
-                  <SortableCustomerHeader field="phone">Phone / Contact</SortableCustomerHeader>
-                  <SortableCustomerHeader field="acquisitionSource" className="hidden xl:table-cell">Acquisition Channel</SortableCustomerHeader>
-                  <SortableCustomerHeader field="orderTakenBy">Order Taken By</SortableCustomerHeader>
-                  <SortableCustomerHeader field="productType">Product Type</SortableCustomerHeader>
-                  <SortableCustomerHeader field="quantity" align="right">Quantity</SortableCustomerHeader>
-                  <SortableCustomerHeader field="unitPrice" align="right">Unit Price (ETB)</SortableCustomerHeader>
-                  <SortableCustomerHeader field="advancePayment" align="right" className="text-[#71b536]">Advance (ETB)</SortableCustomerHeader>
-                  <SortableCustomerHeader field="advanceDate" align="center" className="bg-[#1c1c1c]/20">Advance Date</SortableCustomerHeader>
-                  <SortableCustomerHeader field="bankAdvanceId">Deposit Account (Advance)</SortableCustomerHeader>
-                  
-                  {/* Ledger Paper Stocks */}
-                  <SortableCustomerHeader field="paperType1" className="bg-[#31111E]/20">Paper 1</SortableCustomerHeader>
-                  <SortableCustomerHeader field="amount1" align="right" className="bg-[#31111E]/20">Amount 1</SortableCustomerHeader>
-                  <SortableCustomerHeader field="paperType2" className="bg-[#31111E]/20">Paper 2</SortableCustomerHeader>
-                  <SortableCustomerHeader field="amount2" align="right" className="bg-[#31111E]/20">Amount 2</SortableCustomerHeader>
-                  <SortableCustomerHeader field="paperType3" className="bg-[#31111E]/20">Paper 3</SortableCustomerHeader>
-                  <SortableCustomerHeader field="amount3" align="right" className="bg-[#31111E]/20">Amount 3</SortableCustomerHeader>
-                  
-                  {/* Auxiliary Papers */}
-                  <SortableCustomerHeader field="entrancePaper" className="bg-[#112233]/40">Entrance Paper</SortableCustomerHeader>
-                  <SortableCustomerHeader field="amount16" align="right" className="bg-[#112233]/40">Amt /16</SortableCustomerHeader>
-                  <SortableCustomerHeader field="ajabiPaper" className="bg-[#112233]/40">Ajabi Paper</SortableCustomerHeader>
-                  <SortableCustomerHeader field="amount9" align="right" className="bg-[#112233]/40">Amt /9</SortableCustomerHeader>
-                  
-                  <SortableCustomerHeader field="remainingBalance" align="right">Remaining Balance</SortableCustomerHeader>
-                  <SortableCustomerHeader field="deliveryDate" align="center" className="bg-[#31111E]/5">Final Payment Date</SortableCustomerHeader>
-                  <SortableCustomerHeader field="fullValue" align="right" className="text-[#ee317b] bg-[#31111E]/10">Full (ETB)</SortableCustomerHeader>
-                  <SortableCustomerHeader field="bankRemainingId">Remaining Bank</SortableCustomerHeader>
-                  <SortableCustomerHeader field="incompletionReason" className="text-stone-400">Incompletion Reason</SortableCustomerHeader>
+                  <SortableCustomerHeader field="clientName" className="customer-client-info-column min-w-[190px] bg-[#181818]">Client Info</SortableCustomerHeader>
+                  <SortableCustomerHeader field="productType" className="min-w-[190px]">Order Info</SortableCustomerHeader>
+                  <SortableCustomerHeader field="paperType1" className="min-w-[210px] bg-[#31111E]/20">Material Info</SortableCustomerHeader>
+                  <SortableCustomerHeader field="advancePayment" className="min-w-[230px] text-[#71b536]">Payment Info</SortableCustomerHeader>
+                  <SortableCustomerHeader field="deliveryDate" className="min-w-[210px] bg-[#31111E]/5">Delivery / Status</SortableCustomerHeader>
                   
                   <th className="py-2.5 px-3 text-center text-gray-400 font-sans w-24">Actions</th>
                 </tr>
@@ -2123,10 +2287,10 @@ export default function CustomerTab({
                       }`}
                     >
                       {/* Grid Row Index */}
-                      <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
+                      <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
                       
                       {/* Grid Row Checkbox Column */}
-                      <td className="py-2 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
+                      <td className="customer-select-column py-1.5 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -2142,167 +2306,122 @@ export default function CustomerTab({
                         />
                       </td>
                       
-                      {/* Client Type */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans hidden xl:table-cell">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : c.clientType === 'Individual' ? 'bg-[#181818] text-gray-300 border-[#262626]' : 'bg-[#1e1e1e] text-[#ee317b] border-[#ee317b]/30'}`}>
-                          {c.clientType.toUpperCase()}
-                        </span>
-                      </td>
-                      
-                      {/* Client Name */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-semibold text-white whitespace-nowrap">{c.clientName}</td>
-                      
-                      {/* Phone / Contact */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-gray-400 whitespace-nowrap">{c.phone || '-'}</td>
-                      
-                      {/* Acquisition Channel */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 font-sans hidden xl:table-cell whitespace-nowrap">
-                        <span className="text-[11px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">{c.acquisitionSource}</span>
-                      </td>
-                      
-                      {/* Order Taken By */}
-                      <td className="py-2 px-3 border-r border-[#262626] font-medium text-gray-300 whitespace-nowrap">{c.orderTakenBy}</td>
-                      
-                      {/* Product Type */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-gray-300 whitespace-nowrap font-sans">{c.productType}</td>
-                      
-                      {/* Quantity */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-white">{c.quantity.toLocaleString()}</td>
-                      
-                      {/* Unit Price (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-gray-300 whitespace-nowrap">
-                        <div>{formatMoney(c.unitPrice)}</div>
-                        {c.isVatAdded && (
-                          <div className="text-[8px] text-[#ee317b] uppercase font-bold tracking-tight whitespace-nowrap">15% VAT Inc.</div>
-                        )}
-                      </td>
-                      
-                      {/* Advance (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans text-[#71b536] bg-[#112918]/10">{formatMoney(c.advancePayment)}</td>
-                      
-                      {/* Inline Date Picker for Advance Payment Date */}
-                      <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
-                        <input
-                          type="date"
-                          value={c.advancePaymentDate || ''}
-                          onChange={(e) => {
-                            onUpdateCustomer({
-                              ...c,
-                              advancePaymentDate: e.target.value
-                            });
-                          }}
-                          className="bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md"
-                          title="Change Advance Payment Date directly"
-                        />
-                      </td>
-
-                      <td className="py-2 px-3 border-r border-[#262626] font-sans text-xs text-stone-450 bg-stone-900/10 whitespace-nowrap">
-                        {!c.paymentMethodId ? 'Empty / Unpaid' : (bankAccounts.find(b => b.id === c.paymentMethodId)?.name || 'Empty / Unpaid')}
-                      </td>
-                      
-                      {/* Paper 1 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType1}</td>
-                      {/* Amount 1 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount1 || '-'}</td>
-                      
-                      {/* Paper 2 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType2}</td>
-                      {/* Amount 2 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount2 || '-'}</td>
-                      
-                      {/* Paper 3 */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#31111E]/10 text-gray-300 font-sans whitespace-nowrap">{c.paperType3}</td>
-                      {/* Amount 3 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#31111E]/10">{c.amount3 || '-'}</td>
-                      
-                      {/* Entrance Paper */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans whitespace-nowrap">{c.entrancePaper}</td>
-                      {/* Amt /16 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount16 || '-'}</td>
-                      
-                      {/* Ajabi Paper */}
-                      <td className="py-2 px-3 border-r border-[#262626] bg-[#112233]/20 text-gray-400 font-sans whitespace-nowrap">{c.ajabiPaper}</td>
-                      {/* Amt /9 */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans bg-[#112233]/20">{c.amount9 || '-'}</td>
-                      
-                      {/* Remaining (V) */}
-                      <td className={`py-2 px-3 border-r border-[#262626] text-right font-sans font-bold whitespace-nowrap ${remainingVal > 0 ? 'text-[#F87171] bg-[#2E181D]/30' : 'text-[#71b536] bg-[#112918]/30'}`}>
-                        {remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal)}
-                      </td>
-                      
-                      {/* Final Payment Date */}
-                      <td className="py-2.5 px-3 border-r border-[#262626] font-sans whitespace-nowrap bg-[#1c1c1c]/30 text-center">
-                        <div className="inline-flex items-center justify-center gap-1">
-                          <input
-                            type="date"
-                            value={c.deliveryDate || ''}
-                            onChange={(e) => {
-                              onUpdateCustomer({
-                                ...c,
-                                deliveryDate: e.target.value
-                              });
-                            }}
-                            className="bg-[#121212] text-xs text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans cursor-pointer rounded-md"
-                            title="Change Final Payment Date directly"
-                          />
-                          {c.deliveryDate && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onUpdateCustomer({
-                                  ...c,
-                                  deliveryDate: '',
-                                  bankRemainingId: '' // Clearing date resets the bank complete state too
-                                });
-                              }}
-                              className="text-red-500 hover:text-red-400 font-extrabold px-1.5 py-0.5 cursor-pointer text-xs"
-                              title="Clear Final Payment Date"
-                            >
-                              ✕
-                            </button>
-                          )}
+                      {/* Client Info */}
+                      <td className="customer-client-info-column py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
+                        <div className="space-y-1">
+                          <div className="flex items-baseline gap-1.5 min-w-0">
+                            <span className="truncate text-[14px] font-bold leading-tight text-white" title={c.clientName}>{c.clientName}</span>
+                            <span className="shrink-0 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500" title={c.clientType || 'Client'}>
+                              {c.clientType || 'Client'}
+                            </span>
+                          </div>
+                          <ContactInfoControl customer={c} />
+                          <span className="inline-flex max-w-[150px] text-[10px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md text-gray-400 truncate" title={c.acquisitionSource}>
+                            {c.acquisitionSource || 'No source'}
+                          </span>
                         </div>
                       </td>
                       
-                      {/* Full (ETB) */}
-                      <td className="py-2 px-3 border-r border-[#262626] text-right font-sans font-bold text-white bg-[#31111E]/10">{formatMoney(fullVal)}</td>
- 
-                      {/* Inline Dropdown for Remaining Bank account (Col Y) */}
-                      <td className="py-1.5 px-2 border-r border-[#262626] font-sans text-center bg-[#1c1c1c]/10">
-                        <SearchableSelect
-                          value={c.bankRemainingId || ''}
-                          onChange={(e) => {
-                            onUpdateCustomer({
-                              ...c,
-                              bankRemainingId: e.target.value || undefined
-                            });
-                          }}
-                          className="bg-[#121212] text-xs text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans cursor-pointer rounded-md w-full min-w-[130px] max-w-[180px]"
-                        >
-                          <option value="">- Empty/Unpaid -</option>
-                          {bankAccounts.map(b => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))}
-                        </SearchableSelect>
+                      {/* Order Info */}
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
+                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                          {miniLabel('By', c.orderTakenBy, '', 'text-gray-300')}
+                          {miniLabel('Product', c.productType, '', 'text-gray-200')}
+                          {miniLabel('Qty', c.quantity.toLocaleString(), '', 'text-white')}
+                          {miniLabel('Unit', formatMoney(c.unitPrice), '', 'text-gray-300')}
+                          <div className="col-span-2 flex items-center justify-between gap-2 border-t border-[#262626]/80 pt-0.5">
+                            <span className="text-[8px] uppercase tracking-wider text-gray-500">Total</span>
+                            <span className="text-[12px] font-bold text-white">{formatMoney(fullVal)}</span>
+                          </div>
+                          {c.isVatAdded && <span className="col-span-2 text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</span>}
+                        </div>
                       </td>
- 
-                      {/* Inline Input for Incompletion Reason (Col Z) */}
-                      <td className="py-1 px-2 border-r border-[#262626] min-w-[220px]">
-                        <input
-                          type="text"
-                          value={c.incompletionReason || ''}
-                          placeholder="Completed / enter reason..."
-                          onChange={(e) => {
-                            onUpdateCustomer({
-                              ...c,
-                              incompletionReason: e.target.value
-                            });
-                          }}
-                          className="bg-[#121212] text-xs text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-2 py-1 font-sans rounded-md w-full"
-                          title="Change Incompletion Reason directly"
-                        />
+                      
+                      {/* Material Info */}
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] bg-[#31111E]/10 font-sans align-top min-w-[210px]">
+                        <div className="space-y-0.5">
+                          {materialLine('P1', c.paperType1, c.amount1)}
+                          {materialLine('P2', c.paperType2, c.amount2)}
+                          {materialLine('P3', c.paperType3, c.amount3)}
+                          {materialLine('Entrance', c.entrancePaper, c.amount16)}
+                          {materialLine('Ajabi', c.ajabiPaper, c.amount9)}
+                        </div>
+                      </td>
+                      
+                      {/* Payment Info */}
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[230px]">
+                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                            {miniLabel('Advance', formatMoney(c.advancePayment), '', 'text-[#71b536]')}
+                            <div>
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
+                              <input
+                                type="date"
+                                value={c.advancePaymentDate || ''}
+                                onChange={(e) => onUpdateCustomer({ ...c, advancePaymentDate: e.target.value })}
+                                className="w-full max-w-[118px] bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
+                                title="Change Advance Payment Date directly"
+                              />
+                            </div>
+                            {miniLabel('Advance Bank', getBankName(c.paymentMethodId), '', 'text-gray-400')}
+                            {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
+                            {miniLabel('Full', formatMoney(fullVal), '', 'text-white font-bold')}
+                        </div>
+                      </td>
+                      
+                      {/* Delivery / Status */}
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[245px]">
+                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={c.deliveryDate || ''}
+                                onChange={(e) => onUpdateCustomer({ ...c, deliveryDate: e.target.value })}
+                                className="min-w-0 w-full max-w-[128px] bg-[#121212] text-[11px] font-semibold text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
+                                title="Change Delivery Date directly"
+                              />
+                              {c.deliveryDate && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdateCustomer({ ...c, deliveryDate: '', bankRemainingId: '' })}
+                                  className="text-red-500 hover:text-red-400 font-extrabold px-1 py-0 cursor-pointer text-xs leading-none"
+                                  title="Clear Delivery Date"
+                                >
+                                  x
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining Bank</span>
+                            <SearchableSelect
+                              value={c.bankRemainingId || ''}
+                              onChange={(e) => onUpdateCustomer({ ...c, bankRemainingId: e.target.value || undefined })}
+                              className="bg-[#121212] text-[11px] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md w-full max-w-[128px] leading-tight truncate"
+                            >
+                              <option value="">- Empty/Unpaid -</option>
+                              {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </SearchableSelect>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Status</span>
+                            <span className={`inline-flex max-w-full rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight ${isCompleted ? 'border-green-800/60 bg-[#112918]/30 text-[#71b536]' : c.incompletionReason ? 'border-red-900/60 bg-[#2E181D]/40 text-red-300' : 'border-[#262626] bg-[#181818] text-gray-300'}`}>
+                              {getStatusLabel(c)}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Incomplete Reason</span>
+                            <input
+                              type="text"
+                              value={c.incompletionReason || ''}
+                              placeholder="Completed / reason..."
+                              onChange={(e) => onUpdateCustomer({ ...c, incompletionReason: e.target.value })}
+                              className="bg-[#121212] text-[11px] text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans rounded-md w-full max-w-[128px] leading-tight"
+                              title={c.incompletionReason || 'Change Incompletion Reason directly'}
+                            />
+                          </div>
+                        </div>
                       </td>
                       
                       {/* Actions */}
@@ -2339,7 +2458,7 @@ export default function CustomerTab({
                 })}
                 {filteredCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={24} className="text-center py-10 font-sans text-sm text-gray-500">
+                    <td colSpan={8} className="text-center py-10 font-sans text-sm text-gray-500">
                       No customer ledger logs matching this criteria.
                     </td>
                   </tr>
@@ -2731,12 +2850,12 @@ export default function CustomerTab({
 
                         <div>
                           <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-phone">
-                            Phone / Contact
+                            Contact Info
                           </label>
                           <input
                             id="field-client-phone"
                             type="text"
-                             placeholder="e.g. +251 911..."
+                             placeholder="Phone, link, or @username"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none"
