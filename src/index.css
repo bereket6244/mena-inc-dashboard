@@ -545,6 +545,19 @@ input, textarea {
   background-color: #FCE8E6 !important;
 }
 
+@media (max-width: 767px) {
+  .freeze-first-column-table thead th:first-child,
+  .freeze-first-column-table tbody td:first-child,
+  .freeze-customer-info-table .customer-select-column,
+  .freeze-customer-info-table .customer-client-info-column,
+  .freeze-inventory-stock-table .inventory-select-column,
+  .freeze-inventory-stock-table .inventory-stock-name-column {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+  }
+}
+
 /* Override utility dark buttons in light-theme to prevent them being same color */
 .light-theme .bg-\[\#262626\],
 .light-theme .bg-zinc-800,
