@@ -1569,7 +1569,7 @@ export default function PurchasesTab({
             )}
           </div>
 
-          <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+          <div className="app-sticky-toolbar hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
             <div className="flex items-center text-gray-400 font-medium gap-2"></div>
             <div className="flex items-center gap-1.5 shrink-0">
               <div ref={searchWrapperRef} className="flex items-center">

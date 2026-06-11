@@ -147,7 +147,7 @@ export function TableToolbar({
       </div>
 
       {/* Notion-style Database Toolbar (Desktop/Tablet) */}
-      <div className="hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+      <div className="app-sticky-toolbar hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
         {/* Left Side: Custom views or title */}
         <div className="flex items-center text-gray-400 font-medium gap-2">
           {desktopLeftControls}
@@ -258,7 +258,7 @@ export function DataTable({
   };
 
   return (
-    <div className="overflow-x-auto scrollbar-none-x relative">
+    <div className="data-table-scroll overflow-x-auto scrollbar-none-x relative">
       <table
         ref={tableRef}
         className={`w-full text-left border-collapse font-sans text-xs ${className}`}

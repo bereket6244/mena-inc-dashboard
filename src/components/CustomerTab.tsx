@@ -1592,6 +1592,7 @@ export default function CustomerTab({
 
   const computedFullPayment = quantity * unitPrice;
   const computedRemainingBalance = computedFullPayment - advancePayment;
+  const isCurrentFormCompleted = !!(deliveryDate && bankRemainingId);
 
   // Bulk Selection and Update Handlers
   const handleBulkComplete = () => {
@@ -2305,14 +2306,14 @@ export default function CustomerTab({
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
+      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
         <DataTable
           className="customer-ledger-table alternating-table-rows"
         >
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
-                  <th className="customer-select-column py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs bg-[#181818]">
+                  <th className="py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs bg-[#181818]">
                     <input
                       type="checkbox"
                       checked={filteredCustomers.length > 0 && selectedCustomerIds.length === filteredCustomers.length}
@@ -2327,7 +2328,7 @@ export default function CustomerTab({
                       title="Select/Deselect all rows"
                     />
                   </th>
-                  <SortableCustomerHeader field="clientName" className="customer-client-info-column min-w-[190px] bg-[#181818]">Client Info</SortableCustomerHeader>
+                  <SortableCustomerHeader field="clientName" className="min-w-[190px] bg-[#181818]">Client Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="productType" className="min-w-[190px]">Order Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="paperType1" className="min-w-[210px] bg-[#31111E]/20">Material Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="advancePayment" className="min-w-[230px] text-[#71b536]">Payment Info</SortableCustomerHeader>
@@ -2359,7 +2360,7 @@ export default function CustomerTab({
                       <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
                       
                       {/* Grid Row Checkbox Column */}
-                      <td className="customer-select-column py-1.5 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
+                      <td className="py-1.5 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -2376,7 +2377,7 @@ export default function CustomerTab({
                       </td>
                       
                       {/* Client Info */}
-                      <td className="customer-client-info-column py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
                         <div className="space-y-1">
                           <div className="flex items-baseline gap-1.5 min-w-0">
                             <span className="truncate text-[14px] font-bold leading-tight text-white" title={c.clientName}>{c.clientName}</span>
@@ -2510,10 +2511,11 @@ export default function CustomerTab({
                             <input
                               type="text"
                               value={c.incompletionReason || ''}
-                              placeholder="Completed / reason..."
+                              placeholder={isCompleted ? 'Completed' : 'Completed / reason...'}
+                              disabled={isCompleted}
                               onChange={(e) => onUpdateCustomer({ ...c, incompletionReason: e.target.value })}
-                              className="bg-[#121212] text-[11px] text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans rounded-md w-full max-w-[128px] leading-tight"
-                              title={c.incompletionReason || 'Change Incompletion Reason directly'}
+                              className="bg-[#121212] text-[11px] text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans rounded-md w-full max-w-[128px] leading-tight disabled:opacity-60 disabled:cursor-not-allowed"
+                              title={isCompleted ? 'Completed orders do not need an incomplete reason' : (c.incompletionReason || 'Change Incompletion Reason directly')}
                             />
                           </div>
                         </div>
@@ -2539,7 +2541,7 @@ export default function CustomerTab({
             const remainingVal = fullVal - c.advancePayment;
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
             const isSelected = selectedCustomerIds.includes(c.id);
-            
+
             return (
               <div 
                 key={c.id} 
@@ -2603,8 +2605,7 @@ export default function CustomerTab({
                   {/* Detail Info */}
                   <div className="text-xs text-gray-300 space-y-1.5 font-sans animate-fade-in">
                     <div className="flex items-center gap-2">
-                       <Phone className="w-3.5 h-3.5 text-[#ee317b]" />
-                       <span>{c.phone || 'No phone record'}</span>
+                       <ContactInfoControl customer={c} />
                     </div>
                      <div className="flex flex-col gap-2">
                        <div className="flex items-center gap-2 font-sans text-xs">
@@ -3275,10 +3276,12 @@ export default function CustomerTab({
                             <input
                               id="field-incompletion-reason"
                               type="text"
-                              placeholder="e.g. Awaiting design finalization or None"
+                              placeholder={isCurrentFormCompleted ? 'Completed orders do not need a reason' : 'e.g. Awaiting design finalization or None'}
                               value={incompletionReason}
+                              disabled={isCurrentFormCompleted}
                               onChange={(e) => setIncompletionReason(e.target.value)}
-                              className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b]"
+                              className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed"
+                              title={isCurrentFormCompleted ? 'Completed orders do not need an incomplete reason' : 'Add an incomplete reason or note'}
                             />
                           </div>
                         )}

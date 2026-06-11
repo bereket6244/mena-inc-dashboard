@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Database, 
   TrendingUp, 
@@ -148,6 +148,7 @@ export default function App() {
   const [isBuffering, setIsBuffering] = useState(false);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Login & RBAC personnel state
   const [employees, setEmployees] = useState<EmployeeUser[]>(() => {
@@ -309,6 +310,19 @@ export default function App() {
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [isMobileMenuOpen, showStaffModal, showDbConfigModal, showInstallGuideModal]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [isMobileMenuOpen]);
 
   const handleCreateStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1490,7 +1504,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             </div>
 
               {/* Unified Profile Menu */}
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1505,7 +1519,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                 <AnimatePresence>
                   {isMobileMenuOpen && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsMobileMenuOpen(false)} />
+                      <div className="fixed inset-0 z-40 pointer-events-none" aria-hidden="true" />
                       <motion.div
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1626,7 +1640,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
       <main className="flex-1 max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
         {/* Navigation Tabs - Switched Order and made scrollable on Mobile for extreme responsiveness */}
-        <div className="border-b border-[#262626] hidden md:block">
+        <div className="app-sticky-tabs border-b border-[#262626] hidden md:block">
           <nav className="flex overflow-x-auto whitespace-nowrap scrollbar-none-x space-x-2 md:space-x-4 -mb-px" aria-label="Tabs Selector">
 
             {/* Tab 1: Customer Management (Now First!) */}
