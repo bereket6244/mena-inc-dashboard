@@ -97,10 +97,32 @@ CREATE TABLE IF NOT EXISTS public.product_types (
 
 ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.lead_channels (
+  id text PRIMARY KEY,
+  name text UNIQUE NOT NULL,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
+);
+
+ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;
+
 -- Relationship columns for stock consumption. New records store stock IDs here;
 -- the older paper name columns are kept only so legacy rows can still be read.
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "acquisitionSource" text;
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType1Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType2Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
+
+INSERT INTO public.lead_channels (id, name)
+VALUES
+  ('lc_tiktok', 'TikTok'),
+  ('lc_instagram', 'Instagram'),
+  ('lc_telegram', 'Telegram'),
+  ('lc_word_of_mouth', 'Word of Mouth'),
+  ('lc_repeat', 'Repeat')
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    "isDeleted" = false,
+    "deletedBy" = null;

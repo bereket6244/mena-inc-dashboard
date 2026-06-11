@@ -1153,20 +1153,40 @@ CREATE TABLE IF NOT EXISTS public.client_types (
   "deletedBy" text
 );
 
+CREATE TABLE IF NOT EXISTS public.lead_channels (
+  id text PRIMARY KEY,
+  name text UNIQUE NOT NULL,
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
+);
+
 -- Safely migrate existing tables by adding any new columns
 ALTER TABLE IF EXISTS public.employees ADD COLUMN IF NOT EXISTS "allowedTabs" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "acquisitionSource" text;
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType1Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType2Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
 
+INSERT INTO public.lead_channels (id, name)
+VALUES
+  ('lc_tiktok', 'TikTok'),
+  ('lc_instagram', 'Instagram'),
+  ('lc_telegram', 'Telegram'),
+  ('lc_word_of_mouth', 'Word of Mouth'),
+  ('lc_repeat', 'Repeat')
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    "isDeleted" = false,
+    "deletedBy" = null;
+
 -- Soft delete columns migration
 DO $$
 DECLARE
   t text;
 BEGIN
-  FOR t IN SELECT unnest(ARRAY['paper_stocks', 'bank_accounts', 'expense_categories', 'purchases', 'customers', 'employees', 'product_types', 'client_types'])
+  FOR t IN SELECT unnest(ARRAY['paper_stocks', 'bank_accounts', 'expense_categories', 'purchases', 'customers', 'employees', 'product_types', 'client_types', 'lead_channels'])
   LOOP
     EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "isDeleted" boolean DEFAULT false;', t);
     EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "deletedBy" text;', t);
@@ -1181,7 +1201,8 @@ ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(bootstrapSqlText).then(() => {

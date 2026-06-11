@@ -37,8 +37,6 @@ const PURCHASE_SORT_BY_STORAGE_KEY = 'ui.purchases.sortBy';
 const PURCHASE_SORT_ASC_STORAGE_KEY = 'ui.purchases.sortAsc';
 const PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY = 'ui.purchases.categoriesCollapsed';
 const PURCHASE_FILTERS_STORAGE_KEY = 'ui.purchases.filters';
-const PURCHASE_FREEZE_HEADER_STORAGE_KEY = 'ui.purchases.freezeHeader';
-const PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY = 'ui.purchases.freezeFirstColumn';
 
 interface PurchasesTabProps {
   purchases: Purchase[];
@@ -90,17 +88,8 @@ export default function PurchasesTab({
   const [isSortAsc, setIsSortAsc] = useState(() => {
     return localStorage.getItem(PURCHASE_SORT_ASC_STORAGE_KEY) === 'true';
   });
-  const [freezePurchaseHeader, setFreezePurchaseHeader] = useState(() => {
-    return true;
-  });
-  const [freezePurchaseFirstColumn, setFreezePurchaseFirstColumn] = useState(() => {
-    const saved = localStorage.getItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY);
-    return saved === null ? true : saved === 'true';
-  });
-  const purchaseLongPressTimerRef = useRef<number | null>(null);
   const purchaseDraggedColumnRef = useRef<number | null>(null);
   const purchaseTableRef = useRef<HTMLTableElement>(null);
-  const [purchaseLockNotice, setPurchaseLockNotice] = useState('');
 
   // Form management for custom Purchase
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -301,37 +290,6 @@ export default function PurchasesTab({
     );
   };
 
-  const triggerPurchaseTableFreeze = (cell: HTMLTableCellElement | null) => {
-    if (!cell) return;
-
-    const isHeader = cell.tagName.toLowerCase() === 'th';
-    const isFirstColumn = cell.cellIndex === 0;
-    if (!isHeader && !isFirstColumn) return;
-
-    const target = isHeader ? 'header' : 'firstColumn';
-    if (target === 'header') {
-      setFreezePurchaseHeader(prev => !prev);
-      setPurchaseLockNotice('Header lock toggled');
-    } else {
-      setFreezePurchaseFirstColumn(prev => !prev);
-      setPurchaseLockNotice('First column lock toggled');
-    }
-    window.setTimeout(() => setPurchaseLockNotice(''), 1400);
-    navigator.vibrate?.(35);
-  };
-
-  const handlePurchaseTableDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
-    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
-    triggerPurchaseTableFreeze(cell);
-  };
-
-  const clearPurchaseLongPressTimer = () => {
-    if (purchaseLongPressTimerRef.current) {
-      window.clearTimeout(purchaseLongPressTimerRef.current);
-      purchaseLongPressTimerRef.current = null;
-    }
-  };
-
   const movePurchaseColumn = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
     Array.from(table.rows).forEach(row => {
@@ -357,11 +315,6 @@ export default function PurchasesTab({
   useEffect(() => {
     localStorage.setItem(PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY, String(isMobileCategoriesCollapsed));
   }, [isMobileCategoriesCollapsed]);
-
-  useEffect(() => {
-    localStorage.setItem(PURCHASE_FREEZE_HEADER_STORAGE_KEY, String(freezePurchaseHeader));
-    localStorage.setItem(PURCHASE_FREEZE_FIRST_COLUMN_STORAGE_KEY, String(freezePurchaseFirstColumn));
-  }, [freezePurchaseHeader, freezePurchaseFirstColumn]);
 
   useEffect(() => {
     localStorage.setItem(PURCHASE_FILTERS_STORAGE_KEY, JSON.stringify({
@@ -1828,23 +1781,9 @@ export default function PurchasesTab({
           {/* Table Spreadsheet View */}
           <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
             <div className="overflow-x-auto relative">
-              <AnimatePresence>
-                {purchaseLockNotice && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-md border border-[#ee317b]/40 bg-[#181818] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#ee317b] shadow-xl"
-                  >
-                    <Lock className="w-3 h-3" />
-                    {purchaseLockNotice}
-                  </motion.div>
-                )}
-              </AnimatePresence>
               <table
                 ref={purchaseTableRef}
-                className={`w-full text-left border-collapse font-sans text-xs min-w-[900px] alternating-table-rows ${freezePurchaseHeader ? 'freeze-header-table' : ''} ${freezePurchaseFirstColumn ? 'freeze-first-column-table' : ''}`}
-                onDoubleClick={handlePurchaseTableDoubleClick}
+                className="w-full text-left border-collapse font-sans text-xs min-w-[900px] alternating-table-rows"
                 onDragStart={(event) => {
                   const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
                   purchaseDraggedColumnRef.current = header?.cellIndex ?? null;
@@ -1861,18 +1800,10 @@ export default function PurchasesTab({
                   movePurchaseColumn(event.currentTarget, fromIndex, header.cellIndex);
                   purchaseDraggedColumnRef.current = null;
                 }}
-                onTouchStart={(event) => {
-                  const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
-                  clearPurchaseLongPressTimer();
-                  purchaseLongPressTimerRef.current = window.setTimeout(() => triggerPurchaseTableFreeze(cell), 650);
-                }}
-                onTouchEnd={clearPurchaseLongPressTimer}
-                onTouchMove={clearPurchaseLongPressTimer}
-                onTouchCancel={clearPurchaseLongPressTimer}
               >
                 <thead>
                   <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                    <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                    <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
                     <th className="py-2.5 px-3 text-center w-12 border-r border-[#262626]">
                       <input
                         type="checkbox"
@@ -1925,7 +1856,7 @@ export default function PurchasesTab({
                             isSelected ? 'selected-row bg-[#121912]/20 border-l-2 border-[#71b536]' : 'hover:bg-[#181818]'
                           }`}
                         >
-                          <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
+                          <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
                           {/* Checkbox selector */}
                           <td className="py-2 px-3 text-center border-r border-[#262626]">
                             <input

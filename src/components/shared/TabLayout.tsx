@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 
 export function PageLayout({ id, children }: { id?: string; children: ReactNode }) {
   return (
@@ -233,14 +233,10 @@ export function DataTableWrapper({ children, className = "" }: { children: React
 export function DataTable({
   children,
   className = "",
-  onLongPressFreeze,
 }: {
   children: ReactNode;
   className?: string;
-  onLongPressFreeze?: (target: 'header' | 'firstColumn') => void;
 }) {
-  const longPressTimerRef = useRef<number | null>(null);
-  const [lockNotice, setLockNotice] = useState('');
   const draggedColumnRef = useRef<number | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -249,37 +245,6 @@ export function DataTable({
       th.setAttribute('draggable', 'true');
     });
   }, [children]);
-
-  const triggerFreeze = (cell: HTMLTableCellElement | null) => {
-    if (!onLongPressFreeze || !cell) return;
-
-    const isHeader = cell.tagName.toLowerCase() === 'th';
-    const isFirstColumn = cell.cellIndex === 0;
-    if (!isHeader && !isFirstColumn) return;
-
-    const target = isHeader ? 'header' : 'firstColumn';
-    onLongPressFreeze(target);
-    setLockNotice(target === 'header' ? 'Header lock toggled' : 'First column lock toggled');
-    window.setTimeout(() => setLockNotice(''), 1400);
-
-    if ('vibrate' in navigator) {
-      navigator.vibrate?.(35);
-    }
-  };
-
-  const handleDoubleClick = (event: React.MouseEvent<HTMLTableElement>) => {
-    if (!onLongPressFreeze) return;
-
-    const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
-    triggerFreeze(cell);
-  };
-
-  const clearLongPressTimer = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
 
   const moveColumn = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
@@ -294,23 +259,9 @@ export function DataTable({
 
   return (
     <div className="overflow-x-auto scrollbar-none-x relative">
-      <AnimatePresence>
-        {lockNotice && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-md border border-[#ee317b]/40 bg-[#181818] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#ee317b] shadow-xl"
-          >
-            <Lock className="w-3 h-3" />
-            {lockNotice}
-          </motion.div>
-        )}
-      </AnimatePresence>
       <table
         ref={tableRef}
         className={`w-full text-left border-collapse font-sans text-xs ${className}`}
-        onDoubleClick={handleDoubleClick}
         onDragStart={(event) => {
           const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
           draggedColumnRef.current = header?.cellIndex ?? null;
@@ -327,14 +278,6 @@ export function DataTable({
           moveColumn(event.currentTarget, fromIndex, header.cellIndex);
           draggedColumnRef.current = null;
         }}
-        onTouchStart={(event) => {
-          const cell = (event.target as HTMLElement).closest('th,td') as HTMLTableCellElement | null;
-          clearLongPressTimer();
-          longPressTimerRef.current = window.setTimeout(() => triggerFreeze(cell), 650);
-        }}
-        onTouchEnd={clearLongPressTimer}
-        onTouchMove={clearLongPressTimer}
-        onTouchCancel={clearLongPressTimer}
       >
         {children}
       </table>

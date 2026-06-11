@@ -180,7 +180,7 @@ body.light-theme {
   border-color: #E5E7EB !important;
 }
 
-/* Shared data-table readability and long-press freeze helpers */
+/* Shared data-table readability */
 .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: rgba(255, 255, 255, 0.025);
 }
@@ -195,26 +195,6 @@ body.light-theme {
 
 .light-theme .alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: #FFFFFF !important;
-}
-
-.freeze-header-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 35;
-}
-
-.freeze-first-column-table thead th:first-child,
-.freeze-first-column-table tbody td:first-child {
-  position: sticky;
-  left: 0;
-}
-
-.freeze-first-column-table thead th:first-child {
-  z-index: 45;
-}
-
-.freeze-first-column-table tbody td:first-child {
-  z-index: 25;
 }
 
 /* Completed row color high contrast for Light Theme */
@@ -395,167 +375,6 @@ input, textarea {
 }
 .light-theme .alternating-table-rows tbody tr.out-of-stock-row:nth-child(odd) td {
   background-color: #FCE8E6 !important;
-}
-
-.freeze-customer-info-table .customer-select-column,
-.freeze-customer-info-table .customer-client-info-column,
-.freeze-inventory-stock-table .inventory-select-column,
-.freeze-inventory-stock-table .inventory-stock-name-column {
-  position: sticky;
-  background-color: #121212 !important;
-  background-clip: padding-box;
-}
-
-.freeze-customer-info-table .customer-select-column,
-.freeze-inventory-stock-table .inventory-select-column {
-  left: 2rem;
-  z-index: 30;
-}
-
-.freeze-customer-info-table thead .customer-select-column,
-.freeze-inventory-stock-table thead .inventory-select-column {
-  z-index: 46;
-}
-
-.freeze-customer-info-table .customer-client-info-column,
-.freeze-inventory-stock-table .inventory-stock-name-column {
-  left: 4.5rem;
-  z-index: 28;
-}
-
-.freeze-customer-info-table thead .customer-client-info-column,
-.freeze-inventory-stock-table thead .inventory-stock-name-column {
-  z-index: 47;
-}
-
-.freeze-customer-info-table thead .customer-select-column,
-.freeze-customer-info-table thead .customer-client-info-column,
-.freeze-inventory-stock-table thead .inventory-select-column,
-.freeze-inventory-stock-table thead .inventory-stock-name-column {
-  background-color: #181818 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-client-info-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(even):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(even):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-stock-name-column {
-  background-color: #181818 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-client-info-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(odd):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(odd):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-stock-name-column {
-  background-color: #101010 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(even) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(even) .customer-client-info-column {
-  background-color: #0d2416 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-client-info-column {
-  background-color: #0b1d12 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(even) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(even) .customer-client-info-column {
-  background-color: #2a151a !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(odd) .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(odd) .customer-client-info-column {
-  background-color: #211116 !important;
-}
-
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #2D210F !important;
-}
-
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #241A0C !important;
-}
-
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(even) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #2a151a !important;
-}
-
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(odd) .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #211116 !important;
-}
-
-.alternating-table-rows.freeze-customer-info-table tbody tr.selected-row .customer-select-column,
-.alternating-table-rows.freeze-customer-info-table tbody tr.selected-row .customer-client-info-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.selected-row .inventory-select-column,
-.alternating-table-rows.freeze-inventory-stock-table tbody tr.selected-row .inventory-stock-name-column {
-  background-color: #121912 !important;
-}
-
-.light-theme .freeze-customer-info-table thead .customer-select-column,
-.light-theme .freeze-customer-info-table thead .customer-client-info-column,
-.light-theme .freeze-inventory-stock-table thead .inventory-select-column,
-.light-theme .freeze-inventory-stock-table thead .inventory-stock-name-column {
-  background-color: #E5E7EB !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(even):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(even):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-stock-name-column {
-  background-color: #F8FAFC !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.selected-row) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(odd):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr:nth-child(odd):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) .inventory-stock-name-column {
-  background-color: #FFFFFF !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(even) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(even) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #FDE68A !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.completed-order-row:nth-child(odd) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.low-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #FEF3C7 !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(even) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(even) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(even) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(even) .inventory-stock-name-column {
-  background-color: #F9DAD7 !important;
-}
-
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(odd) .customer-select-column,
-.light-theme .alternating-table-rows.freeze-customer-info-table tbody tr.incomplete-order-row:nth-child(odd) .customer-client-info-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(odd) .inventory-select-column,
-.light-theme .alternating-table-rows.freeze-inventory-stock-table tbody tr.out-of-stock-row:nth-child(odd) .inventory-stock-name-column {
-  background-color: #FCE8E6 !important;
-}
-
-@media (max-width: 767px) {
-  .freeze-first-column-table thead th:first-child,
-  .freeze-first-column-table tbody td:first-child,
-  .freeze-customer-info-table .customer-select-column,
-  .freeze-customer-info-table .customer-client-info-column,
-  .freeze-inventory-stock-table .inventory-select-column,
-  .freeze-inventory-stock-table .inventory-stock-name-column {
-    position: static !important;
-    left: auto !important;
-    z-index: auto !important;
-  }
 }
 
 /* Override utility dark buttons in light-theme to prevent them being same color */

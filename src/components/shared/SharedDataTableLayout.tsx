@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { PageLayout, TableToolbar, DataTableWrapper, DataTable } from './TabLayout';
 
 interface SharedDataTableLayoutProps {
@@ -36,22 +36,8 @@ export function SharedDataTableLayout({
   layoutMode = 'grid',
   cardsView,
   children,
-  tablePreferenceKey,
 }: SharedDataTableLayoutProps) {
-  const [freezeHeader, setFreezeHeader] = useState(() => {
-    return true;
-  });
-  const [freezeFirstColumn, setFreezeFirstColumn] = useState(() => {
-    const saved = tablePreferenceKey ? localStorage.getItem(`${tablePreferenceKey}.freezeFirstColumn`) : null;
-    return saved === null ? true : saved === 'true';
-  });
-  const tableStateClasses = `alternating-table-rows ${freezeHeader ? 'freeze-header-table' : ''} ${freezeFirstColumn ? 'freeze-first-column-table' : ''} ${freezeFirstColumn && tablePreferenceKey === 'ui.inventory.table' ? 'freeze-inventory-stock-table' : ''}`;
-
-  useEffect(() => {
-    if (!tablePreferenceKey) return;
-    localStorage.setItem(`${tablePreferenceKey}.freezeHeader`, String(freezeHeader));
-    localStorage.setItem(`${tablePreferenceKey}.freezeFirstColumn`, String(freezeFirstColumn));
-  }, [freezeHeader, freezeFirstColumn, tablePreferenceKey]);
+  const tableStateClasses = 'alternating-table-rows';
 
   return (
     <PageLayout id={id}>
@@ -70,16 +56,7 @@ export function SharedDataTableLayout({
         <>
           {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID */}
           <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
-            <DataTable
-              className={tableStateClasses}
-              onLongPressFreeze={(target) => {
-                if (target === 'header') {
-                  setFreezeHeader(prev => !prev);
-                } else {
-                  setFreezeFirstColumn(prev => !prev);
-                }
-              }}
-            >
+            <DataTable className={tableStateClasses}>
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   {tableHeaders}
@@ -111,7 +88,7 @@ export function SharedTh({ children, className = "", align = "left", isIndex = f
   const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   if (isIndex) {
     return (
-      <th className={`py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs ${className}`} style={width ? { width } : undefined} onClick={onClick}>
+      <th className={`py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs ${className}`} style={width ? { width } : undefined} onClick={onClick}>
         {children}
       </th>
     );
@@ -127,7 +104,7 @@ export function SharedTd({ children, className = "", align = "left", isIndex = f
   const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   if (isIndex) {
     return (
-      <td className={`py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10 ${className}`}>
+      <td className={`py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] ${className}`}>
         {children}
       </td>
     );

@@ -42,7 +42,6 @@ import {
 import { 
   Customer, 
   PaperStock, 
-  ACQUISITION_SOURCES, 
   AGENTS, 
   EmployeeUser,
   BankAccount,
@@ -72,8 +71,6 @@ import { SharedDataTableLayout } from './shared/SharedDataTableLayout';
 
 const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
 const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
-const CUSTOMER_FREEZE_HEADER_STORAGE_KEY = 'ui.customer.freezeHeader';
-const CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY = 'ui.customer.freezeFirstColumn';
 const CUSTOMER_SORT_FIELDS = [
   'recordedOrder',
   'clientType',
@@ -107,6 +104,7 @@ type CustomerSortField = typeof CUSTOMER_SORT_FIELDS[number];
 type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder'>;
 const CUSTOMER_SORT_BY_STORAGE_KEY = 'ui.customer.sortBy';
 const CUSTOMER_SORT_DIRECTION_STORAGE_KEY = 'ui.customer.sortDirection';
+const DEFAULT_ACQUISITION_CHANNELS = ['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'];
 
 // Helper functions to translate modern color strings (oklch, oklab, color-mix) to standard RGB/RGBA colors for html2canvas compatibility
 let canvasCtxCache: CanvasRenderingContext2D | null = null;
@@ -213,13 +211,6 @@ export default function CustomerTab({
   const [customerSortDirection, setCustomerSortDirection] = useState<'asc' | 'desc'>(() => {
     return localStorage.getItem(CUSTOMER_SORT_DIRECTION_STORAGE_KEY) === 'desc' ? 'desc' : 'asc';
   });
-  const [freezeCustomerHeader, setFreezeCustomerHeader] = useState(() => {
-    return true;
-  });
-  const [freezeCustomerFirstColumn, setFreezeCustomerFirstColumn] = useState(() => {
-    const saved = localStorage.getItem(CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY);
-    return saved === null ? true : saved === 'true';
-  });
   const [searchQuery, setSearchQuery] = useState('');
   const savedCustomerFilters = (() => {
     try {
@@ -274,11 +265,6 @@ export default function CustomerTab({
     localStorage.setItem(CUSTOMER_SORT_BY_STORAGE_KEY, customerSortBy);
     localStorage.setItem(CUSTOMER_SORT_DIRECTION_STORAGE_KEY, customerSortDirection);
   }, [customerSortBy, customerSortDirection]);
-
-  useEffect(() => {
-    localStorage.setItem(CUSTOMER_FREEZE_HEADER_STORAGE_KEY, String(freezeCustomerHeader));
-    localStorage.setItem(CUSTOMER_FREEZE_FIRST_COLUMN_STORAGE_KEY, String(freezeCustomerFirstColumn));
-  }, [freezeCustomerHeader, freezeCustomerFirstColumn]);
 
   useEffect(() => {
     localStorage.setItem(CUSTOMER_FILTERS_STORAGE_KEY, JSON.stringify({
@@ -847,7 +833,7 @@ export default function CustomerTab({
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (_) {}
     }
-    return ['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'];
+    return DEFAULT_ACQUISITION_CHANNELS;
   });
   const [newChannelInput, setNewChannelInput] = useState('');
   const [isAddingChannel, setIsAddingChannel] = useState(false);
@@ -872,6 +858,23 @@ export default function CustomerTab({
   const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false);
   const [bulkCompleteDate, setBulkCompleteDate] = useState<string>('');
   const [bulkCompleteBankId, setBulkCompleteBankId] = useState<string>('b1');
+
+  useEffect(() => {
+    if (
+      showFilterPopover &&
+      (isFormOpen || showProductManager || showProformaModal || showBulkDeleteConfirm || showBulkCompleteModal || deletingCustomerId)
+    ) {
+      setShowFilterPopover(false);
+    }
+  }, [
+    deletingCustomerId,
+    isFormOpen,
+    showBulkCompleteModal,
+    showBulkDeleteConfirm,
+    showFilterPopover,
+    showProductManager,
+    showProformaModal,
+  ]);
   
   const [paperType1, setPaperType1] = useState('None');
   const [amount1, setAmount1] = useState<string>('');
@@ -918,6 +921,75 @@ export default function CustomerTab({
       </option>
     );
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    import('../lib/dbService').then(async ({ fetchAllLeadChannels, saveLeadChannelDoc }) => {
+      const channels = await fetchAllLeadChannels(acquisitionChannels.length > 0 ? acquisitionChannels : DEFAULT_ACQUISITION_CHANNELS);
+      if (!isMounted) return;
+
+      const finalChannels = channels.length > 0 ? channels : DEFAULT_ACQUISITION_CHANNELS;
+      setAcquisitionChannels(finalChannels);
+      localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(finalChannels));
+
+      await Promise.allSettled(finalChannels.map(channel => saveLeadChannelDoc(channel)));
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const persistLeadChannels = async (channels: string[]) => {
+    const seen = new Set<string>();
+    const uniqueChannels = channels.reduce<string[]>((acc, channel) => {
+      const cleaned = channel.trim();
+      const key = cleaned.toLowerCase();
+      if (!cleaned || seen.has(key)) return acc;
+      seen.add(key);
+      acc.push(cleaned);
+      return acc;
+    }, []);
+    setAcquisitionChannels(uniqueChannels);
+    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(uniqueChannels));
+
+    const { saveLeadChannelDoc } = await import('../lib/dbService');
+    await Promise.all(uniqueChannels.map(channel => saveLeadChannelDoc(channel)));
+
+    return uniqueChannels;
+  };
+
+  const deleteLeadChannelNames = async (names: string[]) => {
+    const { deleteLeadChannels } = await import('../lib/dbService');
+    await deleteLeadChannels(names, currentUser?.username);
+  };
+
+  const handleAddLeadChannelInline = async () => {
+    const cleaned = newChannelInput.trim();
+    if (!cleaned) {
+      setNewChannelInput('');
+      return;
+    }
+
+    const existing = acquisitionChannels.find(channel => channel.toLowerCase() === cleaned.toLowerCase());
+    if (existing) {
+      setAcquisitionSource(existing);
+      setNewChannelInput('');
+      return;
+    }
+
+    try {
+      await persistLeadChannels([...acquisitionChannels, cleaned]);
+      setAcquisitionSource(cleaned);
+      setFormError('');
+    } catch (error) {
+      console.error('Lead channel save failed:', error);
+      setFormError('Lead channel saved locally, but the database update failed. Run the lead_channels SQL in Supabase and try again.');
+    } finally {
+      setNewChannelInput('');
+    }
+  };
 
   const handleAddProductInline = async () => {
     const cleaned = newProductInput.trim();
@@ -980,7 +1052,7 @@ export default function CustomerTab({
     setSelectedClientTypeIds([]);
   };
 
-  const handleRenameChannel = (oldName: string) => {
+  const handleRenameChannel = async (oldName: string) => {
     const cleaned = editingChannelValue.trim();
     if (!cleaned) return;
     if (acquisitionChannels.some(channel => channel !== oldName && channel.toLowerCase() === cleaned.toLowerCase())) {
@@ -988,27 +1060,38 @@ export default function CustomerTab({
       return;
     }
     const updatedChannels = acquisitionChannels.map(channel => channel === oldName ? cleaned : channel);
-    setAcquisitionChannels(updatedChannels);
-    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updatedChannels));
-    if (acquisitionSource === oldName) setAcquisitionSource(cleaned as Customer['acquisitionSource']);
-    onBulkUpdateCustomers(customers.map(customer =>
-      customer.acquisitionSource === oldName ? { ...customer, acquisitionSource: cleaned as Customer['acquisitionSource'] } : customer
-    ));
-    setEditingChannelName(null);
-    setEditingChannelValue('');
-    setFormError('');
+    try {
+      await persistLeadChannels(updatedChannels);
+      await deleteLeadChannelNames([oldName]);
+      if (acquisitionSource === oldName) setAcquisitionSource(cleaned);
+      onBulkUpdateCustomers(customers.map(customer =>
+        customer.acquisitionSource === oldName ? { ...customer, acquisitionSource: cleaned } : customer
+      ));
+      setEditingChannelName(null);
+      setEditingChannelValue('');
+      setFormError('');
+    } catch (error) {
+      console.error('Lead channel rename failed:', error);
+      setFormError('Lead channel renamed locally, but the database update failed. Run the lead_channels SQL in Supabase and try again.');
+    }
   };
 
-  const handleDeleteSelectedChannels = () => {
+  const handleDeleteSelectedChannels = async () => {
     if (selectedChannelNames.length === 0) return;
     const updatedChannels = acquisitionChannels.filter(channel => !selectedChannelNames.includes(channel));
-    setAcquisitionChannels(updatedChannels);
-    localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updatedChannels));
-    if (selectedChannelNames.includes(acquisitionSource)) setAcquisitionSource('');
-    onBulkUpdateCustomers(customers.map(customer =>
-      selectedChannelNames.includes(customer.acquisitionSource) ? { ...customer, acquisitionSource: '' as Customer['acquisitionSource'] } : customer
-    ));
-    setSelectedChannelNames([]);
+    try {
+      await persistLeadChannels(updatedChannels);
+      await deleteLeadChannelNames(selectedChannelNames);
+      if (selectedChannelNames.includes(acquisitionSource)) setAcquisitionSource('');
+      onBulkUpdateCustomers(customers.map(customer =>
+        selectedChannelNames.includes(customer.acquisitionSource) ? { ...customer, acquisitionSource: '' } : customer
+      ));
+      setSelectedChannelNames([]);
+      setFormError('');
+    } catch (error) {
+      console.error('Lead channel delete failed:', error);
+      setFormError('Lead channel removed locally, but the database update failed. Run the lead_channels SQL in Supabase and try again.');
+    }
   };
 
   const handleRenameProductType = async (productId: string) => {
@@ -1099,36 +1182,20 @@ export default function CustomerTab({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              const cleaned = newChannelInput.trim();
-              if (cleaned && !acquisitionChannels.includes(cleaned)) {
-                const updated = [...acquisitionChannels, cleaned];
-                setAcquisitionChannels(updated);
-                localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                setAcquisitionSource(cleaned as Customer['acquisitionSource']);
-              }
-              setNewChannelInput('');
+              void handleAddLeadChannelInline();
             }
           }}
         />
         <button
           type="button"
-          onClick={() => {
-            const cleaned = newChannelInput.trim();
-            if (cleaned && !acquisitionChannels.includes(cleaned)) {
-              const updated = [...acquisitionChannels, cleaned];
-              setAcquisitionChannels(updated);
-              localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-              setAcquisitionSource(cleaned as Customer['acquisitionSource']);
-            }
-            setNewChannelInput('');
-          }}
+          onClick={() => void handleAddLeadChannelInline()}
           className="px-2 text-[#71b536] font-bold text-xs"
         >
           Add
         </button>
       </div>
       {selectedChannelNames.length > 0 && (
-        <button type="button" onClick={handleDeleteSelectedChannels} className="w-full py-1 bg-[#421A1D] text-red-300 text-[10px] font-bold rounded">Delete Selected ({selectedChannelNames.length})</button>
+        <button type="button" onClick={() => void handleDeleteSelectedChannels()} className="w-full py-1 bg-[#421A1D] text-red-300 text-[10px] font-bold rounded">Delete Selected ({selectedChannelNames.length})</button>
       )}
       <div className="max-h-28 overflow-y-auto space-y-1">
         {acquisitionChannels.map(channel => (
@@ -1145,7 +1212,7 @@ export default function CustomerTab({
                 onChange={(e) => setEditingChannelValue(e.target.value)}
                 className={managerInputClass}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRenameChannel(channel);
+                  if (e.key === 'Enter') void handleRenameChannel(channel);
                   if (e.key === 'Escape') setEditingChannelName(null);
                 }}
               />
@@ -1153,7 +1220,7 @@ export default function CustomerTab({
               <span className="flex-1 text-white text-xs truncate">{channel}</span>
             )}
             {editingChannelName === channel ? (
-              <button type="button" onClick={() => handleRenameChannel(channel)} className={managerIconButtonClass}><Check className="w-3 h-3" /></button>
+              <button type="button" onClick={() => void handleRenameChannel(channel)} className={managerIconButtonClass}><Check className="w-3 h-3" /></button>
             ) : (
               <button type="button" onClick={() => { setEditingChannelName(channel); setEditingChannelValue(channel); }} className={managerIconButtonClass}><Edit3 className="w-3 h-3" /></button>
             )}
@@ -2014,7 +2081,7 @@ export default function CustomerTab({
         }
         desktopRightControls={
           <>
-            <div className="relative z-[1000]">
+            <div className="relative z-40">
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
@@ -2035,11 +2102,11 @@ export default function CustomerTab({
               {showFilterPopover && (
                 <>
                   <div
-                    className="fixed inset-0 z-[990] cursor-default"
+                    className="fixed inset-0 z-30 cursor-default"
                     onClick={() => setShowFilterPopover(false)}
                   />
                   <div
-                    className="absolute right-0 mt-1.5 w-72 z-[1001] rounded-lg border border-[#262626] bg-[#181818] p-2.5 text-xs font-sans text-gray-300 shadow-2xl flex flex-col gap-2.5"
+                    className="absolute right-0 mt-1.5 w-72 z-40 rounded-lg border border-[#262626] bg-[#181818] p-2.5 text-xs font-sans text-gray-300 shadow-2xl flex flex-col gap-2.5"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between px-1">
@@ -2093,7 +2160,7 @@ export default function CustomerTab({
                             className="bg-transparent text-xs text-white"
                           >
                             <option value="All">All Sources</option>
-                            {ACQUISITION_SOURCES.map(source => (
+                            {acquisitionChannels.map(source => (
                               <option key={source} value={source}>{source}</option>
                             ))}
                           </SearchableSelect>
@@ -2250,18 +2317,11 @@ export default function CustomerTab({
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
       <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
         <DataTable
-          className={`customer-ledger-table alternating-table-rows ${freezeCustomerHeader ? 'freeze-header-table' : ''} ${freezeCustomerFirstColumn ? 'freeze-first-column-table freeze-customer-info-table' : ''}`}
-          onLongPressFreeze={(target) => {
-            if (target === 'header') {
-              setFreezeCustomerHeader(prev => !prev);
-            } else {
-              setFreezeCustomerFirstColumn(prev => !prev);
-            }
-          }}
+          className="customer-ledger-table alternating-table-rows"
         >
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
-                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] sticky left-0 z-20 font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                  <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
                   <th className="customer-select-column py-2.5 px-2 border-r border-[#262626] font-bold text-center w-10 text-xs bg-[#181818]">
                     <input
                       type="checkbox"
@@ -2306,7 +2366,7 @@ export default function CustomerTab({
                       }`}
                     >
                       {/* Grid Row Index */}
-                      <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818] sticky left-0 z-10">{index + 1}</td>
+                      <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
                       
                       {/* Grid Row Checkbox Column */}
                       <td className="customer-select-column py-1.5 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
@@ -2949,12 +3009,18 @@ export default function CustomerTab({
                                 {acquisitionSource && (
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       if (window.confirm(`Are you sure you want to delete lead channel "${acquisitionSource}"?`)) {
                                         const updated = acquisitionChannels.filter(c => c !== acquisitionSource);
-                                        setAcquisitionChannels(updated);
-                                        localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(updated));
-                                        setAcquisitionSource(updated[0] || '');
+                                        try {
+                                          await persistLeadChannels(updated);
+                                          await deleteLeadChannelNames([acquisitionSource]);
+                                          setAcquisitionSource(updated[0] || '');
+                                          setFormError('');
+                                        } catch (error) {
+                                          console.error('Lead channel delete failed:', error);
+                                          setFormError('Lead channel removed locally, but the database update failed. Run the lead_channels SQL in Supabase and try again.');
+                                        }
                                       }
                                     }}
                                     className="px-2.5 bg-[#121212] text-red-400 hover:text-white hover:bg-red-700 border border-[#262626] hover:border-red-700 rounded-md font-sans text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"

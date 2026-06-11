@@ -1,6 +1,9 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
 import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType } from '../types';
 
+const getLeadChannelId = (name: string) =>
+  `lc_${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || Date.now()}`;
+
 // ============================================
 // 1. PAPER STOCKS OPERATIONS
 // ============================================
@@ -449,6 +452,76 @@ export async function deleteClientTypes(ids: string[], deletedBy?: string): Prom
       if (error) throw error;
     } catch (err) {
       console.error("Supabase deleteClientTypes failed:", err);
+    }
+  }
+}
+
+// ============================================
+// 9. LEAD CHANNEL OPERATIONS
+// ============================================
+
+export async function fetchAllLeadChannels(localFallback: string[]): Promise<string[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('lead_channels')
+        .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      const names = (data || [])
+        .map((row: any) => row.name)
+        .filter((name: any): name is string => typeof name === 'string' && name.trim().length > 0);
+
+      return names.length > 0 ? names : localFallback;
+    } catch (err: any) {
+      console.error("Supabase fetchAllLeadChannels failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveLeadChannelDoc(name: string): Promise<void> {
+  const cleaned = name.trim();
+  if (!cleaned) return;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('lead_channels')
+        .upsert({
+          id: getLeadChannelId(cleaned),
+          name: cleaned,
+          isDeleted: false,
+          deletedBy: null,
+        }, { onConflict: 'name' });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase saveLeadChannelDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}`);
+      throw err;
+    }
+  }
+}
+
+export async function deleteLeadChannels(names: string[], deletedBy?: string): Promise<void> {
+  const cleanedNames = names.map(name => name.trim()).filter(Boolean);
+  if (cleanedNames.length === 0) return;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('lead_channels')
+        .update({ isDeleted: true, deletedBy })
+        .in('name', cleanedNames);
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase deleteLeadChannels failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}`);
+      throw err;
     }
   }
 }
