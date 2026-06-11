@@ -7,6 +7,7 @@ interface SharedDataTableLayoutProps {
   onSearchChange: (val: string) => void;
   mobileLeftControls?: ReactNode;
   mobileRightControls?: ReactNode;
+  mobileToolbarClassName?: string;
   desktopLeftControls?: ReactNode;
   desktopRightControls?: ReactNode;
   selectedItemsBar?: ReactNode;
@@ -26,6 +27,7 @@ export function SharedDataTableLayout({
   onSearchChange,
   mobileLeftControls,
   mobileRightControls,
+  mobileToolbarClassName,
   desktopLeftControls,
   desktopRightControls,
   selectedItemsBar,
@@ -46,6 +48,7 @@ export function SharedDataTableLayout({
         setSearchQuery={onSearchChange}
         mobileLeftControls={mobileLeftControls}
         mobileRightControls={mobileRightControls}
+        mobileToolbarClassName={mobileToolbarClassName}
         desktopLeftControls={desktopLeftControls}
         desktopRightControls={desktopRightControls}
       />

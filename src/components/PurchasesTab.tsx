@@ -1000,7 +1000,7 @@ export default function PurchasesTab({
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 md:gap-6 items-start">
         
         {/* Left Side: Expense Categories Sidebar Layout */}
-        <div className="xl:col-span-1 space-y-2 md:space-y-4">
+        <div className="purchase-categories-sticky xl:col-span-1 space-y-2 md:space-y-4">
           <div className={`bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
             <div className="flex items-center justify-between">
               <h3 className={`${isMobileCategoriesCollapsed ? 'text-[11px]' : 'text-xs'} font-sans font-bold text-white uppercase tracking-wider flex items-center`}>
@@ -1471,7 +1471,7 @@ export default function PurchasesTab({
             </div>
           )}
 
-          <div className="hidden md:flex bg-[#121212] border border-[#262626] rounded-md px-2 py-2 md:px-3 md:py-2.5 font-sans text-xs items-center justify-between gap-3">
+          <div className="purchase-summary-sticky hidden md:flex bg-[#121212] border border-[#262626] rounded-md px-2 py-2 md:px-3 md:py-2.5 font-sans text-xs items-center justify-between gap-3">
             <div className="text-gray-300 min-w-0">
               <div className="text-white font-bold truncate">Total expenses</div>
             </div>
@@ -1483,7 +1483,7 @@ export default function PurchasesTab({
             </div>
           </div>
 
-          <div className="md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
+          <div className="app-mobile-sticky-toolbar md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
             <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
               <AnimatePresence initial={false}>
                 {!(isSearchExpanded || searchQuery) ? (
@@ -1569,7 +1569,7 @@ export default function PurchasesTab({
             )}
           </div>
 
-          <div className="app-sticky-toolbar hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
+          <div className="app-sticky-toolbar purchase-toolbar-sticky hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
             <div className="flex items-center text-gray-400 font-medium gap-2"></div>
             <div className="flex items-center gap-1.5 shrink-0">
               <div ref={searchWrapperRef} className="flex items-center">

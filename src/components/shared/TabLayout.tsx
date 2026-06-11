@@ -15,6 +15,7 @@ export function TableToolbar({
   setSearchQuery,
   mobileLeftControls,
   mobileRightControls,
+  mobileToolbarClassName = "",
   desktopLeftControls,
   desktopRightControls,
 }: {
@@ -22,6 +23,7 @@ export function TableToolbar({
   setSearchQuery: (val: string) => void;
   mobileLeftControls?: ReactNode;
   mobileRightControls?: ReactNode;
+  mobileToolbarClassName?: string;
   desktopLeftControls?: ReactNode;
   desktopRightControls?: ReactNode;
 }) {
@@ -76,7 +78,7 @@ export function TableToolbar({
   return (
     <>
       {/* Mobile-only Notion Toolbar Control Row */}
-      <div className="md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full h-8">
+      <div className={`app-mobile-sticky-toolbar md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full h-8 ${mobileToolbarClassName}`}>
         {/* Left Side */}
         <div className="flex bg-transparent shrink-0 gap-0.5">
           {mobileLeftControls}

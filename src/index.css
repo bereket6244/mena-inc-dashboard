@@ -855,6 +855,11 @@ input:focus, select:focus, textarea:focus {
   box-shadow: none !important;
   outline: none !important;
 }
+.light-theme .no-focus-outline:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 
 /* Scrollbar Hider Utility for Mobile Horizontal Scrolling items */
 .scrollbar-none-x::-webkit-scrollbar {
@@ -874,6 +879,7 @@ input:focus, select:focus, textarea:focus {
 :root {
   --app-sticky-tabs-top: calc(env(safe-area-inset-top) + 3.55rem);
   --app-sticky-tabs-height: 2.25rem;
+  --purchase-summary-height: 3.7rem;
   --app-sticky-bg: #0f0d0c;
   --app-sticky-border: #332e29;
   --app-sticky-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
@@ -896,6 +902,42 @@ input:focus, select:focus, textarea:focus {
     z-index: 32;
     background-color: var(--app-sticky-bg) !important;
     border-color: var(--app-sticky-border) !important;
+    box-shadow: var(--app-sticky-shadow);
+    isolation: isolate;
+  }
+
+  .purchase-categories-sticky {
+    position: sticky;
+    top: calc(var(--app-sticky-tabs-top) + var(--app-sticky-tabs-height));
+    z-index: 28;
+    align-self: start;
+  }
+
+  .purchase-summary-sticky {
+    position: sticky !important;
+    top: calc(var(--app-sticky-tabs-top) + var(--app-sticky-tabs-height));
+    z-index: 33;
+    min-height: var(--purchase-summary-height);
+    background-color: var(--app-sticky-bg) !important;
+    border-color: var(--app-sticky-border) !important;
+    box-shadow: var(--app-sticky-shadow);
+  }
+
+  .purchase-toolbar-sticky {
+    top: calc(var(--app-sticky-tabs-top) + var(--app-sticky-tabs-height) + var(--purchase-summary-height)) !important;
+    z-index: 32;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-mobile-sticky-toolbar,
+  .customer-mobile-sticky-toolbar {
+    position: sticky !important;
+    top: calc(env(safe-area-inset-top) + 2.75rem);
+    z-index: 32;
+    min-height: 2rem;
+    background-color: var(--app-sticky-bg) !important;
+    border-bottom: 1px solid var(--app-sticky-border) !important;
     box-shadow: var(--app-sticky-shadow);
     isolation: isolate;
   }

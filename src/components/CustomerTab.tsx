@@ -2003,6 +2003,7 @@ export default function CustomerTab({
       id="customers-tab-pnl"
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        mobileToolbarClassName="customer-mobile-sticky-toolbar"
         mobileLeftControls={
           <>
             <button
