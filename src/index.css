@@ -1105,8 +1105,8 @@ button[title="Search categories"] {
     max-height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
     min-height: 18rem;
     overflow-y: auto !important;
-    overflow-x: hidden !important;
-    touch-action: pan-y;
+    overflow-x: auto !important;
+    touch-action: none;
   }
 
   .freeze-pane-table thead th {
