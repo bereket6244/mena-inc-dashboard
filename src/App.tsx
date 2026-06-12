@@ -324,6 +324,111 @@ export default function App() {
     return () => document.removeEventListener('pointerdown', handlePointerDown, true);
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    type LockedAxis = 'x' | 'y';
+    type TableScrollGesture = {
+      scroller: HTMLElement;
+      startX: number;
+      startY: number;
+      startScrollLeft: number;
+      startScrollTop: number;
+      axis: LockedAxis | null;
+      releaseTimer: number | null;
+    };
+
+    let gesture: TableScrollGesture | null = null;
+    const mobileQuery = window.matchMedia('(max-width: 767px)');
+    const lockThreshold = 8;
+
+    const getTableScroller = (target: EventTarget | null) => {
+      if (!mobileQuery.matches || !(target instanceof Element)) return null;
+      return target.closest<HTMLElement>('.data-table-scroll');
+    };
+
+    const clampCrossAxis = () => {
+      if (!gesture || !gesture.axis) return;
+
+      if (gesture.axis === 'x') {
+        gesture.scroller.scrollTop = gesture.startScrollTop;
+      } else {
+        gesture.scroller.scrollLeft = gesture.startScrollLeft;
+      }
+    };
+
+    const clearReleaseTimer = () => {
+      if (gesture?.releaseTimer) {
+        window.clearTimeout(gesture.releaseTimer);
+        gesture.releaseTimer = null;
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType && event.pointerType !== 'touch') return;
+
+      const scroller = getTableScroller(event.target);
+      if (!scroller) return;
+
+      clearReleaseTimer();
+      gesture = {
+        scroller,
+        startX: event.clientX,
+        startY: event.clientY,
+        startScrollLeft: scroller.scrollLeft,
+        startScrollTop: scroller.scrollTop,
+        axis: null,
+        releaseTimer: null
+      };
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!gesture) return;
+
+      const deltaX = event.clientX - gesture.startX;
+      const deltaY = event.clientY - gesture.startY;
+
+      if (!gesture.axis && Math.hypot(deltaX, deltaY) >= lockThreshold) {
+        gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+        gesture.scroller.classList.toggle('table-axis-lock-x', gesture.axis === 'x');
+        gesture.scroller.classList.toggle('table-axis-lock-y', gesture.axis === 'y');
+      }
+
+      clampCrossAxis();
+    };
+
+    const handleScroll = (event: Event) => {
+      if (!gesture || event.target !== gesture.scroller) return;
+      window.requestAnimationFrame(clampCrossAxis);
+    };
+
+    const handlePointerEnd = () => {
+      if (!gesture) return;
+
+      const finishedGesture = gesture;
+      finishedGesture.releaseTimer = window.setTimeout(() => {
+        finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
+        if (gesture === finishedGesture) {
+          gesture = null;
+        }
+      }, 350);
+      clampCrossAxis();
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('pointermove', handlePointerMove, true);
+    document.addEventListener('pointerup', handlePointerEnd, true);
+    document.addEventListener('pointercancel', handlePointerEnd, true);
+    document.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      clearReleaseTimer();
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('pointermove', handlePointerMove, true);
+      document.removeEventListener('pointerup', handlePointerEnd, true);
+      document.removeEventListener('pointercancel', handlePointerEnd, true);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, []);
+
   const handleCreateStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffName.trim() || !newStaffUser.trim() || !newStaffPass.trim()) {
