@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Retrieve credentials from Vite environment variables first, falling back to the hardcoded defaults
-const metaEnv = (import.meta as any).env || {};
-const supabaseUrl = metaEnv.VITE_SUPABASE_URL || 'https://kfscegrozkxvuacgihtc.supabase.co';
-const supabaseAnonKey = metaEnv.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtmc2NlZ3Jvemt4dnVhY2dpaHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMzk2OTcsImV4cCI6MjA5NjgxNTY5N30.YSsvt9aYhK5PWgpwAlxfwjYDoaEIc1zDoL409x3fkBk';
+const supabaseUrl = 'https://kfscegrozkxvuacgihtc.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtmc2NlZ3Jvemt4dnVhY2dpaHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMzk2OTcsImV4cCI6MjA5NjgxNTY5N30.YSsvt9aYhK5PWgpwAlxfwjYDoaEIc1zDoL409x3fkBk';
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey && !supabaseAnonKey.startsWith('sb_publishable'));
 
