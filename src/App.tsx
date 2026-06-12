@@ -166,8 +166,8 @@ export default function App() {
     return null;
   });
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [tempDbUrl, setTempDbUrl] = useState('https://kfscegrozkxvuacgihtc.supabase.co');
-  const [tempDbKey, setTempDbKey] = useState('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtmc2NlZ3Jvemt4dnVhY2dpaHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMzk2OTcsImV4cCI6MjA5NjgxNTY5N30.YSsvt9aYhK5PWgpwAlxfwjYDoaEIc1zDoL409x3fkBk');
+  const [tempDbUrl, setTempDbUrl] = useState(() => (import.meta as any).env?.VITE_SUPABASE_URL || '');
+  const [tempDbKey, setTempDbKey] = useState(() => (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '');
   const [installGuideTab, setInstallGuideTab] = useState<'ios' | 'android'>('android');
   const [dbValidationError, setDbValidationError] = useState<string | null>(null);
 
@@ -191,73 +191,6 @@ export default function App() {
     } else {
       setInstallGuideTab('android');
     }
-  }, []);
-
-  useEffect(() => {
-    let activeScroller: HTMLElement | null = null;
-    let startX = 0;
-    let startY = 0;
-    let startScrollLeft = 0;
-    let startScrollTop = 0;
-    let axisLock: 'x' | 'y' | null = null;
-
-    const isMobileTableTarget = (target: EventTarget | null) => {
-      if (!target || !(target instanceof Element) || !window.matchMedia('(max-width: 767px)').matches) {
-        return null;
-      }
-      return target.closest('.data-table-scroll') as HTMLElement | null;
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      const scroller = isMobileTableTarget(event.target);
-      if (!scroller || event.touches.length !== 1) return;
-      const touch = event.touches[0];
-      activeScroller = scroller;
-      startX = touch.clientX;
-      startY = touch.clientY;
-      startScrollLeft = scroller.scrollLeft;
-      startScrollTop = scroller.scrollTop;
-      axisLock = null;
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (!activeScroller || event.touches.length !== 1) return;
-      const touch = event.touches[0];
-      const deltaX = touch.clientX - startX;
-      const deltaY = touch.clientY - startY;
-
-      if (!axisLock && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 6) {
-        axisLock = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
-      }
-
-      if (!axisLock) return;
-      event.preventDefault();
-
-      if (axisLock === 'x') {
-        activeScroller.scrollLeft = startScrollLeft - deltaX;
-        activeScroller.scrollTop = startScrollTop;
-      } else {
-        activeScroller.scrollTop = startScrollTop - deltaY;
-        activeScroller.scrollLeft = startScrollLeft;
-      }
-    };
-
-    const clearLock = () => {
-      activeScroller = null;
-      axisLock = null;
-    };
-
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', clearLock);
-    document.addEventListener('touchcancel', clearLock);
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', clearLock);
-      document.removeEventListener('touchcancel', clearLock);
-    };
   }, []);
 
   // Internet connectivity monitoring (Telegram-style indicator)
