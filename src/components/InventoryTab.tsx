@@ -310,6 +310,7 @@ export default function InventoryTab({
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       tablePreferenceKey="ui.inventory.table"
+      tableClassName="wide-freeze-three-cols"
       mobileRightControls={
         <button
           type="button"

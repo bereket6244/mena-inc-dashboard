@@ -19,6 +19,7 @@ interface SharedDataTableLayoutProps {
   cardsView?: ReactNode;
   children?: ReactNode;
   tablePreferenceKey?: string;
+  tableClassName?: string;
 }
 
 export function SharedDataTableLayout({
@@ -38,8 +39,9 @@ export function SharedDataTableLayout({
   layoutMode = 'grid',
   cardsView,
   children,
+  tableClassName = '',
 }: SharedDataTableLayoutProps) {
-  const tableStateClasses = 'alternating-table-rows';
+  const tableStateClasses = `alternating-table-rows ${tableClassName}`.trim();
 
   return (
     <PageLayout id={id}>

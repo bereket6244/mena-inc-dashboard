@@ -186,7 +186,9 @@ export default function PurchasesTab({
 
   // Autocomplete Suggestions State
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const suggestionRef = useRef<HTMLDivElement>(null);
+  const suggestionOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   // Batch purchase creation state
   interface PendingPurchaseItem {
@@ -211,6 +213,9 @@ export default function PurchasesTab({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [activeCategoryIdForNewItem, setActiveCategoryIdForNewItem] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState('');
+  const [editingCategoryItem, setEditingCategoryItem] = useState<{ catId: string; item: string } | null>(null);
+  const [editCategoryItemValue, setEditCategoryItemValue] = useState('');
+  const [deletingCategoryItem, setDeletingCategoryItem] = useState<{ catId: string; categoryName: string; item: string } | null>(null);
 
   // Category inline editing states (Make categories editable)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -387,6 +392,18 @@ export default function PurchasesTab({
     item => item.name.toLowerCase() === itemOrServiceInput.trim().toLowerCase()
   )?.categoryName;
   const displayedItemCategory = matchedItemCategoryName || expenseCategory;
+  const showCreateSuggestion = itemOrServiceInput.trim() !== '' && !hasExactSuggestionMatch;
+  const suggestionOptionCount = filteredSuggestions.length + (showCreateSuggestion ? 1 : 0);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(0);
+    suggestionOptionRefs.current = [];
+  }, [itemOrServiceInput, showSuggestions]);
+
+  useEffect(() => {
+    if (!showSuggestions) return;
+    suggestionOptionRefs.current[activeSuggestionIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [activeSuggestionIndex, showSuggestions]);
 
   const handleSuggestionClick = (itemName: string, categoryName: string) => {
     setItemOrServiceInput(itemName);
@@ -404,6 +421,19 @@ export default function PurchasesTab({
     );
     if (exactMatch) {
       setExpenseCategory(exactMatch.categoryName);
+    }
+  };
+
+  const selectActiveSuggestion = () => {
+    if (activeSuggestionIndex < filteredSuggestions.length) {
+      const topSuggestion = filteredSuggestions[activeSuggestionIndex];
+      if (topSuggestion) {
+        handleSuggestionClick(topSuggestion.name, topSuggestion.categoryName);
+      }
+      return;
+    }
+    if (showCreateSuggestion) {
+      handleTriggerAddNewItemFlow();
     }
   };
 
@@ -716,6 +746,55 @@ export default function PurchasesTab({
     setActiveCategoryIdForNewItem(null);
   };
 
+  const handleStartRenameCategoryItem = (catId: string, item: string) => {
+    setEditingCategoryItem({ catId, item });
+    setEditCategoryItemValue(item);
+  };
+
+  const handleRenameCategoryItem = (catId: string, oldItem: string) => {
+    const trimmed = editCategoryItemValue.trim();
+    if (!trimmed) return;
+
+    const targetCat = categories.find(c => c.id === catId);
+    if (!targetCat) return;
+
+    if (
+      oldItem.toLowerCase() !== trimmed.toLowerCase() &&
+      targetCat.items.some(item => item.toLowerCase() === trimmed.toLowerCase())
+    ) {
+      showWarning(`Item "${trimmed}" already exists in ${targetCat.name}.`);
+      return;
+    }
+
+    onUpdateCategories(categories.map(cat =>
+      cat.id === catId
+        ? { ...cat, items: cat.items.map(item => item === oldItem ? trimmed : item) }
+        : cat
+    ));
+
+    onUpdatePurchases(purchases.map(p =>
+      p.expenseCategory === targetCat.name && p.itemOrService === oldItem
+        ? { ...p, itemOrService: trimmed }
+        : p
+    ));
+
+    setEditingCategoryItem(null);
+    setEditCategoryItemValue('');
+  };
+
+  const handleConfirmDeleteCategoryItem = (catId: string, itemToDelete: string) => {
+    onUpdateCategories(categories.map(cat =>
+      cat.id === catId
+        ? { ...cat, items: cat.items.filter(item => item !== itemToDelete) }
+        : cat
+    ));
+    if (editingCategoryItem?.catId === catId && editingCategoryItem.item === itemToDelete) {
+      setEditingCategoryItem(null);
+      setEditCategoryItemValue('');
+    }
+    setDeletingCategoryItem(null);
+  };
+
   // Trigger add item setup from suggestions
   const handleTriggerAddNewItemFlow = () => {
     if (!itemOrServiceInput.trim()) return;
@@ -908,7 +987,10 @@ export default function PurchasesTab({
     : categories;
 
   return (
-    <div className="space-y-2 md:space-y-6 animate-fadeIn" id="purchases-tab-pnl">
+    <div
+      className={`purchase-mobile-fixed-stack space-y-2 md:space-y-6 animate-fadeIn ${!isMobileCategoriesCollapsed ? 'expense-categories-expanded' : ''}`}
+      id="purchases-tab-pnl"
+    >
       <div className="md:hidden hidden items-center justify-between gap-1.5 pt-1 relative w-full h-8">
         <div className="flex bg-transparent shrink-0 gap-0.5" />
         <div className="flex items-center gap-1 justify-end flex-1">
@@ -988,7 +1070,7 @@ export default function PurchasesTab({
         </div>
       </div>
       
-      <div className="md:hidden bg-[#121212] border border-[#262626] rounded-md px-2 py-2 font-sans text-xs flex items-center justify-between gap-3">
+      <div className="purchase-mobile-summary-sticky md:hidden bg-[#121212] border border-[#262626] rounded-md px-2 py-2 font-sans text-xs flex items-center justify-between gap-3">
         <div className="text-gray-300 min-w-0">
           <div className="text-white font-bold truncate">Total expenses</div>
         </div>
@@ -1001,8 +1083,8 @@ export default function PurchasesTab({
         
         {/* Left Side: Expense Categories Sidebar Layout */}
         <div className="purchase-categories-sticky xl:col-span-1 space-y-2 md:space-y-4">
-          <div className={`bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
-            <div className="flex items-center justify-between">
+          <div className={`expense-category-panel bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
+            <div className="purchase-mobile-category-control-sticky flex items-center justify-between">
               <h3 className={`${isMobileCategoriesCollapsed ? 'text-[11px]' : 'text-xs'} font-sans font-bold text-white uppercase tracking-wider flex items-center`}>
                 Expense Categories
               </h3>
@@ -1231,13 +1313,72 @@ export default function PurchasesTab({
                     ) : (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {cat.items.map((item, i) => (
-                          <span 
-                            key={i} 
-                            className="text-[9px] bg-stone-200 dark:bg-[#222222] border border-stone-300 dark:border-[#2d2d2d] text-stone-800 dark:text-stone-300 font-sans px-2 py-0.5"
-                            title="Ready for auto-fill in purchase entry"
-                          >
-                            {item}
-                          </span>
+                          editingCategoryItem?.catId === cat.id && editingCategoryItem.item === item ? (
+                            <span
+                              key={`${item}-${i}-edit`}
+                              className="expense-category-item-chip inline-flex items-center gap-1 px-1 py-0.5"
+                            >
+                              <input
+                                value={editCategoryItemValue}
+                                onChange={(e) => setEditCategoryItemValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleRenameCategoryItem(cat.id, item);
+                                  }
+                                  if (e.key === 'Escape') {
+                                    setEditingCategoryItem(null);
+                                    setEditCategoryItemValue('');
+                                  }
+                                }}
+                                className="expense-category-item-edit-input w-24 bg-transparent text-[9px] text-stone-100 placeholder:text-stone-400 outline-none"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRenameCategoryItem(cat.id, item)}
+                                className="text-[#71b536] hover:text-[#5fa22e]"
+                                title="Save item"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCategoryItem(null);
+                                  setEditCategoryItemValue('');
+                                }}
+                                className="text-rose-500 hover:text-rose-400"
+                                title="Cancel"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ) : (
+                            <span 
+                              key={`${item}-${i}`} 
+                              className="expense-category-item-chip inline-flex items-center gap-1 text-[9px] font-sans pl-2 pr-1 py-0.5"
+                              title="Ready for auto-fill in purchase entry"
+                            >
+                              <span className="max-w-[120px] truncate">{item}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleStartRenameCategoryItem(cat.id, item)}
+                                className="p-0.5 text-stone-500 hover:text-[#ee317b] dark:text-stone-400"
+                                title={`Rename ${item}`}
+                              >
+                                <Edit3 className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingCategoryItem({ catId: cat.id, categoryName: cat.name, item })}
+                                className="p-0.5 text-stone-500 hover:!text-red-600 dark:text-stone-400 dark:hover:!text-red-400 transition-colors"
+                                title={`Delete ${item}`}
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </span>
+                          )
                         ))}
                       </div>
                     )}
@@ -1483,8 +1624,8 @@ export default function PurchasesTab({
             </div>
           </div>
 
-          <div className="app-mobile-sticky-toolbar md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
-            <div ref={mobileSearchWrapperRef} className="relative flex items-center h-7 select-none">
+          <div className="app-mobile-sticky-toolbar purchase-mobile-toolbar-sticky md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
+            <div ref={mobileSearchWrapperRef} className="relative flex min-w-0 items-center h-8 select-none">
               <AnimatePresence initial={false}>
                 {!(isSearchExpanded || searchQuery) ? (
                   <motion.button
@@ -1495,7 +1636,7 @@ export default function PurchasesTab({
                     transition={{ duration: 0.1 }}
                     type="button"
                     onClick={() => setIsSearchExpanded(true)}
-                    className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                    className="purchase-mobile-icon-button"
                     title="Search database"
                   >
                     <Search className="w-3.5 h-3.5" />
@@ -1504,12 +1645,12 @@ export default function PurchasesTab({
                   <motion.div
                     key="search-input-wrapper"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 280, opacity: 1 }}
+                    animate={{ width: 260, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                    className="relative flex items-center bg-transparent overflow-hidden"
+                    className="purchase-mobile-search-field relative flex items-center overflow-hidden rounded-md border border-[#262626] bg-[#121212] px-1.5"
                   >
-                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <div className="flex items-center justify-center w-6 h-7 text-gray-400 mr-1 flex-shrink-0">
                       <Search className="h-3.5 w-3.5" />
                     </div>
                     <input
@@ -1545,7 +1686,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setShowMobileFilters(true)}
-                  className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
+                  className="purchase-mobile-icon-button relative"
                   title="Refine ledger"
                 >
                   <Filter className="w-3.5 h-3.5" />
@@ -1558,7 +1699,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={handleRecordedOrderSort}
-                  className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                  className={`purchase-mobile-icon-button ${
                     sortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
                   }`}
                   title="Recorded order"
@@ -1780,10 +1921,10 @@ export default function PurchasesTab({
 
           {/* Table Spreadsheet View */}
           <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
-            <div className="overflow-x-auto relative">
+            <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
               <table
                 ref={purchaseTableRef}
-                className="w-full text-left border-collapse font-sans text-xs min-w-[900px] alternating-table-rows"
+                className="freeze-pane-table w-full text-left border-collapse font-sans text-xs min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"
                 onDragStart={(event) => {
                   const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
                   purchaseDraggedColumnRef.current = header?.cellIndex ?? null;
@@ -1827,6 +1968,7 @@ export default function PurchasesTab({
                       />
                     </th>
                     <SortablePurchaseHeader field="itemOrService">Item / Service</SortablePurchaseHeader>
+                    <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left min-w-[180px]">Item Notes</th>
                     <SortablePurchaseHeader field="expenseCategory">Category</SortablePurchaseHeader>
                     <SortablePurchaseHeader field="quantity" align="right">Qty</SortablePurchaseHeader>
                     <SortablePurchaseHeader field="unitPrice" align="right">Unit P. (ETB)</SortablePurchaseHeader>
@@ -1840,7 +1982,7 @@ export default function PurchasesTab({
                 <tbody className="divide-y divide-[#262626] text-gray-300 font-sans text-xs">
                   {sortedPurchases.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-gray-500 font-sans leading-relaxed italic">
+                      <td colSpan={12} className="py-12 text-center text-gray-500 font-sans leading-relaxed italic">
                         No purchase logs recorded in current settings. Use the Add button to record ledger data.
                       </td>
                     </tr>
@@ -1890,6 +2032,13 @@ export default function PurchasesTab({
                                 )}
                               </div>
                             </div>
+                          </td>
+
+                          {/* Item notes / vendor metadata */}
+                          <td className="py-2 px-3 border-r border-[#262626] text-gray-400 max-w-[220px]">
+                            <span className="block truncate" title={p.notesOrDescription || 'No notes'}>
+                              {p.notesOrDescription || 'None'}
+                            </span>
                           </td>
 
                           {/* Category */}
@@ -2044,6 +2193,46 @@ export default function PurchasesTab({
         )}
       </AnimatePresence>
 
+      {/* Confirmation modal for deleting a category item template */}
+      <AnimatePresence>
+        {deletingCategoryItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
+            >
+              <div className="space-y-2">
+                <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Remove Category Item</h3>
+                <p className="text-stone-400 text-xs leading-relaxed font-sans">
+                  Are you sure you want to delete <strong className="text-white">"{deletingCategoryItem.item}"</strong> from <strong className="text-white">"{deletingCategoryItem.categoryName}"</strong>?
+                </p>
+                <p className="text-stone-500 text-[11px] leading-relaxed font-sans">
+                  This only removes the item from the expense category template. Existing purchase ledger rows will stay unchanged.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
+                <button
+                  type="button"
+                  onClick={() => setDeletingCategoryItem(null)}
+                  className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmDeleteCategoryItem(deletingCategoryItem.catId, deletingCategoryItem.item)}
+                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Non-blocking custom delete modal for Expense Category */}
       <AnimatePresence>
         {deletingCategory && (() => {
@@ -2136,7 +2325,7 @@ export default function PurchasesTab({
                <div className="flex-1 p-6 space-y-5 overflow-y-auto overscroll-contain">
                 
                 {/* BATCH CORE DETAILS (Date, Charger bank, Operator, logger) */}
-                <div className="bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-md">
+                <div className="purchase-batch-config-card bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-md">
                     <span className="text-[10px] font-sans font-extrabold text-[#71b536] uppercase tracking-widest block border-b border-stone-250 dark:border-[#222222] pb-1.5">
                       Step 1: Batch Configuration Details
                     </span>
@@ -2158,7 +2347,7 @@ export default function PurchasesTab({
                         <SearchableSelect
                           value={paymentMethodId}
                           onChange={(e) => setPaymentMethodId(e.target.value)}
-                          className={`${purchaseFormInputClass} cursor-pointer`}
+                          className={`${purchaseFormInputClass} purchase-ledger-bank-select cursor-pointer`}
                           inputClassName="text-center pl-7"
                           placeholder="Select bank/cash..."
                         >
@@ -2207,11 +2396,33 @@ export default function PurchasesTab({
                         onChange={(e) => handleItemInputChange(e.target.value)}
                         onFocus={() => setShowSuggestions(true)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            if (showSuggestions && filteredSuggestions.length > 0) {
+                          if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            if (!showSuggestions) {
+                              setShowSuggestions(true);
+                              return;
+                            }
+                            if (suggestionOptionCount > 0) {
+                              setActiveSuggestionIndex(prev => (prev + 1) % suggestionOptionCount);
+                            }
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            if (!showSuggestions) {
+                              setShowSuggestions(true);
+                              return;
+                            }
+                            if (suggestionOptionCount > 0) {
+                              setActiveSuggestionIndex(prev => (prev - 1 + suggestionOptionCount) % suggestionOptionCount);
+                            }
+                          } else if (e.key === 'Enter') {
+                            if (showSuggestions && suggestionOptionCount > 0) {
                               e.preventDefault();
-                              const topSuggestion = filteredSuggestions[0];
-                              handleSuggestionClick(topSuggestion.name, topSuggestion.categoryName);
+                              selectActiveSuggestion();
+                            }
+                          } else if (e.key === 'Escape') {
+                            if (showSuggestions) {
+                              e.preventDefault();
+                              setShowSuggestions(false);
                             }
                           }
                         }}
@@ -2224,7 +2435,7 @@ export default function PurchasesTab({
 
                       {/* Suggestions Floating Popup Dropdown container */}
                       <AnimatePresence>
-                        {showSuggestions && (filteredSuggestions.length > 0 || (itemOrServiceInput.trim() !== '' && !hasExactSuggestionMatch)) && (
+                        {showSuggestions && (filteredSuggestions.length > 0 || showCreateSuggestion) && (
                           <motion.div 
                             ref={suggestionRef}
                             initial={{ opacity: 0, y: -5 }}
@@ -2235,8 +2446,9 @@ export default function PurchasesTab({
                             {filteredSuggestions.map((sug, idx) => (
                               <div
                                 key={idx}
+                                ref={(node) => { suggestionOptionRefs.current[idx] = node; }}
                                 onClick={() => handleSuggestionClick(sug.name, sug.categoryName)}
-                                className="px-3 py-2 text-xs text-stone-850 dark:text-stone-250 hover:bg-[#ee317b]/10 hover:text-[#ee317b] dark:hover:text-white flex items-center justify-between font-sans font-medium"
+                                className={`px-3 py-2 text-xs text-stone-850 dark:text-stone-250 hover:bg-[#ee317b]/10 hover:text-[#ee317b] dark:hover:text-white flex items-center justify-between font-sans font-medium ${activeSuggestionIndex === idx ? 'bg-[#ee317b]/10 text-[#ee317b] dark:text-white' : ''}`}
                               >
                                 <span>{sug.name}</span>
                                 <span className="text-[9px] text-[#ee317b] bg-[#ee317b]/10 dark:bg-[#31111E] px-1.5 py-0.5 border border-[#ee317b]/20 lowercase">
@@ -2245,10 +2457,11 @@ export default function PurchasesTab({
                               </div>
                             ))}
 
-                            {itemOrServiceInput.trim() !== '' && !hasExactSuggestionMatch && (
+                            {showCreateSuggestion && (
                               <div
+                                ref={(node) => { suggestionOptionRefs.current[filteredSuggestions.length] = node; }}
                                 onClick={handleTriggerAddNewItemFlow}
-                                className="px-3 py-2.5 bg-[#ee317b]/5 hover:bg-[#ee317b]/10 dark:bg-[#ee317b]/10 dark:hover:bg-[#ee317b]/20 text-stone-950 dark:text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-stone-200 dark:border-[#2d2d2d]"
+                                className={`px-3 py-2.5 bg-[#ee317b]/5 hover:bg-[#ee317b]/10 dark:bg-[#ee317b]/10 dark:hover:bg-[#ee317b]/20 text-stone-950 dark:text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-stone-200 dark:border-[#2d2d2d] ${activeSuggestionIndex === filteredSuggestions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
                               >
                                 <div className="flex items-center gap-1.5">
                                   <PlusCircle className="w-4 h-4 text-[#ee317b]" />
@@ -2390,8 +2603,8 @@ export default function PurchasesTab({
                       </div>
 
                       {/* Small Grid pending items spreadsheet */}
-                      <div className="overflow-x-auto border border-[#222222] text-[11px] font-sans bg-[#101010]">
-                        <table className="w-full text-left border-collapse">
+                      <div className="data-table-scroll overflow-auto border border-[#222222] text-[11px] font-sans bg-[#101010]">
+                        <table className="freeze-pane-table w-full text-left border-collapse">
                           <thead>
                             <tr className="bg-[#181818] text-gray-500 uppercase text-[9px] border-b border-[#222222]">
                               <th className="p-2">Item Product</th>

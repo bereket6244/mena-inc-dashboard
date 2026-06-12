@@ -260,10 +260,10 @@ export function DataTable({
   };
 
   return (
-    <div className="data-table-scroll overflow-x-auto scrollbar-none-x relative">
+    <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
       <table
         ref={tableRef}
-        className={`w-full text-left border-collapse font-sans text-xs ${className}`}
+        className={`freeze-pane-table w-full text-left border-collapse font-sans text-xs ${className}`}
         onDragStart={(event) => {
           const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
           draggedColumnRef.current = header?.cellIndex ?? null;

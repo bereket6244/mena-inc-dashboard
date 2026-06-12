@@ -954,8 +954,8 @@ export default function PerformanceTab({
           </div>
 
           {/* Simple Leaderboard Table */}
-          <div className="overflow-hidden border border-[#262626] rounded-md">
-            <table className="w-full text-left text-xs font-sans border-collapse">
+          <div className="data-table-scroll overflow-auto border border-[#262626] rounded-md">
+            <table className="freeze-pane-table w-full text-left text-xs font-sans border-collapse">
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Staff Member</th>
@@ -1035,8 +1035,8 @@ export default function PerformanceTab({
           </div>
 
           {/* Simple Marketing Channel Table */}
-          <div className="overflow-hidden border border-[#262626] rounded-md">
-            <table className="w-full text-left text-xs font-sans border-collapse">
+          <div className="data-table-scroll overflow-auto border border-[#262626] rounded-md">
+            <table className="freeze-pane-table w-full text-left text-xs font-sans border-collapse">
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Lead Channel</th>

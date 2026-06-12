@@ -2309,7 +2309,7 @@ export default function CustomerTab({
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
       <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
         <DataTable
-          className="customer-ledger-table alternating-table-rows"
+          className="customer-ledger-table alternating-table-rows wide-freeze-three-cols"
         >
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">

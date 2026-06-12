@@ -32,10 +32,12 @@ export default function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const [activeIndex, setActiveIndex] = useState(0);
   
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   // Parse children into options array
   const options: { value: string; label: string; statusClass?: string; amountText?: string }[] = [];
@@ -144,6 +146,28 @@ export default function SearchableSelect({
   const trimmedSearchTerm = searchTerm.trim();
   const hasExactMatch = options.some(opt => opt.label.toLowerCase() === trimmedSearchTerm.toLowerCase());
   const showCreateOption = Boolean(onCreateOption && trimmedSearchTerm && !hasExactMatch);
+  const optionCount = filteredOptions.length + (showCreateOption ? 1 : 0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    optionRefs.current = [];
+  }, [searchTerm, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, isOpen]);
+
+  const selectOptionAtIndex = (index: number) => {
+    if (index < filteredOptions.length) {
+      const opt = filteredOptions[index];
+      if (!opt) return;
+      onChange({ target: { value: opt.value } });
+    } else if (showCreateOption) {
+      onCreateOption?.(trimmedSearchTerm);
+    }
+    setIsOpen(false);
+  };
 
   return (
     <div className={`relative font-sans ${className}`} ref={wrapperRef}>
@@ -169,6 +193,38 @@ export default function SearchableSelect({
             setSearchTerm(e.target.value);
           }}
           onFocus={() => { if (!disabled) setIsOpen(true); }}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!isOpen) {
+                setIsOpen(true);
+                return;
+              }
+              if (optionCount > 0) {
+                setActiveIndex(prev => (prev + 1) % optionCount);
+              }
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!isOpen) {
+                setIsOpen(true);
+                return;
+              }
+              if (optionCount > 0) {
+                setActiveIndex(prev => (prev - 1 + optionCount) % optionCount);
+              }
+            } else if (e.key === 'Enter') {
+              if (isOpen && optionCount > 0) {
+                e.preventDefault();
+                selectOptionAtIndex(activeIndex);
+              }
+            } else if (e.key === 'Escape') {
+              if (isOpen) {
+                e.preventDefault();
+                setIsOpen(false);
+              }
+            }
+          }}
         />
         <div 
           className={`absolute right-0 top-0 h-full w-8 flex items-center justify-center ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
@@ -198,12 +254,15 @@ export default function SearchableSelect({
                 {filteredOptions.map((opt, index) => (
                   <div
                     key={`${opt.value}-${index}`}
+                    ref={(node) => { optionRefs.current[index] = node; }}
                     onClick={() => {
                       onChange({ target: { value: opt.value } });
                       setIsOpen(false);
                     }}
                     className={`px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
-                      ${opt.value === value 
+                      ${index === activeIndex
+                        ? 'bg-[#262626] text-white'
+                        : opt.value === value 
                         ? 'bg-[#ee317b]/10 border-l-2 border-[#ee317b] font-bold' 
                         : 'hover:bg-[#262626] border-l-2 border-transparent'
                       } ${opt.statusClass ? opt.statusClass : (opt.value === value ? 'text-[#ee317b]' : 'text-gray-300')}
@@ -216,11 +275,12 @@ export default function SearchableSelect({
 
                 {showCreateOption && (
                   <div
+                    ref={(node) => { optionRefs.current[filteredOptions.length] = node; }}
                     onClick={() => {
                       onCreateOption?.(trimmedSearchTerm);
                       setIsOpen(false);
                     }}
-                    className="px-3 py-2.5 bg-[#ee317b]/10 hover:bg-[#ee317b]/20 text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626]"
+                    className={`px-3 py-2.5 bg-[#ee317b]/10 hover:bg-[#ee317b]/20 text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626] ${activeIndex === filteredOptions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <PlusCircle className="w-4 h-4 text-[#ee317b] shrink-0" />
