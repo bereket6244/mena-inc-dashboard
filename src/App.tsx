@@ -332,8 +332,11 @@ export default function App() {
       startY: number;
       startScrollLeft: number;
       startScrollTop: number;
+      lastScroll: number;
+      lastTime: number;
+      velocity: number;
       axis: LockedAxis | null;
-      releaseTimer: number | null;
+      momentumFrame: number | null;
     };
 
     let gesture: TableScrollGesture | null = null;
@@ -345,87 +348,128 @@ export default function App() {
       return target.closest<HTMLElement>('.data-table-scroll');
     };
 
-    const clampCrossAxis = () => {
-      if (!gesture || !gesture.axis) return;
-
-      if (gesture.axis === 'x') {
-        gesture.scroller.scrollTop = gesture.startScrollTop;
-      } else {
-        gesture.scroller.scrollLeft = gesture.startScrollLeft;
+    const stopMomentum = () => {
+      if (gesture?.momentumFrame) {
+        window.cancelAnimationFrame(gesture.momentumFrame);
+        gesture.momentumFrame = null;
       }
     };
 
-    const clearReleaseTimer = () => {
-      if (gesture?.releaseTimer) {
-        window.clearTimeout(gesture.releaseTimer);
-        gesture.releaseTimer = null;
-      }
-    };
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.pointerType && event.pointerType !== 'touch') return;
-
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
       const scroller = getTableScroller(event.target);
       if (!scroller) return;
 
-      clearReleaseTimer();
+      stopMomentum();
       gesture = {
         scroller,
-        startX: event.clientX,
-        startY: event.clientY,
+        startX: touch.clientX,
+        startY: touch.clientY,
         startScrollLeft: scroller.scrollLeft,
         startScrollTop: scroller.scrollTop,
+        lastScroll: 0,
+        lastTime: performance.now(),
+        velocity: 0,
         axis: null,
-        releaseTimer: null
+        momentumFrame: null
       };
     };
 
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!gesture) return;
+    const scrollByAxis = (nextScroll: number) => {
+      if (!gesture?.axis) return 0;
 
-      const deltaX = event.clientX - gesture.startX;
-      const deltaY = event.clientY - gesture.startY;
+      if (gesture.axis === 'x') {
+        const maxScroll = gesture.scroller.scrollWidth - gesture.scroller.clientWidth;
+        const clamped = Math.max(0, Math.min(maxScroll, nextScroll));
+        gesture.scroller.scrollLeft = clamped;
+        return clamped;
+      }
+
+      const maxScroll = gesture.scroller.scrollHeight - gesture.scroller.clientHeight;
+      const clamped = Math.max(0, Math.min(maxScroll, nextScroll));
+      gesture.scroller.scrollTop = clamped;
+      return clamped;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!gesture || event.touches.length !== 1) return;
+
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - gesture.startX;
+      const deltaY = touch.clientY - gesture.startY;
 
       if (!gesture.axis && Math.hypot(deltaX, deltaY) >= lockThreshold) {
         gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
         gesture.scroller.classList.toggle('table-axis-lock-x', gesture.axis === 'x');
         gesture.scroller.classList.toggle('table-axis-lock-y', gesture.axis === 'y');
+        gesture.lastScroll = gesture.axis === 'x' ? gesture.startScrollLeft : gesture.startScrollTop;
+        gesture.lastTime = performance.now();
       }
 
-      clampCrossAxis();
+      if (!gesture.axis) return;
+
+      event.preventDefault();
+      const desiredScroll = gesture.axis === 'x'
+        ? gesture.startScrollLeft - deltaX
+        : gesture.startScrollTop - deltaY;
+      const nextScroll = scrollByAxis(desiredScroll);
+      const now = performance.now();
+      const elapsed = Math.max(1, now - gesture.lastTime);
+      gesture.velocity = (nextScroll - gesture.lastScroll) / elapsed;
+      gesture.lastScroll = nextScroll;
+      gesture.lastTime = now;
     };
 
-    const handleScroll = (event: Event) => {
-      if (!gesture || event.target !== gesture.scroller) return;
-      window.requestAnimationFrame(clampCrossAxis);
-    };
-
-    const handlePointerEnd = () => {
+    const handleTouchEnd = () => {
       if (!gesture) return;
-
       const finishedGesture = gesture;
-      finishedGesture.releaseTimer = window.setTimeout(() => {
-        finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
-        if (gesture === finishedGesture) {
-          gesture = null;
+
+      const runMomentum = () => {
+        if (!finishedGesture.axis) {
+          finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
+          if (gesture === finishedGesture) gesture = null;
+          return;
         }
-      }, 350);
-      clampCrossAxis();
+
+        const currentScroll = finishedGesture.axis === 'x'
+          ? finishedGesture.scroller.scrollLeft
+          : finishedGesture.scroller.scrollTop;
+        const nextScroll = currentScroll + finishedGesture.velocity * 16;
+        gesture = finishedGesture;
+        const appliedScroll = scrollByAxis(nextScroll);
+        finishedGesture.velocity *= 0.94;
+
+        const hitEdge = appliedScroll === currentScroll;
+        if (Math.abs(finishedGesture.velocity) < 0.03 || hitEdge) {
+          finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
+          if (gesture === finishedGesture) gesture = null;
+          return;
+        }
+
+        finishedGesture.momentumFrame = window.requestAnimationFrame(runMomentum);
+      };
+
+      if (Math.abs(finishedGesture.velocity) > 0.04) {
+        finishedGesture.momentumFrame = window.requestAnimationFrame(runMomentum);
+      } else {
+        finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
+        gesture = null;
+      }
     };
 
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('pointermove', handlePointerMove, true);
-    document.addEventListener('pointerup', handlePointerEnd, true);
-    document.addEventListener('pointercancel', handlePointerEnd, true);
-    document.addEventListener('scroll', handleScroll, true);
+    const touchOptions = { capture: true, passive: false };
+    document.addEventListener('touchstart', handleTouchStart, touchOptions);
+    document.addEventListener('touchmove', handleTouchMove, touchOptions);
+    document.addEventListener('touchend', handleTouchEnd, true);
+    document.addEventListener('touchcancel', handleTouchEnd, true);
 
     return () => {
-      clearReleaseTimer();
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('pointermove', handlePointerMove, true);
-      document.removeEventListener('pointerup', handlePointerEnd, true);
-      document.removeEventListener('pointercancel', handlePointerEnd, true);
-      document.removeEventListener('scroll', handleScroll, true);
+      stopMomentum();
+      document.removeEventListener('touchstart', handleTouchStart, touchOptions);
+      document.removeEventListener('touchmove', handleTouchMove, touchOptions);
+      document.removeEventListener('touchend', handleTouchEnd, true);
+      document.removeEventListener('touchcancel', handleTouchEnd, true);
     };
   }, []);
 
