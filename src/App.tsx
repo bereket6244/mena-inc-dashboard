@@ -334,6 +334,7 @@ export default function App() {
       startScrollTop: number;
       lastScroll: number;
       lastTime: number;
+      momentumLastTime: number;
       velocity: number;
       axis: LockedAxis | null;
       momentumFrame: number | null;
@@ -341,7 +342,8 @@ export default function App() {
 
     let gesture: TableScrollGesture | null = null;
     const mobileQuery = window.matchMedia('(max-width: 767px)');
-    const lockThreshold = 8;
+    const lockThreshold = 6;
+    const maxVelocity = 2.8;
 
     const getTableScroller = (target: EventTarget | null) => {
       if (!mobileQuery.matches || !(target instanceof Element)) return null;
@@ -370,6 +372,7 @@ export default function App() {
         startScrollTop: scroller.scrollTop,
         lastScroll: 0,
         lastTime: performance.now(),
+        momentumLastTime: 0,
         velocity: 0,
         axis: null,
         momentumFrame: null
@@ -416,7 +419,9 @@ export default function App() {
       const nextScroll = scrollByAxis(desiredScroll);
       const now = performance.now();
       const elapsed = Math.max(1, now - gesture.lastTime);
-      gesture.velocity = (nextScroll - gesture.lastScroll) / elapsed;
+      const instantVelocity = (nextScroll - gesture.lastScroll) / elapsed;
+      const blendedVelocity = gesture.velocity * 0.55 + instantVelocity * 0.45;
+      gesture.velocity = Math.max(-maxVelocity, Math.min(maxVelocity, blendedVelocity));
       gesture.lastScroll = nextScroll;
       gesture.lastTime = now;
     };
@@ -424,24 +429,27 @@ export default function App() {
     const handleTouchEnd = () => {
       if (!gesture) return;
       const finishedGesture = gesture;
+      finishedGesture.momentumLastTime = performance.now();
 
-      const runMomentum = () => {
+      const runMomentum = (timestamp: number) => {
         if (!finishedGesture.axis) {
           finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
           if (gesture === finishedGesture) gesture = null;
           return;
         }
 
+        const elapsed = Math.min(32, Math.max(8, timestamp - finishedGesture.momentumLastTime));
+        finishedGesture.momentumLastTime = timestamp;
         const currentScroll = finishedGesture.axis === 'x'
           ? finishedGesture.scroller.scrollLeft
           : finishedGesture.scroller.scrollTop;
-        const nextScroll = currentScroll + finishedGesture.velocity * 16;
+        const nextScroll = currentScroll + finishedGesture.velocity * elapsed;
         gesture = finishedGesture;
         const appliedScroll = scrollByAxis(nextScroll);
-        finishedGesture.velocity *= 0.94;
+        finishedGesture.velocity *= Math.pow(0.965, elapsed / 16.67);
 
-        const hitEdge = appliedScroll === currentScroll;
-        if (Math.abs(finishedGesture.velocity) < 0.03 || hitEdge) {
+        const hitEdge = Math.abs(appliedScroll - nextScroll) > 0.5;
+        if (Math.abs(finishedGesture.velocity) < 0.018 || hitEdge) {
           finishedGesture.scroller.classList.remove('table-axis-lock-x', 'table-axis-lock-y');
           if (gesture === finishedGesture) gesture = null;
           return;
