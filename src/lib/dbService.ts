@@ -4,6 +4,33 @@ import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeU
 const getLeadChannelId = (name: string) =>
   `lc_${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || Date.now()}`;
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isTransientSupabaseError = (err: any) => {
+  const status = Number(err?.status || err?.statusCode || err?.code);
+  const message = String(err?.message || err || '').toLowerCase();
+  return [429, 500, 502, 503, 504].includes(status) ||
+    message.includes('service unavailable') ||
+    message.includes('failed to fetch') ||
+    message.includes('network');
+};
+
+async function withSupabaseRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (!isTransientSupabaseError(err) || attempt === attempts) {
+        break;
+      }
+      await wait(350 * attempt);
+    }
+  }
+  throw lastError;
+}
+
 // ============================================
 // 1. PAPER STOCKS OPERATIONS
 // ============================================
@@ -254,18 +281,26 @@ export async function deletePurchaseDoc(id: string, deletedBy?: string): Promise
 export async function fetchAllExpenseCategories(localFallback: ExpenseCategory[]): Promise<ExpenseCategory[]> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
-        .from('expense_categories')
-        .select('*')
-        .or('isDeleted.is.null,isDeleted.eq.false')
-        .order('id', { ascending: true });
+      const { data, error } = await withSupabaseRetry(async () => (
+        supabase
+          .from('expense_categories')
+          .select('*')
+          .or('isDeleted.is.null,isDeleted.eq.false')
+          .order('id', { ascending: true })
+      ));
 
       if (error) throw error;
 
       return (data || []) as ExpenseCategory[];
     } catch (err: any) {
       console.error("Supabase fetchAllExpenseCategories failed, falling back:", err);
-      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+      const message = err?.message || String(err);
+      const isTemporary = isTransientSupabaseError(err);
+      setSupabaseValidationError(
+        isTemporary
+          ? `Temporary Supabase Service Error: ${message}. The app is using local saved expense categories until Supabase responds again.`
+          : `Database Query Error: ${message}`
+      );
     }
   }
   return localFallback;
@@ -307,15 +342,15 @@ export async function fetchAllEmployees(localFallback: EmployeeUser[]): Promise<
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select('id, name, username, password, role, "allowedTabs", "isDeleted", "deletedBy"')
         .or('isDeleted.is.null,isDeleted.eq.false')
-        .order('id', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
       return (data || []) as EmployeeUser[];
     } catch (err: any) {
-      console.error("Supabase fetchAllEmployees failed, falling back:", err);
+      console.error("Supabase employee fetch failed, falling back to local employee data:", err);
       setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
     }
   }
@@ -463,11 +498,13 @@ export async function deleteClientTypes(ids: string[], deletedBy?: string): Prom
 export async function fetchAllLeadChannels(localFallback: string[]): Promise<string[]> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
-        .from('lead_channels')
-        .select('*')
-        .or('isDeleted.is.null,isDeleted.eq.false')
-        .order('name', { ascending: true });
+      const { data, error } = await withSupabaseRetry(async () => (
+        supabase
+          .from('lead_channels')
+          .select('*')
+          .or('isDeleted.is.null,isDeleted.eq.false')
+          .order('name', { ascending: true })
+      ));
 
       if (error) throw error;
 
@@ -478,7 +515,12 @@ export async function fetchAllLeadChannels(localFallback: string[]): Promise<str
       return names.length > 0 ? names : localFallback;
     } catch (err: any) {
       console.error("Supabase fetchAllLeadChannels failed, falling back:", err);
-      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}`);
+      const message = err?.message || String(err);
+      setSupabaseValidationError(
+        isTransientSupabaseError(err)
+          ? 'Supabase is temporarily unavailable. Please try again shortly.'
+          : `Database Query Error: ${message}`
+      );
     }
   }
   return localFallback;

@@ -1744,7 +1744,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                   ⚠️ Live Error: <code className="bg-[#240c11] px-1.5 py-0.5 text-white font-sans break-all">{dbValidationError}</code>
                 </p>
                 <p className="pt-1">
-                  Because the database tables are either missing or have <strong>Row Level Security (RLS)</strong> enabled, your app has <strong>automatically and safely loaded all data from local JSON storage</strong> so that you don't lose any of your progress.
+                  Because the database tables are either missing, <strong>Row Level Security (RLS)</strong> is blocking access, or Supabase <strong>Data API</strong> is not exposing the <strong>public</strong> schema, your app has <strong>automatically and safely loaded all data from local JSON storage</strong> so that you don't lose any of your progress.
                 </p>
                 
                 <div className="mt-3 bg-[#0a0a0a] p-4 border border-[#202020] rounded-md space-y-3 font-sans text-xs">
@@ -1754,16 +1754,16 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                       Log into your <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-[#71b536] underline hover:text-[#8ce644]">Supabase Dashboard</a>.
                     </li>
                     <li>
-                      Open your project, look at the left sidebar, and click <strong>"SQL Editor"</strong> (the terminal icon).
+                      Open <strong>Project Settings &gt; Data API</strong>, make sure Data API is enabled, and make sure the <strong>public</strong> schema is exposed.
                     </li>
                     <li>
-                      Click <strong>"New query"</strong>, click the green button top right <strong className="text-white cursor-pointer hover:underline" onClick={() => setShowDbConfigModal(true)}>"View Bootstrapping SQL"</strong>, copy the complete script, paste it in, and click <strong>"Run"</strong>.
+                      Then open <strong>"SQL Editor"</strong> (the terminal icon), click <strong>"New query"</strong>, click the green button top right <strong className="text-white cursor-pointer hover:underline" onClick={() => setShowDbConfigModal(true)}>"View Bootstrapping SQL"</strong>, copy the complete script, paste it in, and click <strong>"Run"</strong>.
                     </li>
                     <li className="text-yellow-400 font-semibold font-sans text-[11px]">
                       • IMPORTANT: The script contains commands to disable Row Level Security (RLS) on each table (e.g. <code>ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;</code>). Supabase enables RLS by default, which blocks insertions unless disabled!
                     </li>
                     <li>
-                      Once the SQL statement successfully completes, **reload this page**! The app will automatically connect and sync with the database.
+                      Once Data API is enabled, the public schema is exposed, and the SQL statement successfully completes, **reload this page**! The app will automatically connect and sync with the database.
                     </li>
                   </ol>
                 </div>
@@ -2157,8 +2157,9 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                   <div className="bg-[#1E1215] border border-[#ee317b]/15 p-4 font-sans text-[11px] text-gray-300 space-y-2 leading-relaxed">
                      <span className="text-[#ee317b] font-bold uppercase block">⚡ Setup Checklist (How to Link Database Successfully):</span>
                     <div>1. Log into your **Supabase Dashboard** for the project.</div>
-                    <div>2. Open the **SQL Editor** in the left menu.</div>
-                    <div>3. Click **New query**, paste the complete SQL script shown below, and hit **Run**.</div>
+                    <div>2. Open **Project Settings &gt; Data API**, enable Data API, and expose the **public** schema so supabase-js/PostgREST can read the app tables.</div>
+                    <div>3. Open the **SQL Editor** in the left menu.</div>
+                    <div>4. Click **New query**, paste the complete SQL script shown below, and hit **Run**.</div>
                     <div className="text-yellow-400 font-semibold">• IMPORTANT: The script disables Row Level Security (RLS) on each table. This lets the web app initialize and sync records instantly! If you already created tables earlier but got errors, running this script now will disable RLS and fix the issue immediately.</div>
                   </div>
 
