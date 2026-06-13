@@ -2247,7 +2247,7 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Item/Service with smart custom tax labels if applicable */}
-                          <td className="py-2 px-3 border-r border-[#262626] text-[#E2E8F0] select-all font-semibold font-sans">
+                          <td className="py-2 px-3 border-r border-[#262626] text-[#E2E8F0] select-all font-semibold font-sans table-cell-wrap">
                             <div className="flex flex-col gap-0.5">
                               <span>{p.itemOrService}</span>
                               <div className="flex flex-wrap gap-1 mt-0.5 ">
@@ -2266,7 +2266,7 @@ export default function PurchasesTab({
                           </td>
 
                           {/* Item notes / vendor metadata */}
-                          <td className="py-2 px-3 border-r border-[#262626] text-gray-400 max-w-[220px]">
+                          <td className="py-2 px-3 border-r border-[#262626] text-gray-400 max-w-[220px] table-cell-wrap">
                             <span className="block" title={p.notesOrDescription || 'No notes'}>
                               {p.notesOrDescription || 'None'}
                             </span>

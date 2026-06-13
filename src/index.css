@@ -1222,8 +1222,8 @@ button[title="Search categories"] {
 
 @media (max-width: 767px) {
   .data-table-scroll {
-    height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height) - 40px) !important;
-    max-height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
+    max-height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
     min-height: 18rem;
     overflow: auto !important;
     overflow-y: auto !important;
@@ -1249,13 +1249,9 @@ button[title="Search categories"] {
   }
 
   .purchase-mobile-fixed-stack .data-table-scroll {
-    height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height) - 40px) !important;
-    max-height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
+    max-height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
     min-height: 16rem;
-  }
-
-  .mb-28 {
-    margin-bottom: calc(var(--mobile-bottom-nav-height) + 40px) !important;
   }
 }
 
@@ -1468,15 +1464,15 @@ button[title="Search categories"] {
 
   /* Collapsed category state: height expands */
   .purchase-mobile-fixed-stack:not(.expense-categories-expanded) .data-table-scroll {
-    height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height) - 40px) !important;
-    max-height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
+    max-height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
     min-height: 16rem;
   }
 
   /* Expanded category state */
   .purchase-mobile-fixed-stack.expense-categories-expanded .data-table-scroll {
-    height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height) - 40px) !important;
-    max-height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
+    max-height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
     min-height: 12rem;
   }
 
@@ -2172,14 +2168,10 @@ option {
   box-sizing: border-box !important;
 }
 
-#inventory-table th,
-#inventory-table td,
-#purchases-table th,
-#purchases-table td {
+.table-cell-wrap {
   white-space: normal !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
-  text-overflow: clip !important;
 }
 
 .hide-default-cursor,

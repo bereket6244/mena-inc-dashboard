@@ -834,7 +834,7 @@ export default function InventoryTab({
                       title="Select stock"
                     />
                   </SharedTd>
-                  <SharedTd className="inventory-stock-name-column font-semibold text-white whitespace-nowrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">
+                  <SharedTd className="inventory-stock-name-column font-semibold text-white table-cell-wrap bg-transparent group-hover:bg-[#1a1a1a] transition-colors">
                     {stock.name}
                   </SharedTd>
                   <SharedTd
