@@ -107,6 +107,8 @@ export default function App() {
     let activeContainer: HTMLElement | null = null;
     let startX = 0;
     let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
     let lockedDirection: 'x' | 'y' | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -117,6 +119,8 @@ export default function App() {
       activeContainer = container;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      startScrollLeft = container.scrollLeft;
+      startScrollTop = container.scrollTop;
       lockedDirection = null;
     };
 
@@ -125,35 +129,37 @@ export default function App() {
 
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
-      const deltaX = Math.abs(currentX - startX);
-      const deltaY = Math.abs(currentY - startY);
+      const diffX = currentX - startX;
+      const diffY = currentY - startY;
+      const deltaX = Math.abs(diffX);
+      const deltaY = Math.abs(diffY);
 
       if (lockedDirection === null) {
-        if (deltaX > 6 || deltaY > 6) {
+        if (deltaX > 4 || deltaY > 4) {
           if (deltaX > deltaY) {
             lockedDirection = 'x';
-            activeContainer.style.setProperty('overflow-y', 'hidden', 'important');
-            activeContainer.style.setProperty('overflow-x', 'auto', 'important');
           } else {
             lockedDirection = 'y';
-            activeContainer.style.setProperty('overflow-x', 'hidden', 'important');
-            activeContainer.style.setProperty('overflow-y', 'auto', 'important');
           }
         }
+      }
+
+      if (lockedDirection === 'x') {
+        activeContainer.scrollLeft = startScrollLeft - diffX;
+        if (e.cancelable) e.preventDefault();
+      } else if (lockedDirection === 'y') {
+        activeContainer.scrollTop = startScrollTop - diffY;
+        if (e.cancelable) e.preventDefault();
       }
     };
 
     const handleTouchEnd = () => {
-      if (activeContainer) {
-        activeContainer.style.removeProperty('overflow-x');
-        activeContainer.style.removeProperty('overflow-y');
-        activeContainer = null;
-      }
+      activeContainer = null;
       lockedDirection = null;
     };
 
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: true });
     window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
