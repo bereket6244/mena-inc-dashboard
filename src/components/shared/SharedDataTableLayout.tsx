@@ -75,7 +75,7 @@ export function SharedDataTableLayout({
 
           {/* RESPONSIVE CARDS VIEW */}
           {cardsView && (
-            <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mb-28 md:mb-0`}>
+            <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 animate-none mb-28 md:mb-0`}>
               {cardsView}
             </div>
           )}

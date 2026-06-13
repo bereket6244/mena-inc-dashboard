@@ -1128,8 +1128,8 @@ button[title="Search categories"] {
   }
 
   .purchase-mobile-fixed-stack .data-table-scroll {
-    height: calc(100dvh - 17.4rem - var(--mobile-bottom-nav-height));
-    max-height: calc(100dvh - 17.4rem - var(--mobile-bottom-nav-height));
+    height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
+    max-height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
     min-height: 16rem;
   }
 }
@@ -1256,45 +1256,103 @@ button[title="Search categories"] {
 
 @media (max-width: 767px) {
   .purchase-mobile-fixed-stack {
-    padding-top: calc(var(--purchase-mobile-summary-height) + var(--purchase-mobile-category-height) + 0.75rem);
+    padding-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .purchase-mobile-summary-sticky {
-    position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 2.75rem);
-    left: 1rem;
-    right: 1rem;
-    z-index: 35;
-    min-height: var(--purchase-mobile-summary-height);
-    background-color: var(--app-sticky-bg) !important;
-    border-color: var(--app-sticky-border) !important;
-    box-shadow: var(--app-sticky-shadow);
-    isolation: isolate;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 0 8px 0 !important; /* 8px gap after Total Expenses */
+    box-shadow: none !important;
+  }
+
+  .purchase-mobile-fixed-stack > .grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .purchase-categories-sticky {
+    margin-top: 0 !important;
+    margin-bottom: 12px !important; /* 12px gap after Expense Categories */
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .expense-category-panel {
+    padding: 0.5rem !important;
+    gap: 12px;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .purchase-mobile-category-control-sticky {
-    position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 2.75rem + var(--purchase-mobile-summary-height));
-    left: 1rem;
-    right: 1rem;
-    z-index: 34;
-    min-height: var(--purchase-mobile-category-height);
-    padding: 0.5rem;
-    background-color: var(--app-sticky-bg) !important;
-    border: 1px solid var(--app-sticky-border) !important;
-    border-bottom: 1px solid var(--app-sticky-border) !important;
-    border-radius: 0.375rem;
-    box-shadow: var(--app-sticky-shadow);
-    isolation: isolate;
+    position: static !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
   }
 
   .expense-category-panel:has(> .purchase-mobile-category-control-sticky + .hidden) {
-    height: 0;
-    min-height: 0;
-    padding: 0 !important;
-    border: 0 !important;
-    background: transparent !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0.5rem !important;
+    border: 1px solid var(--app-sticky-border) !important;
+    background: var(--app-sticky-bg) !important;
     overflow: visible;
+  }
+
+  .purchase-mobile-fixed-stack .xl\:col-span-3 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .purchase-mobile-toolbar-sticky {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important; /* tight gap before table */
+  }
+
+  .purchase-mobile-fixed-stack .bg-\[\#121212\]\.border\.border-\[\#262626\] {
+    margin-top: 0 !important;
+  }
+
+  /* Collapsed category state: height expands */
+  .purchase-mobile-fixed-stack:not(.expense-categories-expanded) .data-table-scroll {
+    height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
+    max-height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
+    min-height: 16rem;
+  }
+
+  /* Expanded category state */
+  .purchase-mobile-fixed-stack.expense-categories-expanded .data-table-scroll {
+    height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
+    max-height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
+    min-height: 12rem;
   }
 
   .app-mobile-sticky-toolbar,
@@ -1314,16 +1372,17 @@ button[title="Search categories"] {
     top: auto !important;
     left: auto;
     right: auto;
-    width: auto !important;
-    max-width: none;
+    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box;
     z-index: 33;
-    height: 2.75rem;
-    padding: 0.375rem 0.5rem !important;
+    height: 2.5rem;
+    padding: 0.25rem 0.5rem !important;
     background-color: var(--app-sticky-bg) !important;
-    border: 1px solid var(--app-sticky-border) !important;
-    border-radius: 0.375rem;
-    box-shadow: var(--app-sticky-shadow);
+    border: none !important;
+    border-bottom: 1px solid var(--app-sticky-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     overflow: hidden;
   }
 
@@ -1741,6 +1800,201 @@ option {
   border-bottom-color: var(--surface-card) !important;
 }
 
+
+/* Premium light-mode polish */
+.light-theme header,
+.light-theme footer,
+.light-theme nav.md\:hidden,
+.light-theme [class*="shadow-2xl"],
+.light-theme [class*="shadow-xl"] {
+  box-shadow: 0 14px 36px rgba(65, 53, 35, 0.08) !important;
+}
+
+.light-theme header,
+.light-theme footer,
+.light-theme nav.md\:hidden {
+  background-color: rgba(255, 253, 248, 0.94) !important;
+  backdrop-filter: blur(18px);
+}
+
+.light-theme .selected-row,
+.light-theme tr.selected-row td {
+  background-color: var(--surface-selected) !important;
+  border-left-color: var(--brand-pink) !important;
+}
+
+.light-theme .text-\[\#ee317b\],
+.light-theme .text-\[\#ee317b\]\/80,
+.light-theme .text-\[\#ff4e91\],
+.light-theme .hover\:text-\[\#ee317b\]:hover,
+.light-theme .hover\:text-\[\#ee317b\]\/80:hover,
+.light-theme .hover\:text-\[\#ff4e91\]:hover {
+  color: var(--brand-pink) !important;
+}
+
+.light-theme .text-\[\#71b536\],
+.light-theme .text-\[\#2DA22D\],
+.light-theme .text-\[\#5fa22e\],
+.light-theme .text-\[\#8ce644\],
+.light-theme .hover\:text-\[\#5fa22e\]:hover,
+.light-theme .hover\:text-\[\#8ce644\]:hover {
+  color: var(--brand-green-dark) !important;
+}
+
+.light-theme .text-\[\#F87171\],
+.light-theme .text-\[\#EF4444\],
+.light-theme .hover\:text-\[\#F87171\]:hover,
+.light-theme .hover\:text-\[\#EF4444\]:hover {
+  color: var(--danger) !important;
+}
+
+.light-theme .text-\[\#FACC15\] {
+  color: var(--warning) !important;
+}
+
+.light-theme .text-\[\#a7f3d0\] {
+  color: var(--brand-green-dark) !important;
+}
+
+.light-theme .text-\[\#7096FF\] {
+  color: #3159b7 !important;
+}
+
+.light-theme .text-\[\#E07A5F\] {
+  color: #a34f38 !important;
+}
+
+.light-theme .border-\[\#ee317b\],
+.light-theme .border-\[\#ee317b\]\/15,
+.light-theme .border-\[\#ee317b\]\/20,
+.light-theme .border-\[\#ee317b\]\/25,
+.light-theme .border-\[\#ee317b\]\/30,
+.light-theme .border-\[\#ee317b\]\/40,
+.light-theme .border-\[\#ee317b\]\/45,
+.light-theme .border-\[\#ee317b\]\/50,
+.light-theme .border-\[\#ee317b\]\/60 {
+  border-color: rgba(238, 49, 123, 0.28) !important;
+}
+
+.light-theme .border-\[\#71b536\],
+.light-theme .border-\[\#71b536\]\/15,
+.light-theme .border-\[\#71b536\]\/20,
+.light-theme .border-\[\#71b536\]\/25,
+.light-theme .border-\[\#71b536\]\/30,
+.light-theme .border-\[\#71b536\]\/40,
+.light-theme .border-\[\#71b536\]\/60,
+.light-theme .border-\[\#3e601d\] {
+  border-color: rgba(113, 181, 54, 0.34) !important;
+}
+
+.light-theme .border-\[\#5D2D35\],
+.light-theme .border-\[\#F87171\],
+.light-theme .border-\[\#F87171\]\/20,
+.light-theme .border-\[\#F87171\]\/25,
+.light-theme .border-\[\#F87171\]\/30 {
+  border-color: rgba(180, 35, 24, 0.28) !important;
+}
+
+.light-theme .border-\[\#5A4515\] {
+  border-color: rgba(150, 104, 15, 0.32) !important;
+}
+
+.light-theme .border-\[\#7096FF\]\/20 {
+  border-color: rgba(74, 111, 205, 0.28) !important;
+}
+
+.light-theme .border-\[\#E07A5F\]\/20 {
+  border-color: rgba(186, 85, 59, 0.28) !important;
+}
+
+.light-theme .hover\:bg-\[\#d61e63\]:hover,
+.light-theme .hover\:bg-\[\#ee317b\]:hover,
+.light-theme .hover\:bg-\[\#ee317b\]\/80:hover {
+  background-color: var(--brand-pink-hover) !important;
+  color: #ffffff !important;
+}
+
+.light-theme .hover\:bg-\[\#ee317b\]\/10:hover,
+.light-theme .hover\:bg-\[\#ee317b\]\/20:hover,
+.light-theme .hover\:bg-\[\#1a1215\]:hover,
+.light-theme .hover\:bg-\[\#4a1a2d\]:hover {
+  background-color: var(--brand-pink-soft) !important;
+}
+
+.light-theme .hover\:bg-\[\#5a932a\]:hover,
+.light-theme .hover\:bg-\[\#5ea126\]:hover,
+.light-theme .hover\:bg-\[\#5f9c2d\]:hover {
+  background-color: #5e9f2d !important;
+  color: #ffffff !important;
+}
+
+.light-theme .hover\:bg-\[\#71b536\]\/10:hover,
+.light-theme .hover\:bg-\[\#1b4325\]:hover,
+.light-theme .hover\:bg-\[\#2d422a\]:hover {
+  background-color: var(--brand-green-soft) !important;
+}
+
+.light-theme .hover\:bg-\[\#2D210F\]\/60:hover {
+  background-color: var(--warning-soft) !important;
+}
+
+.light-theme .hover\:bg-\[\#2E181D\]\/40:hover,
+.light-theme .hover\:bg-\[\#2E181D\]\/60:hover,
+.light-theme .hover\:bg-\[\#5a1c21\]:hover,
+.light-theme .hover\:bg-\[\#EF4444\]:hover {
+  background-color: var(--danger-soft) !important;
+}
+
+.light-theme .hover\:text-white:hover {
+  color: var(--text-strong) !important;
+}
+
+.light-theme table {
+  color: var(--text-body) !important;
+}
+
+.light-theme th {
+  background-color: var(--surface-table-header) !important;
+}
+
+.light-theme td {
+  color: var(--text-body) !important;
+}
+
+.light-theme .react-datepicker {
+  background-color: var(--surface-card) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-body) !important;
+  box-shadow: 0 18px 42px rgba(65, 53, 35, 0.14);
+}
+
+.light-theme .react-datepicker__header {
+  background-color: var(--surface-table-header) !important;
+  border-bottom-color: var(--border-soft) !important;
+}
+
+.light-theme .react-datepicker__current-month,
+.light-theme .react-datepicker__day-name,
+.light-theme .react-datepicker__day {
+  color: var(--text-body) !important;
+}
+
+.light-theme .react-datepicker__day:hover {
+  background-color: var(--brand-pink-soft) !important;
+}
+
+.light-theme .react-datepicker__day--selected,
+.light-theme .react-datepicker__day--in-range,
+.light-theme .react-datepicker__day--keyboard-selected {
+  background-color: var(--brand-pink) !important;
+  color: #ffffff !important;
+}
+
+.light-theme .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::before,
+.light-theme .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::after {
+  border-bottom-color: var(--surface-card) !important;
+}
+
 .light-theme ::-webkit-scrollbar-track {
   background: var(--surface-page-muted);
 }
@@ -1751,4 +2005,49 @@ option {
 
 .light-theme ::-webkit-scrollbar-thumb:hover {
   background: var(--brand-pink);
+}
+
+/* Table Density adjustments */
+.density-compact th,
+.density-compact td {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+
+.density-relaxed th,
+.density-relaxed td {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+  font-size: 13.5px !important;
+  line-height: 1.5 !important;
+}
+
+/* Resize active indicator styling */
+.resize-active {
+  box-shadow: inset 0 0 0 2px #ee317b !important;
+  outline: 2px solid #ee317b !important;
+  outline-offset: -2px !important;
+  z-index: 99 !important;
+}
+
+/* Visible cell borders and strict text containment (no data sipping) */
+.freeze-pane-table th,
+.freeze-pane-table td {
+  border-right: 1px solid var(--app-sticky-border) !important;
+  border-bottom: 1px solid var(--app-sticky-border) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.hide-default-cursor,
+.hide-default-cursor * {
+  cursor: none !important;
 }

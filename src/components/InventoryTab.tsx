@@ -7,6 +7,7 @@ import {
   Minus,
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   Sparkles, 
   Edit3, 
   TrendingDown, 
@@ -22,7 +23,9 @@ import {
   Lock,
   Trash2,
   CheckSquare,
-  Download
+  Download,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 
 import { Customer, PaperStock, EmployeeUser } from '../types';
@@ -49,6 +52,8 @@ export default function InventoryTab({
 }: InventoryTabProps) {
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>('grid');
+  const [showSortPopover, setShowSortPopover] = useState(false);
 
   // State for Add/Edit Stock
   const [editingStock, setEditingStock] = useState<PaperStock | null>(null);
@@ -311,30 +316,368 @@ export default function InventoryTab({
       onSearchChange={setSearchQuery}
       tablePreferenceKey="ui.inventory.table"
       tableClassName="wide-freeze-three-cols"
-      mobileRightControls={
-        <button
-          type="button"
-          onClick={handleRecordedOrderSort}
-          className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
-            sortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
-          }`}
-          title="Recorded order"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
+      layoutMode={layoutMode}
+      cardsView={
+        <>
+          {filteredStocks.map((stock) => {
+            const isOutOfStock = stock.remaining <= 0;
+            const isLowStock = stock.remaining < 50 && stock.remaining > 0;
+            const status = getStatus(stock.remaining);
+            const isSelected = selectedStockIds.includes(stock.id);
+
+            return (
+              <div
+                key={stock.id}
+                className={`border rounded-lg p-2 flex flex-col justify-between font-sans transition-all relative ${
+                  isSelected
+                    ? 'bg-[#121912]/40 border-[#71b536] shadow-[0_0_10px_rgba(113,181,54,0.1)]'
+                    : isOutOfStock
+                      ? 'bg-[#2E181D]/20 border-[#F87171]/25 hover:border-[#F87171]/50'
+                      : isLowStock
+                        ? 'bg-[#2D210F]/20 border-[#FACC15]/25 hover:border-[#FACC15]/50'
+                        : 'bg-[#121212] border-[#262626] hover:border-gray-700'
+                }`}
+              >
+                {/* Top row: checkmark, Title */}
+                <div className="flex items-start justify-between gap-1 mb-1">
+                  <div className="flex items-start gap-1 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedStockIds(prev => [...prev, stock.id]);
+                        } else {
+                          setSelectedStockIds(prev => prev.filter(id => id !== stock.id));
+                        }
+                      }}
+                      className="accent-[#ee317b] mt-0.5 shrink-0 cursor-pointer w-3 h-3"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-[12px] font-bold text-white break-words font-sans leading-tight">
+                        {stock.name}
+                      </h4>
+                      <span className="text-[9px] text-gray-550 font-sans block mt-0.5">Initial: {stock.initialStock.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main stats */}
+                <div className="grid grid-cols-2 gap-1 border-t border-b border-[#262626]/40 py-1 mb-1.5">
+                  <div>
+                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">Stock on Hand</span>
+                    <span className={`block text-[15px] font-bold font-sans mt-0.5 leading-none ${
+                      isOutOfStock ? 'text-[#F87171]' : isLowStock ? 'text-[#FACC15]' : 'text-[#71b536]'
+                    }`}>
+                      {stock.remaining.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">Total Consumed</span>
+                    <span className="block text-[15px] font-bold font-sans text-yellow-400/90 mt-0.5 leading-none">
+                      {stock.consumed.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center justify-between gap-1 pt-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdjustingStockId(stock.id);
+                        setStockAdjustmentMode('add');
+                        setStockAdjustmentAmount('');
+                      }}
+                      className="h-5 px-1.5 inline-flex items-center gap-0.5 rounded border border-[#71b536]/25 bg-transparent text-[#71b536] hover:bg-[#71b536]/10 text-[9px] font-bold uppercase transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdjustingStockId(stock.id);
+                        setStockAdjustmentMode('subtract');
+                        setStockAdjustmentAmount('');
+                      }}
+                      className="h-5 px-1.5 inline-flex items-center gap-0.5 rounded border border-[#F87171]/25 bg-transparent text-[#F87171] hover:bg-[#2E181D]/45 text-[9px] font-bold uppercase transition-colors cursor-pointer"
+                    >
+                      <Minus className="w-2.5 h-2.5" />
+                      Sub
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingStock(stock);
+                        setEditStockNameInput(stock.name);
+                        setEditStockError('');
+                      }}
+                      className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
+                      title="Rename variant"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingStockId(stock.id)}
+                      className="text-gray-550 hover:text-[#F87171] hover:bg-[#262626] p-1 rounded-md transition-colors cursor-pointer"
+                      title="Delete variant"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filteredStocks.length === 0 && (
+            <div className="text-gray-500 text-center py-8 col-span-full">
+              No inventory records matching this criteria.
+            </div>
+          )}
+        </>
       }
-      desktopRightControls={
+      mobileLeftControls={
         <>
           <button
             type="button"
-            onClick={handleRecordedOrderSort}
-            className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-              sortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
-            }`}
-            title="Recorded order"
+            onClick={() => setLayoutMode('grid')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Table view"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <TableIcon className="w-3.5 h-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('cards')}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Gallery view"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </>
+      }
+      mobileRightControls={
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowSortPopover(!showSortPopover)}
+            className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+              sortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+            }`}
+            title="Sort options"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+          </button>
+          {showSortPopover && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+              <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRecordedOrderSort();
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Recorded Order (Reset)
+                </button>
+                <div className="h-px bg-[#262626] my-0.5" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('name');
+                    setSortDirection('asc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Stock Name (A to Z)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('name');
+                    setSortDirection('desc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Stock Name (Z to A)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('remaining');
+                    setSortDirection('desc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Stock on Hand (High to Low)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('remaining');
+                    setSortDirection('asc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Stock on Hand (Low to High)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('consumed');
+                    setSortDirection('desc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Total Consumed (High to Low)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy('consumed');
+                    setSortDirection('asc');
+                    setShowSortPopover(false);
+                  }}
+                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                >
+                  Total Consumed (Low to High)
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      }
+      desktopLeftControls={
+        <div className="border border-[#262626] rounded p-0.5 flex bg-transparent shrink-0">
+          <button
+            type="button"
+            onClick={() => setLayoutMode('grid')}
+            className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Tabular Grid View"
+          >
+            <TableIcon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('cards')}
+            className={`p-1 rounded cursor-pointer transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+            title="Responsive Cards View"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      }
+      desktopRightControls={
+        <>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowSortPopover(!showSortPopover)}
+              className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                sortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+              }`}
+              title="Sort options"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+            </button>
+            {showSortPopover && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleRecordedOrderSort();
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Recorded Order (Reset)
+                  </button>
+                  <div className="h-px bg-[#262626] my-0.5" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('name');
+                      setSortDirection('asc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Stock Name (A to Z)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('name');
+                      setSortDirection('desc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Stock Name (Z to A)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('remaining');
+                      setSortDirection('desc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Stock on Hand (High to Low)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('remaining');
+                      setSortDirection('asc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Stock on Hand (Low to High)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('consumed');
+                      setSortDirection('desc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Total Consumed (High to Low)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('consumed');
+                      setSortDirection('asc');
+                      setShowSortPopover(false);
+                    }}
+                    className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                  >
+                    Total Consumed (Low to High)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           {isAdmin ? (
             <button
               type="button"

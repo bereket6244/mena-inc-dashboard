@@ -36,7 +36,8 @@ import {
   CheckCircle,
   CheckCircle2,
   RotateCcw,
-  Megaphone
+  Megaphone,
+  ArrowUpDown
 } from 'lucide-react';
 
 import { 
@@ -232,6 +233,7 @@ export default function CustomerTab({
   const contactMenuRef = useRef<HTMLDivElement>(null);
   const copiedContactTimerRef = useRef<number | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [showSortPopover, setShowSortPopover] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
@@ -2039,16 +2041,146 @@ export default function CustomerTab({
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={handleRecordedOrderSort}
-              className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
-                customerSortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
-              }`}
-              title="Recorded order"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowSortPopover(!showSortPopover)}
+                className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                }`}
+                title="Sort options"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </button>
+              {showSortPopover && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRecordedOrderSort();
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Recorded Order (Reset)
+                    </button>
+                    <div className="h-px bg-[#262626] my-0.5" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('clientName');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name (A to Z)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('clientName');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name (Z to A)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('productType');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Product Type (A to Z)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('productType');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Product Type (Z to A)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('fullValue');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Total Price (High to Low)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('fullValue');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Total Price (Low to High)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('remainingBalance');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Debt (High to Low)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('remainingBalance');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Debt (Low to High)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('deliveryDate');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date (Newest)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('deliveryDate');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date (Oldest)
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </>
         }
         desktopLeftControls={
@@ -2216,16 +2348,146 @@ export default function CustomerTab({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleRecordedOrderSort}
-              className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                customerSortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
-              }`}
-              title="Recorded order"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowSortPopover(!showSortPopover)}
+                className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                }`}
+                title="Sort options"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </button>
+              {showSortPopover && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRecordedOrderSort();
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Recorded Order (Reset)
+                    </button>
+                    <div className="h-px bg-[#262626] my-0.5" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('clientName');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name (A to Z)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('clientName');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name (Z to A)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('productType');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Product Type (A to Z)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('productType');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Product Type (Z to A)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('fullValue');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Total Price (High to Low)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('fullValue');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Total Price (Low to High)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('remainingBalance');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Debt (High to Low)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('remainingBalance');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Debt (Low to High)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('deliveryDate');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date (Newest)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('deliveryDate');
+                        setCustomerSortDirection('asc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date (Oldest)
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             <button
               type="button"
@@ -4048,7 +4310,7 @@ export default function CustomerTab({
                         <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] flex items-center gap-1.5 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
                           Product Rows
-                          <span className={`transform transition-transform text-gray-500 ml-1 ${isProductRowsExpanded ? 'rotate-180' : ''}`}>▼</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-gray-500 ml-1 transition-transform duration-200 ${isProductRowsExpanded ? 'rotate-180' : ''}`} />
                         </h3>
                         <button
                           type="button"
@@ -4171,7 +4433,7 @@ export default function CustomerTab({
                         <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] flex items-center gap-1.5 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
                           Terms &amp; Conditions
-                          <span className={`transform transition-transform text-gray-500 ml-1 ${isTermsExpanded ? 'rotate-180' : ''}`}>▼</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-gray-500 ml-1 transition-transform duration-200 ${isTermsExpanded ? 'rotate-180' : ''}`} />
                         </h3>
                         <button
                           type="button"

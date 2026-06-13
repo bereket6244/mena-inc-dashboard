@@ -22,7 +22,10 @@ import {
   Download,
   Filter,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
@@ -80,6 +83,7 @@ export default function PurchasesTab({
   const [expenseIntervalStart, setExpenseIntervalStart] = useState(savedPurchaseFilters.intervalStart || '');
   const [expenseIntervalEnd, setExpenseIntervalEnd] = useState(savedPurchaseFilters.intervalEnd || '');
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [showSortPopover, setShowSortPopover] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [sortBy, setSortBy] = useState<PurchaseSortField>(() => {
     const savedSortBy = localStorage.getItem(PURCHASE_SORT_BY_STORAGE_KEY);
@@ -1172,15 +1176,24 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsMobileCategoriesCollapsed(!isMobileCategoriesCollapsed)}
-                  className="xl:hidden px-2 py-1 text-[10px] font-sans font-extrabold tracking-wider bg-[#1c1c1c] text-white hover:bg-[#262626] hover:text-[#ee317b] border border-[#262626] transition-colors uppercase"
+                  className="xl:hidden p-1 bg-[#1c1c1c] text-white hover:bg-[#262626] hover:text-[#ee317b] border border-[#262626] transition-colors rounded"
+                  title={isMobileCategoriesCollapsed ? "Expand" : "Collapse"}
                 >
-                  {isMobileCategoriesCollapsed ? "Expand" : "Collapse"}
+                  {isMobileCategoriesCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
 
             {/* Collapsible area on mobile */}
-            <div className={`${isMobileCategoriesCollapsed ? 'hidden xl:block' : 'block'} space-y-4 animate-fadeIn`}>
+            <motion.div
+              initial={false}
+              animate={{
+                height: isMobileCategoriesCollapsed ? 0 : 'auto',
+                opacity: isMobileCategoriesCollapsed ? 0 : 1
+              }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="space-y-4 overflow-hidden xl:!block xl:!h-auto xl:!opacity-100"
+            >
               {/* Quick add category form */}
               <AnimatePresence>
                 {isAddingCategory && (
@@ -1387,7 +1400,7 @@ export default function PurchasesTab({
               </div>
 
 
-            </div>
+            </motion.div>
           </div>
         </div>
 
@@ -1399,7 +1412,7 @@ export default function PurchasesTab({
             <div className="flex items-center text-gray-400 font-medium gap-2"></div>
             <div className="flex items-center gap-1.5 shrink-0">
                {/* Search box */}
-              <div ref={searchWrapperRef} className="flex items-center">
+              <div className="flex items-center">
                 {!(isSearchExpanded || searchQuery) ? (
                   <motion.button
                     key="search-btn"
@@ -1427,7 +1440,6 @@ export default function PurchasesTab({
                       <Search className="h-3.5 w-3.5" />
                     </div>
                     <input
-                      ref={searchInputRef}
                       type="text"
                       placeholder="Type to search..."
                       value={searchQuery}
@@ -1625,7 +1637,7 @@ export default function PurchasesTab({
           </div>
 
           <div className="app-mobile-sticky-toolbar purchase-mobile-toolbar-sticky md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
-            <div ref={mobileSearchWrapperRef} className="relative flex min-w-0 items-center h-8 select-none">
+            <div ref={mobileSearchWrapperRef} className={`relative flex min-w-0 items-center h-8 select-none transition-all duration-200 ${isSearchExpanded ? 'w-full flex-1' : ''}`}>
               <AnimatePresence initial={false}>
                 {!(isSearchExpanded || searchQuery) ? (
                   <motion.button
@@ -1645,12 +1657,12 @@ export default function PurchasesTab({
                   <motion.div
                     key="search-input-wrapper"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 260, opacity: 1 }}
+                    animate={{ width: '100%', opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                    className="purchase-mobile-search-field relative flex items-center overflow-hidden rounded-md border border-[#262626] bg-[#121212] px-1.5"
+                    className="relative flex items-center bg-transparent overflow-hidden w-full"
                   >
-                    <div className="flex items-center justify-center w-6 h-7 text-gray-400 mr-1 flex-shrink-0">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
                       <Search className="h-3.5 w-3.5" />
                     </div>
                     <input
@@ -1696,16 +1708,124 @@ export default function PurchasesTab({
                     </span>
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleRecordedOrderSort}
-                  className={`purchase-mobile-icon-button ${
-                    sortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
-                  }`}
-                  title="Recorded order"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowSortPopover(!showSortPopover)}
+                    className={`purchase-mobile-icon-button flex items-center justify-center cursor-pointer ${
+                      sortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                    }`}
+                    title="Sort options"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showSortPopover && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                      <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRecordedOrderSort();
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Recorded Order (Reset)
+                        </button>
+                        <div className="h-px bg-[#262626] my-0.5" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('itemOrService');
+                            setIsSortAsc(true);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'itemOrService' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Item / Service (A to Z)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('itemOrService');
+                            setIsSortAsc(false);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'itemOrService' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Item / Service (Z to A)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('expenseCategory');
+                            setIsSortAsc(true);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'expenseCategory' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Expense Category (A to Z)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('expenseCategory');
+                            setIsSortAsc(false);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'expenseCategory' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Expense Category (Z to A)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('totalPrice');
+                            setIsSortAsc(false);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'totalPrice' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Total Price (High to Low)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('totalPrice');
+                            setIsSortAsc(true);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'totalPrice' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Total Price (Low to High)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('purchaseDate');
+                            setIsSortAsc(false);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'purchaseDate' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Purchase Date (Newest)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('purchaseDate');
+                            setIsSortAsc(true);
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'purchaseDate' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Purchase Date (Oldest)
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1897,16 +2017,124 @@ export default function PurchasesTab({
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleRecordedOrderSort}
-                className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                  sortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
-                }`}
-                title="Recorded order"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSortPopover(!showSortPopover)}
+                  className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                    sortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                  }`}
+                  title="Sort options"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                </button>
+                {showSortPopover && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                    <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleRecordedOrderSort();
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Recorded Order (Reset)
+                      </button>
+                      <div className="h-px bg-[#262626] my-0.5" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('itemOrService');
+                          setIsSortAsc(true);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'itemOrService' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Item / Service (A to Z)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('itemOrService');
+                          setIsSortAsc(false);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'itemOrService' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Item / Service (Z to A)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('expenseCategory');
+                          setIsSortAsc(true);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'expenseCategory' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Expense Category (A to Z)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('expenseCategory');
+                          setIsSortAsc(false);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'expenseCategory' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Expense Category (Z to A)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('totalPrice');
+                          setIsSortAsc(false);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'totalPrice' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Total Price (High to Low)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('totalPrice');
+                          setIsSortAsc(true);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'totalPrice' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Total Price (Low to High)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('purchaseDate');
+                          setIsSortAsc(false);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'purchaseDate' && !isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Purchase Date (Newest)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('purchaseDate');
+                          setIsSortAsc(true);
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'purchaseDate' && isSortAsc) ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Purchase Date (Oldest)
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -1920,7 +2148,7 @@ export default function PurchasesTab({
           </div>
 
           {/* Table Spreadsheet View */}
-          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none">
+          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mb-28 md:mb-0">
             <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
               <table
                 ref={purchaseTableRef}

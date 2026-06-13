@@ -25,7 +25,8 @@ import {
   FolderDown,
   Type,
   MoreVertical,
-  Printer
+  Printer,
+  Sliders
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
 import { resolveStockId } from './utils';
@@ -73,12 +74,23 @@ export default function App() {
     return (localStorage.getItem('mena_inc_font_size') as 'sm' | 'base' | 'lg') || 'base';
   });
 
+  // Density state
+  const [density, setDensity] = useState<'compact' | 'standard' | 'relaxed'>(() => {
+    return (localStorage.getItem('mena_inc_density') as 'compact' | 'standard' | 'relaxed') || 'standard';
+  });
+
   useEffect(() => {
     if (fontSize === 'sm') document.documentElement.style.fontSize = '14px';
     else if (fontSize === 'lg') document.documentElement.style.fontSize = '18px';
     else document.documentElement.style.fontSize = '16px';
     localStorage.setItem('mena_inc_font_size', fontSize);
   }, [fontSize]);
+
+  useEffect(() => {
+    document.body.classList.remove('density-compact', 'density-standard', 'density-relaxed');
+    document.body.classList.add(`density-${density}`);
+    localStorage.setItem('mena_inc_density', density);
+  }, [density]);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -478,6 +490,388 @@ export default function App() {
       document.removeEventListener('touchmove', handleTouchMove, touchOptions);
       document.removeEventListener('touchend', handleTouchEnd, true);
       document.removeEventListener('touchcancel', handleTouchEnd, true);
+    };
+  }, []);
+
+  // Google Sheets style row & column resizer for both desktop and mobile
+  useEffect(() => {
+    let isResizing = false;
+    let resizeType = ''; // 'col' or 'row'
+    let targetElement: HTMLElement | null = null;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    let longPressTimer: any = null;
+    const LONG_PRESS_DELAY = 500;
+    const touchMoveThreshold = 8;
+    let touchStartPos = { x: 0, y: 0 };
+    let isDraggingColumn = false;
+
+    // Create custom cursor element dynamically
+    const cursorEl = document.createElement('div');
+    cursorEl.id = 'custom-sheets-cursor';
+    cursorEl.style.position = 'fixed';
+    cursorEl.style.pointerEvents = 'none';
+    cursorEl.style.zIndex = '999999';
+    cursorEl.style.mixBlendMode = 'difference';
+    cursorEl.style.display = 'none';
+    cursorEl.style.alignItems = 'center';
+    cursorEl.style.justifyContent = 'center';
+    cursorEl.style.width = '32px';
+    cursorEl.style.height = '32px';
+    cursorEl.style.borderRadius = '50%';
+    cursorEl.style.backgroundColor = 'transparent';
+    cursorEl.style.border = '2px solid #ffffff';
+    cursorEl.style.color = '#ffffff';
+    cursorEl.style.fontWeight = 'bold';
+    cursorEl.style.fontSize = '18px';
+    cursorEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
+    cursorEl.style.transform = 'translate(-50%, -50%)';
+    cursorEl.style.lineHeight = '1';
+    document.body.appendChild(cursorEl);
+
+    const updateCustomCursor = (type: 'none' | 'col-resize' | 'row-resize' | 'grabbing') => {
+      if (type === 'none') {
+        cursorEl.style.display = 'none';
+        document.body.classList.remove('hide-default-cursor');
+      } else {
+        cursorEl.style.display = 'flex';
+        document.body.classList.add('hide-default-cursor');
+        if (type === 'col-resize') {
+          cursorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/></svg>`;
+        } else if (type === 'row-resize') {
+          cursorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 12 2 15 5"/><polyline points="9 19 12 22 15 19"/><line x1="12" y1="2" x2="12" y2="22"/></svg>`;
+        } else if (type === 'grabbing') {
+          cursorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M14 10V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4.5"/><path d="M6 10V8a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v9a7 7 0 0 0 7 7h3a5 5 0 0 0 5-5v-5"/></svg>`;
+        }
+      }
+    };
+
+    const updateCursorPosition = (e: any) => {
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX) || (e.clientX === 0 ? 0 : null);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY) || (e.clientY === 0 ? 0 : null);
+      if (clientX !== null && clientY !== null) {
+        cursorEl.style.left = `${clientX}px`;
+        cursorEl.style.top = `${clientY}px`;
+      }
+    };
+
+    const getResizeTarget = (e: any) => {
+      const cell = e.target.closest('th, td') as HTMLTableCellElement | null;
+      if (!cell) return null;
+      const table = cell.closest('.freeze-pane-table') as HTMLTableElement | null;
+      if (!table) return null;
+
+      const rect = cell.getBoundingClientRect();
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+      const isNearRight = (rect.right - clientX) < 10 && (rect.right - clientX) >= 0;
+      const isNearLeft = (clientX - rect.left) < 10 && (clientX - rect.left) >= 0;
+      const isNearBottom = (rect.bottom - clientY) < 10 && (rect.bottom - clientY) >= 0;
+      const isNearTop = (clientY - rect.top) < 10 && (clientY - rect.top) >= 0;
+
+      // Columns resize
+      if (isNearRight) {
+        const headerCell = (table.querySelector('thead tr') || table.rows[0])?.cells[cell.cellIndex] as HTMLTableCellElement | null;
+        if (headerCell) {
+          return { type: 'col', element: headerCell };
+        }
+      } else if (isNearLeft && cell.cellIndex > 0) {
+        const headerCell = (table.querySelector('thead tr') || table.rows[0])?.cells[cell.cellIndex - 1] as HTMLTableCellElement | null;
+        if (headerCell) {
+          return { type: 'col', element: headerCell };
+        }
+      }
+
+      // Rows resize
+      if (isNearBottom) {
+        const row = cell.closest('tr');
+        if (row) {
+          return { type: 'row', element: row };
+        }
+      } else if (isNearTop) {
+        const row = cell.closest('tr');
+        if (row) {
+          const rowIndex = row.rowIndex;
+          if (rowIndex > 0) {
+            const prevRow = table.rows[rowIndex - 1];
+            if (prevRow) {
+              return { type: 'row', element: prevRow };
+            }
+          }
+        }
+      }
+      return null;
+    };
+
+    const saveSize = (type: string, element: HTMLElement, newSize: number) => {
+      try {
+        const table = element.closest('table');
+        if (!table) return;
+        const tableId = table.id || table.className.split(' ').find((c: string) => c.includes('table')) || 'default';
+        const savedSizesStr = localStorage.getItem('mena_inc_table_sizes') || '{}';
+        const savedSizes = JSON.parse(savedSizesStr);
+
+        if (type === 'col') {
+          const cell = element as HTMLTableCellElement;
+          const colIndex = cell.cellIndex;
+          const headerText = cell.textContent?.trim() || String(colIndex);
+          const colKey = `${tableId}-col-${headerText}`;
+          savedSizes[colKey] = newSize;
+        } else if (type === 'row') {
+          const row = element as HTMLTableRowElement;
+          const rowIndex = Array.from(row.parentNode?.children || []).indexOf(row);
+          const rowKey = `${tableId}-row-${rowIndex}`;
+          savedSizes[rowKey] = newSize;
+        }
+
+        localStorage.setItem('mena_inc_table_sizes', JSON.stringify(savedSizes));
+      } catch (err) {
+        console.error('Error saving table size:', err);
+      }
+    };
+
+    const applySavedTableSizes = () => {
+      try {
+        const savedSizesStr = localStorage.getItem('mena_inc_table_sizes');
+        if (!savedSizesStr) return;
+        const savedSizes = JSON.parse(savedSizesStr);
+
+        // Apply column widths
+        const ths = document.querySelectorAll('.freeze-pane-table th');
+        ths.forEach((th: any) => {
+          const table = th.closest('table');
+          if (!table) return;
+          const tableId = table.id || table.className.split(' ').find((c: string) => c.includes('table')) || 'default';
+          const colIndex = th.cellIndex;
+          const headerText = th.textContent?.trim() || String(colIndex);
+          const colKey = `${tableId}-col-${headerText}`;
+
+          if (savedSizes[colKey] !== undefined) {
+            const width = savedSizes[colKey];
+            th.style.width = `${width}px`;
+            th.style.minWidth = `${width}px`;
+            th.style.maxWidth = `${width}px`;
+
+            Array.from(table.rows).forEach((row: any) => {
+              const cell = row.cells[colIndex];
+              if (cell) {
+                cell.style.width = `${width}px`;
+                cell.style.minWidth = `${width}px`;
+                cell.style.maxWidth = `${width}px`;
+              }
+            });
+          }
+        });
+
+        // Apply row heights
+        const trs = document.querySelectorAll('.freeze-pane-table tbody tr');
+        trs.forEach((tr: any, rowIndex) => {
+          const table = tr.closest('table');
+          if (!table) return;
+          const tableId = table.id || table.className.split(' ').find((c: string) => c.includes('table')) || 'default';
+          const rowKey = `${tableId}-row-${rowIndex}`;
+
+          if (savedSizes[rowKey] !== undefined) {
+            const height = savedSizes[rowKey];
+            tr.style.height = `${height}px`;
+            Array.from(tr.cells).forEach((cell: any) => {
+              cell.style.height = `${height}px`;
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Error applying saved table sizes:', err);
+      }
+    };
+
+    const handleMouseMove = (e: any) => {
+      updateCursorPosition(e);
+      if (isResizing && targetElement) {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        if (resizeType === 'col') {
+          const deltaX = clientX - startX;
+          const newWidth = Math.max(40, startWidth + deltaX);
+          targetElement.style.width = `${newWidth}px`;
+          targetElement.style.minWidth = `${newWidth}px`;
+          targetElement.style.maxWidth = `${newWidth}px`;
+          
+          const table = targetElement.closest('table');
+          if (table) {
+            const colIndex = (targetElement as HTMLTableCellElement).cellIndex;
+            Array.from(table.rows).forEach(row => {
+              const cell = row.cells[colIndex];
+              if (cell) {
+                cell.style.width = `${newWidth}px`;
+                cell.style.minWidth = `${newWidth}px`;
+                cell.style.maxWidth = `${newWidth}px`;
+              }
+            });
+          }
+        } else if (resizeType === 'row') {
+          const deltaY = clientY - startY;
+          const newHeight = Math.max(20, startHeight + deltaY);
+          targetElement.style.height = `${newHeight}px`;
+          Array.from((targetElement as HTMLTableRowElement).cells).forEach(cell => {
+            cell.style.height = `${newHeight}px`;
+          });
+        }
+        e.preventDefault();
+        return;
+      }
+
+      if (!e.touches && !isDraggingColumn) {
+        const target = getResizeTarget(e);
+        if (target) {
+          updateCustomCursor(target.type === 'col' ? 'col-resize' : 'row-resize');
+        } else {
+          updateCustomCursor('none');
+        }
+      }
+    };
+
+    const handleMouseDown = (e: any) => {
+      const target = getResizeTarget(e);
+      if (target) {
+        isResizing = true;
+        resizeType = target.type;
+        targetElement = target.element;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = targetElement.offsetWidth;
+        startHeight = targetElement.offsetHeight;
+        
+        targetElement.classList.add('resize-active');
+        updateCustomCursor(resizeType === 'col' ? 'col-resize' : 'row-resize');
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing && targetElement) {
+        targetElement.classList.remove('resize-active');
+        const finalSize = resizeType === 'col' ? targetElement.offsetWidth : targetElement.offsetHeight;
+        saveSize(resizeType, targetElement, finalSize);
+      }
+      isResizing = false;
+      targetElement = null;
+      updateCustomCursor('none');
+      document.body.style.userSelect = '';
+    };
+
+    const handleTouchStart = (e: any) => {
+      const target = getResizeTarget(e);
+      if (target) {
+        const touch = e.touches[0];
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+        longPressTimer = setTimeout(() => {
+          if (navigator.vibrate) navigator.vibrate(50);
+          
+          isResizing = true;
+          resizeType = target.type;
+          targetElement = target.element;
+          startX = touch.clientX;
+          startY = touch.clientY;
+          startWidth = targetElement.offsetWidth;
+          startHeight = targetElement.offsetHeight;
+
+          targetElement.classList.add('resize-active');
+          updateCustomCursor(resizeType === 'col' ? 'col-resize' : 'row-resize');
+          document.body.style.userSelect = 'none';
+        }, LONG_PRESS_DELAY);
+      }
+    };
+
+    const handleTouchMove = (e: any) => {
+      const touch = e.touches[0];
+      if (!isResizing) {
+        const dist = Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y);
+        if (dist > touchMoveThreshold) {
+          clearTimeout(longPressTimer);
+        }
+      } else {
+        handleMouseMove(e);
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      clearTimeout(longPressTimer);
+      if (isResizing) {
+        handleMouseUp();
+      }
+    };
+
+    const emptyImg = new Image();
+    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+    const handleDragStart = (e: any) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('th')) {
+        isDraggingColumn = true;
+        if (e.dataTransfer) {
+          e.dataTransfer.setDragImage(emptyImg, 0, 0);
+        }
+        updateCustomCursor('grabbing');
+        updateCursorPosition(e);
+      }
+    };
+
+    const handleDragOver = (e: any) => {
+      if (isDraggingColumn) {
+        updateCustomCursor('grabbing');
+        updateCursorPosition(e);
+      }
+    };
+
+    const handleDragEnd = () => {
+      isDraggingColumn = false;
+      updateCustomCursor('none');
+    };
+
+    document.addEventListener('mousemove', handleMouseMove, { passive: false });
+    document.addEventListener('mousedown', handleMouseDown, { passive: false });
+    document.addEventListener('mouseup', handleMouseUp);
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
+
+    // Reorder drag listeners
+    document.addEventListener('dragstart', handleDragStart, { capture: true });
+    document.addEventListener('dragover', handleDragOver, { capture: true });
+    document.addEventListener('dragend', handleDragEnd, { capture: true });
+
+    // Auto-load dimensions and register MutationObserver
+    applySavedTableSizes();
+    const observer = new MutationObserver(() => {
+      applySavedTableSizes();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+
+      document.removeEventListener('dragstart', handleDragStart, { capture: true });
+      document.removeEventListener('dragover', handleDragOver, { capture: true });
+      document.removeEventListener('dragend', handleDragEnd, { capture: true });
+
+      observer.disconnect();
+      cursorEl.remove();
     };
   }, []);
 
@@ -1724,6 +2118,18 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                           <button onClick={() => setFontSize('lg')} className={`px-2 py-1 rounded transition-colors ${fontSize === 'lg' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>A+</button>
                         </div>
                       </div>
+
+                      <div className="px-4 py-2.5 text-xs text-gray-300 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sliders className="w-4 h-4 text-[#ee317b]" />
+                          <span>Density</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-[#121212] rounded p-0.5 border border-[#262626]">
+                          <button onClick={() => setDensity('compact')} className={`px-2 py-1 rounded transition-colors text-[10px] ${density === 'compact' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>Compact</button>
+                          <button onClick={() => setDensity('standard')} className={`px-2 py-1 rounded transition-colors text-[10px] ${density === 'standard' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>Standard</button>
+                          <button onClick={() => setDensity('relaxed')} className={`px-2 py-1 rounded transition-colors text-[10px] ${density === 'relaxed' ? 'bg-[#ee317b] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>Relaxed</button>
+                        </div>
+                      </div>
                       
                       <div className="border-t border-[#262626] my-2"></div>
 
@@ -1740,18 +2146,20 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                         <Printer className="w-4 h-4 text-[#ee317b]" />
                         Standalone Proforma Tool
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                          exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
-                      >
-                        <FolderDown className="w-4 h-4 text-sky-400" />
-                        Export All Data
-                      </button>
+                      {currentUser.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+                            exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                        >
+                          <FolderDown className="w-4 h-4 text-sky-400" />
+                          Export All Data
+                        </button>
+                      )}
 
                       {currentUser.role === 'admin' && (
                         <button
@@ -2234,16 +2642,65 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (window.confirm(`Reset passkey for ${emp.name} to '1234'?`)) {
-                                     handleStartEditEmployee(emp);
-                                     setNewStaffPass('1234');
-                                     setStaffError('Passkey reset to 1234. Click Save Changes to confirm.');
+                                onClick={async () => {
+                                  const newName = window.prompt(`Update Name for ${emp.name}:`, emp.name);
+                                  if (newName === null) return;
+                                  if (!newName.trim()) {
+                                    alert('Name cannot be empty.');
+                                    return;
+                                  }
+
+                                  const newUsername = window.prompt(`Update Username for ${emp.name}:`, emp.username);
+                                  if (newUsername === null) return;
+                                  const cleanedUsername = newUsername.trim().toLowerCase();
+                                  if (!cleanedUsername) {
+                                    alert('Username cannot be empty.');
+                                    return;
+                                  }
+                                  if (
+                                    cleanedUsername !== emp.username.toLowerCase() &&
+                                    employees.some(e => e.username.toLowerCase() === cleanedUsername)
+                                  ) {
+                                    alert('Username already exists on record.');
+                                    return;
+                                  }
+
+                                  const newPass = window.prompt(`Update Password / Passkey for ${emp.name}:`, emp.password || '');
+                                  if (newPass === null) return;
+                                  if (!newPass.trim()) {
+                                    alert('Password cannot be empty.');
+                                    return;
+                                  }
+
+                                  const updatedEmp: EmployeeUser = {
+                                    ...emp,
+                                    name: newName.trim(),
+                                    username: cleanedUsername,
+                                    password: newPass.trim()
+                                  };
+
+                                  const updatedEmployees = employees.map(e => e.id === emp.id ? updatedEmp : e);
+                                  setEmployees(updatedEmployees);
+                                  localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updatedEmployees));
+
+                                  // Sync to Supabase table
+                                  try {
+                                    const { saveEmployeeDoc } = await import('./lib/dbService');
+                                    await saveEmployeeDoc(updatedEmp);
+                                    alert(`Successfully updated staff settings in database for "${updatedEmp.name}".`);
+                                  } catch (err) {
+                                    alert('Changes kept locally, but failed to sync to Supabase database.');
+                                  }
+
+                                  // If we updated the currently logged-in user, sync current session
+                                  if (currentUser && currentUser.id === emp.id) {
+                                    setCurrentUser(updatedEmp);
+                                    localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedEmp));
                                   }
                                 }}
                                 className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
                               >
-                                Reset Passkey
+                                Reset Staff Settings
                               </button>
                             </>
                           )}
