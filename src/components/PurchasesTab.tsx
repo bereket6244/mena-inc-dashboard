@@ -33,8 +33,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
 import { FloatingAddButton } from './shared/TabLayout';
 
-const PURCHASE_SORT_FIELDS = ['recordedOrder', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
-type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder'>;
+const PURCHASE_SORT_FIELDS = ['recordedOrder', 'lastAdded', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
+type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder' | 'lastAdded'>;
 type PurchaseSortField = typeof PURCHASE_SORT_FIELDS[number];
 const PURCHASE_SORT_BY_STORAGE_KEY = 'ui.purchases.sortBy';
 const PURCHASE_SORT_ASC_STORAGE_KEY = 'ui.purchases.sortAsc';
@@ -964,8 +964,13 @@ export default function PurchasesTab({
   // Sort Purchase Records
   const sortedPurchases = [...filteredPurchases].sort((a, b) => {
     if (sortBy === 'recordedOrder') return 0;
-    let valA = a[sortBy];
-    let valB = b[sortBy];
+    if (sortBy === 'lastAdded') {
+      const indexA = purchases.findIndex(p => p.id === a.id);
+      const indexB = purchases.findIndex(p => p.id === b.id);
+      return indexB - indexA;
+    }
+    let valA = a[sortBy as Exclude<PurchaseSortField, 'recordedOrder' | 'lastAdded'>];
+    let valB = b[sortBy as Exclude<PurchaseSortField, 'recordedOrder' | 'lastAdded'>];
 
     if (typeof valA === 'string' && typeof valB === 'string') {
       return isSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -1711,9 +1716,9 @@ export default function PurchasesTab({
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowSortPopover(!showSortPopover)}
+                    onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
                     className={`purchase-mobile-icon-button flex items-center justify-center cursor-pointer ${
-                      sortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                      (sortBy !== 'recordedOrder' && sortBy !== 'lastAdded') ? 'text-[#ee317b]' : 'text-gray-300'
                     }`}
                     title="Sort options"
                   >
@@ -1732,6 +1737,17 @@ export default function PurchasesTab({
                           className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                         >
                           Recorded Order (Reset)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortBy('lastAdded');
+                            setIsSortAsc(false); // Newest first
+                            setShowSortPopover(false);
+                          }}
+                          className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                        >
+                          Last Added (Newest First)
                         </button>
                         <div className="h-px bg-[#262626] my-0.5" />
                         <button
@@ -2020,9 +2036,9 @@ export default function PurchasesTab({
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setShowSortPopover(!showSortPopover)}
+                  onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
                   className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                    sortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                    (sortBy !== 'recordedOrder' && sortBy !== 'lastAdded') ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
                   }`}
                   title="Sort options"
                 >
@@ -2041,6 +2057,17 @@ export default function PurchasesTab({
                         className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                       >
                         Recorded Order (Reset)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('lastAdded');
+                          setIsSortAsc(false); // Newest first
+                          setShowSortPopover(false);
+                        }}
+                        className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                      >
+                        Last Added (Newest First)
                       </button>
                       <div className="h-px bg-[#262626] my-0.5" />
                       <button

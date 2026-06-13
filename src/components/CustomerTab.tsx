@@ -74,6 +74,7 @@ const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
 const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
 const CUSTOMER_SORT_FIELDS = [
   'recordedOrder',
+  'lastAdded',
   'clientType',
   'clientName',
   'phone',
@@ -102,7 +103,7 @@ const CUSTOMER_SORT_FIELDS = [
   'incompletionReason',
 ] as const;
 type CustomerSortField = typeof CUSTOMER_SORT_FIELDS[number];
-type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder'>;
+type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder' | 'lastAdded'>;
 const CUSTOMER_SORT_BY_STORAGE_KEY = 'ui.customer.sortBy';
 const CUSTOMER_SORT_DIRECTION_STORAGE_KEY = 'ui.customer.sortDirection';
 const DEFAULT_ACQUISITION_CHANNELS = ['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'];
@@ -1772,6 +1773,11 @@ export default function CustomerTab({
     return matchesSearch && matchesAgent && matchesSource && matchesPayment && matchesCompletion && matchesReceipt;
   }).sort((a, b) => {
     if (customerSortBy === 'recordedOrder') return 0;
+    if (customerSortBy === 'lastAdded') {
+      const indexA = customers.findIndex(c => c.id === a.id);
+      const indexB = customers.findIndex(c => c.id === b.id);
+      return indexB - indexA;
+    }
     const direction = customerSortDirection === 'asc' ? 1 : -1;
     const valA = getCustomerSortValue(a, customerSortBy);
     const valB = getCustomerSortValue(b, customerSortBy);
@@ -2041,12 +2047,12 @@ export default function CustomerTab({
                 </span>
               )}
             </button>
-            <div className="relative">
+             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowSortPopover(!showSortPopover)}
+                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
                 className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
-                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                  (customerSortBy !== 'recordedOrder' && customerSortBy !== 'lastAdded') ? 'text-[#ee317b]' : 'text-gray-300'
                 }`}
                 title="Sort options"
               >
@@ -2065,6 +2071,17 @@ export default function CustomerTab({
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
                       Recorded Order (Reset)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('lastAdded');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Last Added (Newest First)
                     </button>
                     <div className="h-px bg-[#262626] my-0.5" />
                     <button
@@ -2351,9 +2368,9 @@ export default function CustomerTab({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowSortPopover(!showSortPopover)}
+                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
                 className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                  (customerSortBy !== 'recordedOrder' && customerSortBy !== 'lastAdded') ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
                 }`}
                 title="Sort options"
               >
@@ -2372,6 +2389,17 @@ export default function CustomerTab({
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
                       Recorded Order (Reset)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSortBy('lastAdded');
+                        setCustomerSortDirection('desc');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Last Added (Newest First)
                     </button>
                     <div className="h-px bg-[#262626] my-0.5" />
                     <button
