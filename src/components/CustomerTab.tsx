@@ -36,8 +36,7 @@ import {
   CheckCircle,
   CheckCircle2,
   RotateCcw,
-  Megaphone,
-  ArrowUpDown
+  Megaphone
 } from 'lucide-react';
 
 import { 
@@ -74,7 +73,6 @@ const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
 const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
 const CUSTOMER_SORT_FIELDS = [
   'recordedOrder',
-  'lastAdded',
   'clientType',
   'clientName',
   'phone',
@@ -103,7 +101,7 @@ const CUSTOMER_SORT_FIELDS = [
   'incompletionReason',
 ] as const;
 type CustomerSortField = typeof CUSTOMER_SORT_FIELDS[number];
-type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder' | 'lastAdded'>;
+type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder'>;
 const CUSTOMER_SORT_BY_STORAGE_KEY = 'ui.customer.sortBy';
 const CUSTOMER_SORT_DIRECTION_STORAGE_KEY = 'ui.customer.sortDirection';
 const DEFAULT_ACQUISITION_CHANNELS = ['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'];
@@ -227,6 +225,154 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [copiedOrderMessageId, setCopiedOrderMessageId] = useState<string | null>(null);
+  const copiedOrderMessageTimerRef = useRef<number | null>(null);
+
+  const copyCustomerOrderMessage = (c: Customer) => {
+    const totalAmount = c.quantity * c.unitPrice;
+    const advancePaid = c.advancePayment || 0;
+    const remainingBalance = Math.max(0, totalAmount - advancePaid);
+    const downPaymentPercent = totalAmount > 0 ? Math.round((advancePaid / totalAmount) * 100) : 0;
+    
+    const bank = bankAccounts.find(b => b.id === c.paymentMethodId);
+    const bankName = bank ? bank.name : 'Unknown Bank';
+    const bankNumber = bank && bank.accountNumber ? bank.accountNumber : 'N/A';
+    
+    let paymentDate = c.advancePaymentDate || 'N/A';
+    if (paymentDate && paymentDate !== 'N/A') {
+      try {
+        const dateObj = new Date(paymentDate);
+        if (!isNaN(dateObj.getTime())) {
+          paymentDate = dateObj.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    
+    let desc = c.productType || '';
+    const parts: string[] = [];
+    if (c.amount16 > 0) {
+      parts.push(`${c.amount16} entrance cards`);
+    }
+    if (c.amount9 > 0) {
+      parts.push(`${c.amount9} ajabi cards`);
+    }
+    if (parts.length > 0) {
+      desc += ` with ` + parts.join(' and ');
+    }
+
+    const message = `you order for ${c.quantity} pcs ${desc} at a unit price of ${c.unitPrice} birr
+
+Total Amount:
+${c.quantity} pcs × ${c.unitPrice} birr = ${totalAmount.toLocaleString()} birr
+
+A ${downPaymentPercent}% down payment of ${advancePaid.toLocaleString()} birr has been received through the following account:
+Account Name: ${bankName}
+Account Number: ${bankNumber}
+Payment Date: ${paymentDate}
+
+The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
+
+    navigator.clipboard.writeText(message);
+    
+    if (copiedOrderMessageTimerRef.current) {
+      window.clearTimeout(copiedOrderMessageTimerRef.current);
+    }
+    setCopiedOrderMessageId(c.id);
+    copiedOrderMessageTimerRef.current = window.setTimeout(() => {
+      setCopiedOrderMessageId(null);
+    }, 2000);
+  };
+
+  const handleCopySelectedOrdersMessages = () => {
+    const selectedItems = customers.filter(c => selectedCustomerIds.includes(c.id));
+    if (selectedItems.length === 0) return;
+    
+    if (selectedItems.length === 1) {
+      copyCustomerOrderMessage(selectedItems[0]);
+      return;
+    }
+    
+    // Multiple items: Sum up the math, separate the details
+    let totalSum = 0;
+    let totalAdvance = 0;
+    
+    const detailsLines = selectedItems.map(c => {
+      let desc = c.productType || '';
+      const parts: string[] = [];
+      if (c.amount16 > 0) {
+        parts.push(`${c.amount16} entrance cards`);
+      }
+      if (c.amount9 > 0) {
+        parts.push(`${c.amount9} ajabi cards`);
+      }
+      if (parts.length > 0) {
+        desc += ` with ` + parts.join(' and ');
+      }
+      return `${c.quantity} pcs ${desc} at a unit price of ${c.unitPrice} birr`;
+    });
+    
+    selectedItems.forEach(c => {
+      totalSum += c.quantity * c.unitPrice;
+      totalAdvance += c.advancePayment || 0;
+    });
+    
+    const paymentLines = selectedItems.map(c => {
+      const bank = bankAccounts.find(b => b.id === c.paymentMethodId);
+      const bankName = bank ? bank.name : 'Unknown Bank';
+      const bankNumber = bank && bank.accountNumber ? bank.accountNumber : 'N/A';
+      
+      let paymentDate = c.advancePaymentDate || 'N/A';
+      if (paymentDate && paymentDate !== 'N/A') {
+        try {
+          const dateObj = new Date(paymentDate);
+          if (!isNaN(dateObj.getTime())) {
+            paymentDate = dateObj.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+          }
+        } catch (e) {
+          // fallback
+        }
+      }
+      
+      return `Account Name: ${bankName}
+Account Number: ${bankNumber}
+Payment Date: ${paymentDate}`;
+    });
+    
+    const uniquePaymentLines: string[] = [];
+    paymentLines.forEach(line => {
+      if (!uniquePaymentLines.includes(line)) {
+        uniquePaymentLines.push(line);
+      }
+    });
+
+    const remainingBalance = Math.max(0, totalSum - totalAdvance);
+    const downPaymentPercent = totalSum > 0 ? Math.round((totalAdvance / totalSum) * 100) : 0;
+    
+    const message = `you order for:
+${detailsLines.join('\nand\n')}
+
+Total Amount:
+${totalSum.toLocaleString()} birr
+
+A ${downPaymentPercent}% down payment of ${totalAdvance.toLocaleString()} birr has been received through the following account:
+${uniquePaymentLines.join('\n---\n')}
+
+The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
+
+    navigator.clipboard.writeText(message);
+    alert(`Combined order message details for ${selectedItems.length} customers copied to clipboard!`);
+  };
+
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [activeContactMenuId, setActiveContactMenuId] = useState<string | null>(null);
   const [contactMenuPosition, setContactMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -234,7 +380,6 @@ export default function CustomerTab({
   const contactMenuRef = useRef<HTMLDivElement>(null);
   const copiedContactTimerRef = useRef<number | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [showSortPopover, setShowSortPopover] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
@@ -1773,11 +1918,6 @@ export default function CustomerTab({
     return matchesSearch && matchesAgent && matchesSource && matchesPayment && matchesCompletion && matchesReceipt;
   }).sort((a, b) => {
     if (customerSortBy === 'recordedOrder') return 0;
-    if (customerSortBy === 'lastAdded') {
-      const indexA = customers.findIndex(c => c.id === a.id);
-      const indexB = customers.findIndex(c => c.id === b.id);
-      return indexB - indexA;
-    }
     const direction = customerSortDirection === 'asc' ? 1 : -1;
     const valA = getCustomerSortValue(a, customerSortBy);
     const valB = getCustomerSortValue(b, customerSortBy);
@@ -2047,157 +2187,16 @@ export default function CustomerTab({
                 </span>
               )}
             </button>
-             <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
-                className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
-                  (customerSortBy !== 'recordedOrder' && customerSortBy !== 'lastAdded') ? 'text-[#ee317b]' : 'text-gray-300'
-                }`}
-                title="Sort options"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5" />
-              </button>
-              {showSortPopover && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
-                  <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleRecordedOrderSort();
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Recorded Order (Reset)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('lastAdded');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Last Added (Newest First)
-                    </button>
-                    <div className="h-px bg-[#262626] my-0.5" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('clientName');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Client Name (A to Z)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('clientName');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Client Name (Z to A)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('productType');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Product Type (A to Z)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('productType');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Product Type (Z to A)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('fullValue');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Total Price (High to Low)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('fullValue');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Total Price (Low to High)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('remainingBalance');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Remaining Debt (High to Low)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('remainingBalance');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Remaining Debt (Low to High)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('deliveryDate');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Delivery Date (Newest)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('deliveryDate');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Delivery Date (Oldest)
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handleRecordedOrderSort}
+              className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                customerSortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+              }`}
+              title="Recorded order"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
           </>
         }
         desktopLeftControls={
@@ -2365,157 +2364,16 @@ export default function CustomerTab({
               )}
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
-                className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                  (customerSortBy !== 'recordedOrder' && customerSortBy !== 'lastAdded') ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
-                }`}
-                title="Sort options"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5" />
-              </button>
-              {showSortPopover && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
-                  <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleRecordedOrderSort();
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Recorded Order (Reset)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('lastAdded');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Last Added (Newest First)
-                    </button>
-                    <div className="h-px bg-[#262626] my-0.5" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('clientName');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Client Name (A to Z)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('clientName');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'clientName' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Client Name (Z to A)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('productType');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Product Type (A to Z)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('productType');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'productType' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Product Type (Z to A)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('fullValue');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Total Price (High to Low)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('fullValue');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'fullValue' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Total Price (Low to High)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('remainingBalance');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Remaining Debt (High to Low)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('remainingBalance');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'remainingBalance' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Remaining Debt (Low to High)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('deliveryDate');
-                        setCustomerSortDirection('desc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Delivery Date (Newest)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerSortBy('deliveryDate');
-                        setCustomerSortDirection('asc');
-                        setShowSortPopover(false);
-                      }}
-                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(customerSortBy === 'deliveryDate' && customerSortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
-                    >
-                      Delivery Date (Oldest)
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handleRecordedOrderSort}
+              className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                customerSortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+              }`}
+              title="Recorded order"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
 
             <button
               type="button"
@@ -2581,6 +2439,14 @@ export default function CustomerTab({
                 >
                   <Printer className="w-3.5 h-3.5" />
                   Proforma
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopySelectedOrdersMessages}
+                  className="px-3 py-1 bg-[#181818] hover:bg-[#202020] border border-[#262626] text-white font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy Message
                 </button>
                 <button
                   type="button"
@@ -2671,7 +2537,18 @@ export default function CustomerTab({
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
                         <div className="space-y-1">
                           <div className="flex items-baseline gap-1.5 min-w-0">
-                            <span className="truncate text-[14px] font-bold leading-tight text-white" title={c.clientName}>{c.clientName}</span>
+                            <span 
+                              className="truncate text-[14px] font-bold leading-tight text-white hover:text-[#ee317b] hover:underline cursor-pointer transition-colors" 
+                              title="Click to copy order message details"
+                              onClick={() => copyCustomerOrderMessage(c)}
+                            >
+                              {c.clientName}
+                            </span>
+                            {copiedOrderMessageId === c.id && (
+                              <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+                                Copied
+                              </span>
+                            )}
                             <span className="shrink-0 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500" title={c.clientType || 'Client'}>
                               {c.clientType || 'Client'}
                             </span>
@@ -4338,7 +4215,7 @@ export default function CustomerTab({
                         <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] flex items-center gap-1.5 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
                           Product Rows
-                          <ChevronDown className={`w-3.5 h-3.5 text-gray-500 ml-1 transition-transform duration-200 ${isProductRowsExpanded ? 'rotate-180' : ''}`} />
+                          <span className={`transform transition-transform text-gray-500 ml-1 ${isProductRowsExpanded ? 'rotate-180' : ''}`}>▼</span>
                         </h3>
                         <button
                           type="button"
@@ -4461,7 +4338,7 @@ export default function CustomerTab({
                         <h3 className="text-[#ee317b] font-bold uppercase tracking-widest text-[10px] flex items-center gap-1.5 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ee317b]"></span>
                           Terms &amp; Conditions
-                          <ChevronDown className={`w-3.5 h-3.5 text-gray-500 ml-1 transition-transform duration-200 ${isTermsExpanded ? 'rotate-180' : ''}`} />
+                          <span className={`transform transition-transform text-gray-500 ml-1 ${isTermsExpanded ? 'rotate-180' : ''}`}>▼</span>
                         </h3>
                         <button
                           type="button"
@@ -5366,7 +5243,7 @@ export default function CustomerTab({
               <span>{selectedCustomerIds.length} Selected Orders</span>
               <button type="button" onClick={() => setSelectedCustomerIds([])} className="text-gray-400 font-normal underline">Clear Selection</button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={handleBulkComplete}
@@ -5395,6 +5272,14 @@ export default function CustomerTab({
               >
                 <Printer className="w-3.5 h-3.5" />
                 Proforma
+              </button>
+              <button
+                type="button"
+                onClick={handleCopySelectedOrdersMessages}
+                className="bg-[#181818] border border-[#262626] text-white py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy
               </button>
               <button
                 type="button"

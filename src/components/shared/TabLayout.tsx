@@ -235,45 +235,21 @@ export function DataTableWrapper({ children, className = "" }: { children: React
 export function DataTable({
   children,
   className = "",
-  id = "default-table"
+  id,
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
 }) {
-  const [isEditMode, setIsEditMode] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const draggedColumnRef = useRef<number | null>(null);
-  const draggedRowRef = useRef<number | null>(null);
 
-  // Indicators refs
-  const colIndicatorRef = useRef<HTMLDivElement>(null);
-  const rowIndicatorRef = useRef<HTMLDivElement>(null);
-
-  // Mobile Tapped Column/Row Refs
-  const [tappedColIndex, setTappedColIndex] = useState<number | null>(null);
-  const [tappedRowIndex, setTappedRowIndex] = useState<number | null>(null);
-
-  // Setup handles & draggables on render
+  // Setup handles on render
   useEffect(() => {
     const table = tableRef.current;
     if (!table) return;
 
-    const isMobile = window.innerWidth <= 768;
-
-    // Set draggable headers
-    table.querySelectorAll('th').forEach((th: any, colIdx) => {
-      // Don't drag the first two columns (usually Index and Checkbox)
-      if (colIdx >= 2 && (!isMobile || isEditMode)) {
-        th.setAttribute('draggable', 'true');
-        th.classList.add('draggable-header');
-      } else {
-        th.removeAttribute('draggable');
-        th.classList.remove('draggable-header');
-      }
-
-      // Add col-resize-handle if missing
+    // Add col-resize-handle if missing
+    table.querySelectorAll('th').forEach((th: any) => {
       if (!th.querySelector('.col-resize-handle')) {
         const handle = document.createElement('div');
         handle.className = 'col-resize-handle';
@@ -283,13 +259,10 @@ export function DataTable({
       }
     });
 
-    // Add row-resize-handles & row-grab-handle to tbody
+    // Add row-resize-handles to tbody
     table.querySelectorAll('tbody tr').forEach((tr: any) => {
       const firstCell = tr.cells[0];
       if (firstCell) {
-        firstCell.classList.add('row-grab-handle');
-        firstCell.setAttribute('title', 'Drag first cell to reorder row');
-        
         if (!firstCell.querySelector('.row-resize-handle')) {
           const handle = document.createElement('div');
           handle.className = 'row-resize-handle';
@@ -297,15 +270,8 @@ export function DataTable({
           firstCell.appendChild(handle);
         }
       }
-
-      // Make rows draggable on desktop, or on mobile when edit layout is enabled
-      if (!isMobile || isEditMode) {
-        tr.setAttribute('draggable', 'true');
-      } else {
-        tr.removeAttribute('draggable');
-      }
     });
-  }, [children, isEditMode]);
+  }, [children]);
 
   // Handle Resize Events
   useEffect(() => {
@@ -406,9 +372,6 @@ export function DataTable({
     };
 
     const handleStart = (e: any) => {
-      const isMobile = window.innerWidth <= 768;
-      if (isMobile && !isEditMode) return;
-
       const target = e.target as HTMLElement;
       if (target.classList.contains('col-resize-handle')) {
         e.stopPropagation();
@@ -467,268 +430,17 @@ export function DataTable({
       window.removeEventListener('touchmove', handleMove);
       window.removeEventListener('touchend', handleEnd);
     };
-  }, [isEditMode]);
-
-  // Touch gesture handler for mobile
-  useEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
-
-    let longPressTimer: any = null;
-    let touchStartPos = { x: 0, y: 0 };
-    const LONG_PRESS_DELAY = 250;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (!isEditMode) return;
-      const target = e.target as HTMLElement;
-      const touch = e.touches[0];
-      touchStartPos = { x: touch.clientX, y: touch.clientY };
-
-      const th = target.closest('th');
-      const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
-
-      if (th && !target.classList.contains('col-resize-handle')) {
-        setTappedColIndex(th.cellIndex);
-      }
-
-      if (tr) {
-        clearTimeout(longPressTimer);
-        longPressTimer = setTimeout(() => {
-          if (navigator.vibrate) navigator.vibrate(50);
-          setTappedRowIndex(tr.rowIndex);
-        }, LONG_PRESS_DELAY);
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      const dist = Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y);
-      if (dist > 10) {
-        clearTimeout(longPressTimer);
-      }
-    };
-
-    const handleTouchEnd = () => {
-      clearTimeout(longPressTimer);
-    };
-
-    table.addEventListener('touchstart', handleTouchStart);
-    table.addEventListener('touchmove', handleTouchMove);
-    table.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      table.removeEventListener('touchstart', handleTouchStart);
-      table.removeEventListener('touchmove', handleTouchMove);
-      table.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isEditMode]);
-
-  const handleDragStart = (e: React.DragEvent<HTMLTableElement>) => {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile && !isEditMode) {
-      e.preventDefault();
-      return;
-    }
-
-    const target = e.target as HTMLElement;
-    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
-    const th = target.closest('th') as HTMLTableCellElement | null;
-
-    if (tr) {
-      // Row Dragging - only allow if started inside first cell
-      const firstCell = tr.cells[0];
-      if (!firstCell || !firstCell.contains(target)) {
-        e.preventDefault();
-        return;
-      }
-      draggedRowRef.current = tr.rowIndex;
-      e.dataTransfer.effectAllowed = 'move';
-      tr.classList.add('row-dragging');
-    } else if (th) {
-      // Column Dragging
-      if (th.cellIndex < 2) {
-        e.preventDefault();
-        return;
-      }
-      draggedColumnRef.current = th.cellIndex;
-      e.dataTransfer.effectAllowed = 'move';
-      th.classList.add('mobile-dragging');
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLTableElement>) => {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile && !isEditMode) return;
-
-    const target = e.target as HTMLElement;
-    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
-    const th = target.closest('th') as HTMLTableCellElement | null;
-
-    if (draggedRowRef.current !== null && tr) {
-      e.preventDefault();
-      
-      const rect = tr.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      const isTop = e.clientY < midY;
-
-      const tableRect = tableRef.current!.getBoundingClientRect();
-      const topOffset = rect.top - tableRect.top + (isTop ? 0 : rect.height);
-
-      if (rowIndicatorRef.current) {
-        rowIndicatorRef.current.style.display = 'block';
-        rowIndicatorRef.current.style.top = `${topOffset}px`;
-      }
-    } else if (draggedColumnRef.current !== null && th && th.cellIndex >= 2) {
-      e.preventDefault();
-
-      const rect = th.getBoundingClientRect();
-      const midX = rect.left + rect.width / 2;
-      const isLeft = e.clientX < midX;
-
-      const tableRect = tableRef.current!.getBoundingClientRect();
-      const leftOffset = rect.left - tableRect.left + (isLeft ? 0 : rect.width);
-
-      if (colIndicatorRef.current) {
-        colIndicatorRef.current.style.display = 'block';
-        colIndicatorRef.current.style.left = `${leftOffset}px`;
-      }
-    }
-  };
-
-  const handleDragLeave = () => {
-    if (colIndicatorRef.current) {
-      colIndicatorRef.current.style.display = 'none';
-    }
-    if (rowIndicatorRef.current) {
-      rowIndicatorRef.current.style.display = 'none';
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLTableElement>) => {
-    const target = e.target as HTMLElement;
-    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
-    const th = target.closest('th') as HTMLTableCellElement | null;
-    
-    if (colIndicatorRef.current) {
-      colIndicatorRef.current.style.display = 'none';
-    }
-    if (rowIndicatorRef.current) {
-      rowIndicatorRef.current.style.display = 'none';
-    }
-
-    if (draggedRowRef.current !== null && tr) {
-      e.preventDefault();
-      moveRow(tableRef.current!, draggedRowRef.current, tr.rowIndex);
-    } else if (draggedColumnRef.current !== null && th && th.cellIndex >= 2) {
-      e.preventDefault();
-      moveColumn(tableRef.current!, draggedColumnRef.current, th.cellIndex);
-    }
-    
-    tableRef.current?.querySelectorAll('th').forEach(th => th.classList.remove('mobile-dragging'));
-    tableRef.current?.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-dragging'));
-    draggedColumnRef.current = null;
-    draggedRowRef.current = null;
-  };
-
-  const moveColumn = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-    Array.from(table.rows).forEach(row => {
-      const cells = Array.from(row.children);
-      const fromCell = cells[fromIndex];
-      const toCell = cells[toIndex];
-      if (!fromCell || !toCell) return;
-      row.insertBefore(fromCell, fromIndex < toIndex ? toCell.nextSibling : toCell);
-    });
-  };
-
-  const moveRow = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || fromIndex < 1 || toIndex < 1) return;
-    const tbody = table.tBodies[0];
-    if (!tbody) return;
-    const rows = Array.from(tbody.rows);
-    const fromRow = rows[fromIndex - 1];
-    const toRow = rows[toIndex - 1];
-    if (!fromRow || !toRow) return;
-    tbody.insertBefore(fromRow, fromIndex < toIndex ? toRow.nextSibling : toRow);
-  };
+  }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      {/* Mobile-only Layout Editing Toggle Panel */}
-      <div className="md:hidden flex items-center justify-between px-3 py-1.5 bg-[#181818] border-b border-[#262626] text-[11px] font-sans text-gray-400">
-        <span className="font-medium">Table Layout Adjustments</span>
-        <button
-          type="button"
-          onClick={() => {
-            setIsEditMode(!isEditMode);
-            setTappedColIndex(null);
-            setTappedRowIndex(null);
-          }}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors select-none ${
-            isEditMode
-              ? 'bg-[#ee317b]/20 text-[#ee317b] border border-[#ee317b]/30'
-              : 'bg-[#262626] text-gray-300 border border-[#374151]'
-          }`}
-        >
-          {isEditMode ? 'Layout: Editing' : 'Layout: Locked'}
-        </button>
-      </div>
-
-      <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
-        <div ref={colIndicatorRef} className="col-drop-indicator" style={{ display: 'none' }} />
-        <div ref={rowIndicatorRef} className="row-drop-indicator" style={{ display: 'none' }} />
-
-        <table
-          ref={tableRef}
-          id={id}
-          className={`freeze-pane-table w-full text-left border-collapse font-sans text-xs ${className} ${
-            isEditMode ? 'layout-editing-active' : ''
-          }`}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {children}
-        </table>
-      </div>
-
-      <style>{`
-        @media (max-width: 768px) {
-          ${!isEditMode ? `
-            .col-resize-handle, .row-resize-handle {
-              display: none !important;
-            }
-          ` : `
-            .col-resize-handle {
-              display: none !important;
-            }
-            .row-resize-handle {
-              display: none !important;
-            }
-            ${tappedColIndex !== null ? `
-              th:nth-child(${tappedColIndex + 1}) .col-resize-handle {
-                display: block !important;
-                background-color: #ee317b !important;
-              }
-              th:nth-child(${tappedColIndex + 1}) {
-                box-shadow: inset 0 0 0 2px #ee317b !important;
-                background-color: rgba(238, 49, 123, 0.05) !important;
-              }
-            ` : ''}
-            ${tappedRowIndex !== null ? `
-              tbody tr:nth-child(${tappedRowIndex}) td:first-child .row-resize-handle {
-                display: block !important;
-                background-color: #ee317b !important;
-              }
-              tbody tr:nth-child(${tappedRowIndex}) {
-                box-shadow: inset 0 0 0 2px #ee317b !important;
-                background-color: rgba(238, 49, 123, 0.02) !important;
-              }
-            ` : ''}
-          `}
-        }
-      `}</style>
+    <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
+      <table
+        ref={tableRef}
+        id={id}
+        className={`freeze-pane-table w-full text-left border-collapse font-sans text-xs ${className}`}
+      >
+        {children}
+      </table>
     </div>
   );
 }

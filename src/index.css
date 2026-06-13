@@ -1099,6 +1099,93 @@ button[title="Search categories"] {
   background-color: var(--surface-card);
 }
 
+/* Fix First Column Freezing: Enforce solid backgrounds for sticky columns */
+.freeze-pane-table tbody tr > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-clip: padding-box !important;
+}
+
+/* Dark Theme Solid Backgrounds */
+:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #151312 !important;
+}
+:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #0d0c0b !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #172615 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.incomplete-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #311516 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.incomplete-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #261011 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.incomplete-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #261011 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #1A2E20 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.low-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #2f2512 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.low-stock-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #261e0e !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.out-of-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #311516 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.out-of-stock-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #261011 !important;
+}
+
+/* Light Theme Solid Backgrounds */
+.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--surface-table-even) !important;
+}
+.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--surface-table-odd) !important;
+}
+.light-theme .freeze-pane-table tbody tr.completed-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #e8f6e1 !important;
+}
+.light-theme .freeze-pane-table tbody tr.completed-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--brand-green-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.completed-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--brand-green-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.incomplete-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #ffe5e1 !important;
+}
+.light-theme .freeze-pane-table tbody tr.incomplete-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--danger-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.incomplete-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--danger-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #E8F5E9 !important;
+}
+.light-theme .freeze-pane-table tbody tr.low-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #ffe9a8 !important;
+}
+.light-theme .freeze-pane-table tbody tr.low-stock-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--warning-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.out-of-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #ffe5e1 !important;
+}
+.light-theme .freeze-pane-table tbody tr.out-of-stock-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--danger-soft) !important;
+}
+
 @media (max-width: 767px) {
   .data-table-scroll {
     height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
