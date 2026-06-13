@@ -2585,76 +2585,18 @@ textarea:disabled {
     margin-top: 10px !important;
   }
 
-  /* Freeze columns 1, 2, 3, and 4 in Inventory Table on mobile */
-  #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(1) {
-    position: sticky !important;
-    left: 0 !important;
-    z-index: 21 !important;
-    width: 2.25rem !important;
-    min-width: 2.25rem !important;
-    max-width: 2.25rem !important;
-  }
-  
-  #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(2) {
-    position: sticky !important;
-    left: 2.25rem !important;
-    z-index: 21 !important;
-    width: 2.25rem !important;
-    min-width: 2.25rem !important;
-    max-width: 2.25rem !important;
-  }
-
+  /* Format columns 3 and 4 in Inventory Table on mobile to fit on-screen together */
   #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(3) {
-    position: sticky !important;
-    left: 4.5rem !important;
-    z-index: 21 !important;
-    width: 7rem !important;
-    min-width: 7rem !important;
-    max-width: 7rem !important;
+    width: 9rem !important;
+    min-width: 9rem !important;
+    max-width: 9rem !important;
     white-space: normal !important;
     word-break: break-word !important;
   }
 
   #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(4) {
-    position: sticky !important;
-    left: 11.5rem !important;
-    z-index: 21 !important;
-    width: 4.5rem !important;
-    min-width: 4.5rem !important;
-    max-width: 4.5rem !important;
-    box-shadow: 2px 0 0 var(--dark-border-soft) !important;
-  }
-  
-  .light-theme #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(4) {
-    box-shadow: 2px 0 0 var(--border-soft) !important;
-  }
-
-  /* Background fills for sticky columns on mobile to prevent bleed-through text */
-  #inventory-tab-pnl .alternating-table-rows tbody tr:nth-child(even) td:nth-child(-n+4) {
-    background-color: #151312 !important;
-  }
-  #inventory-tab-pnl .alternating-table-rows tbody tr:nth-child(odd) td:nth-child(-n+4) {
-    background-color: #0d0c0b !important;
-  }
-  .light-theme #inventory-tab-pnl .alternating-table-rows tbody tr:nth-child(even) td:nth-child(-n+4) {
-    background-color: var(--surface-table-even) !important;
-  }
-  .light-theme #inventory-tab-pnl .alternating-table-rows tbody tr:nth-child(odd) td:nth-child(-n+4) {
-    background-color: var(--surface-table-odd) !important;
-  }
-
-  /* Table item status highlighted overrides */
-  #inventory-tab-pnl tr.low-stock-row td:nth-child(-n+4) {
-    background-color: #2D210F !important;
-  }
-  .light-theme #inventory-tab-pnl tr.low-stock-row td:nth-child(-n+4) {
-    background-color: var(--warning-soft) !important;
-  }
-  
-  #inventory-tab-pnl tr.out-of-stock-row td:nth-child(-n+4) {
-    background-color: #2E181D !important;
-  }
-  .light-theme #inventory-tab-pnl tr.out-of-stock-row td:nth-child(-n+4) {
-    background-color: var(--danger-soft) !important;
+    width: 5.5rem !important;
+    min-width: 5.5rem !important;
+    max-width: 5.5rem !important;
   }
 }
