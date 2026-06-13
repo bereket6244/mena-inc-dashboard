@@ -2449,14 +2449,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
-                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30' : ''
+                className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
                 }`}
                 title="Sort options"
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                <span>Sort</span>
-                <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
               </button>
               {showSortPopover && (
                 <>
