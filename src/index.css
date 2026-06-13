@@ -1307,14 +1307,14 @@ button[title="Search categories"] {
     overflow-x: hidden !important;
     width: max-content !important;
     min-width: 100% !important;
-    touch-action: pan-y;
+    touch-action: auto;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: auto;
   }
 
   #purchases-tab-pnl .data-table-scroll {
-    height: calc(100dvh - 15rem) !important;
-    max-height: calc(100dvh - 15rem) !important;
+    height: calc(100dvh - 16rem) !important;
+    max-height: calc(100dvh - 16rem) !important;
   }
 
   .freeze-pane-table thead th {
