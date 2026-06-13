@@ -2226,7 +2226,7 @@ export default function PurchasesTab({
                         <tr 
                           key={p.id}
                           className={`transition-colors ${
-                            isSelected ? 'selected-row bg-[#121912]/20 border-l-2 border-[#71b536]' : 'hover:bg-[#181818]'
+                            isSelected ? 'selected-row border-l-2 border-[#71b536]' : 'hover:bg-[#181818]'
                           }`}
                         >
                           <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>

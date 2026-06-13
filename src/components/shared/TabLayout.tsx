@@ -266,7 +266,6 @@ export function DataTable({
         if (!firstCell.querySelector('.row-resize-handle')) {
           const handle = document.createElement('div');
           handle.className = 'row-resize-handle';
-          firstCell.style.position = 'relative';
           firstCell.appendChild(handle);
         }
       }

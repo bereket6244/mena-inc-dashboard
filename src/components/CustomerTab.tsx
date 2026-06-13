@@ -225,7 +225,7 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
-  const [copiedOrderMessageId, setCopiedOrderMessageId] = useState<string | null>(null);
+  const [copiedOrderMessageIds, setCopiedOrderMessageIds] = useState<string[]>([]);
   const copiedOrderMessageTimerRef = useRef<number | null>(null);
 
   const copyCustomerOrderMessage = (c: Customer) => {
@@ -283,10 +283,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     if (copiedOrderMessageTimerRef.current) {
       window.clearTimeout(copiedOrderMessageTimerRef.current);
     }
-    setCopiedOrderMessageId(c.id);
+    setCopiedOrderMessageIds([c.id]);
     copiedOrderMessageTimerRef.current = window.setTimeout(() => {
-      setCopiedOrderMessageId(null);
-    }, 2000);
+      setCopiedOrderMessageIds([]);
+    }, 1200);
   };
 
   const handleCopySelectedOrdersMessages = () => {
@@ -370,7 +370,14 @@ ${uniquePaymentLines.join('\n---\n')}
 The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
     navigator.clipboard.writeText(message);
-    alert(`Combined order message details for ${selectedItems.length} customers copied to clipboard!`);
+    
+    if (copiedOrderMessageTimerRef.current) {
+      window.clearTimeout(copiedOrderMessageTimerRef.current);
+    }
+    setCopiedOrderMessageIds(selectedItems.map(item => item.id));
+    copiedOrderMessageTimerRef.current = window.setTimeout(() => {
+      setCopiedOrderMessageIds([]);
+    }, 1200);
   };
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
@@ -2509,7 +2516,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           : c.incompletionReason 
                             ? 'incomplete-order-row' 
                             : isSelected
-                              ? 'selected-row bg-[#1A2E20] border-l-2 border-[#ee317b]'
+                              ? 'selected-row border-l-2 border-[#ee317b]'
                               : 'hover:bg-[#1a1a1a]'
                       }`}
                     >
@@ -2544,8 +2551,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             >
                               {c.clientName}
                             </span>
-                            {copiedOrderMessageId === c.id && (
-                              <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+                            {copiedOrderMessageIds.includes(c.id) && (
+                              <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
                                 Copied
                               </span>
                             )}
