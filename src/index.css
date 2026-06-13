@@ -1000,6 +1000,33 @@ button[title="Search categories"] {
   overflow: auto;
   overscroll-behavior: contain;
   border-bottom: 1px solid var(--app-sticky-border);
+  background-color: #0b0a09 !important;
+}
+
+.light-theme .data-table-scroll {
+  background-color: #f6eedb !important;
+}
+
+/* Premium Scrollbar Styling for Table Containers */
+.data-table-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.data-table-scroll::-webkit-scrollbar-track {
+  background: #080706 !important;
+}
+.light-theme .data-table-scroll::-webkit-scrollbar-track {
+  background: #f0e6cf !important;
+}
+.data-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--dark-border-medium) !important;
+  border-radius: 3px;
+}
+.light-theme .data-table-scroll::-webkit-scrollbar-thumb {
+  background: #dcd0b8 !important;
+}
+.data-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-pink) !important;
 }
 
 .freeze-pane-table {
@@ -1195,8 +1222,8 @@ button[title="Search categories"] {
 
 @media (max-width: 767px) {
   .data-table-scroll {
-    height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
-    max-height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height));
+    height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    max-height: calc(100dvh - 8.4rem - var(--mobile-bottom-nav-height) - 40px) !important;
     min-height: 18rem;
     overflow: auto !important;
     overflow-y: auto !important;
@@ -1222,9 +1249,13 @@ button[title="Search categories"] {
   }
 
   .purchase-mobile-fixed-stack .data-table-scroll {
-    height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
-    max-height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height));
+    height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    max-height: calc(100dvh - 14.6rem - var(--mobile-bottom-nav-height) - 40px) !important;
     min-height: 16rem;
+  }
+
+  .mb-28 {
+    margin-bottom: calc(var(--mobile-bottom-nav-height) + 40px) !important;
   }
 }
 
@@ -1437,15 +1468,15 @@ button[title="Search categories"] {
 
   /* Collapsed category state: height expands */
   .purchase-mobile-fixed-stack:not(.expense-categories-expanded) .data-table-scroll {
-    height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
-    max-height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height)) !important;
+    height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    max-height: calc(100dvh - 11.2rem - var(--mobile-bottom-nav-height) - 40px) !important;
     min-height: 16rem;
   }
 
   /* Expanded category state */
   .purchase-mobile-fixed-stack.expense-categories-expanded .data-table-scroll {
-    height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
-    max-height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height)) !important;
+    height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height) - 40px) !important;
+    max-height: calc(100dvh - 21.5rem - var(--mobile-bottom-nav-height) - 40px) !important;
     min-height: 12rem;
   }
 
