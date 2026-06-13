@@ -1300,8 +1300,8 @@ button[title="Search categories"] {
 
   .data-table-scroll {
     flex: none !important;
-    height: calc(100dvh - 10.5rem) !important;
-    max-height: calc(100dvh - 10.5rem) !important;
+    height: calc(100dvh - var(--mobile-bottom-nav-height) - 10rem) !important;
+    max-height: calc(100dvh - var(--mobile-bottom-nav-height) - 10rem) !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -1313,8 +1313,8 @@ button[title="Search categories"] {
   }
 
   #purchases-tab-pnl .data-table-scroll {
-    height: calc(100dvh - 16rem) !important;
-    max-height: calc(100dvh - 16rem) !important;
+    height: calc(100dvh - var(--mobile-bottom-nav-height) - 14.5rem) !important;
+    max-height: calc(100dvh - var(--mobile-bottom-nav-height) - 14.5rem) !important;
   }
 
   .freeze-pane-table thead th {
