@@ -1174,7 +1174,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsMobileCategoriesCollapsed(!isMobileCategoriesCollapsed)}
-                  className="xl:hidden p-1 bg-[#1c1c1c] text-white hover:bg-[#262626] hover:text-[#ee317b] border border-[#262626] transition-colors rounded"
+                  className="xl:hidden p-1 bg-transparent text-white hover:text-[#ee317b] transition-colors border-none"
                   title={isMobileCategoriesCollapsed ? "Expand" : "Collapse"}
                 >
                   {isMobileCategoriesCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
@@ -2168,7 +2168,7 @@ export default function PurchasesTab({
           </div>
 
           {/* Table Spreadsheet View */}
-          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mb-28 md:mb-0">
+          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0">
             <DataTable
               id="purchases-table"
               className="min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"

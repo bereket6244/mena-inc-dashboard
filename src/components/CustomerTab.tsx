@@ -2664,7 +2664,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
+      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mobile-table-bottom-gap md:mb-0 !border-t md:!border md:!rounded-md`}>
         <DataTable
           className="customer-ledger-table alternating-table-rows wide-freeze-three-cols"
         >
@@ -2905,7 +2905,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </DataTableWrapper>
 
       {/* RESPONSIVE CARDS VIEW */}
-      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mb-28 md:mb-0`}>
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0`}>
         {filteredCustomers.map((c) => {
             const fullVal = c.quantity * c.unitPrice;
             const remainingVal = fullVal - c.advancePayment;

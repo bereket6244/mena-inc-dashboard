@@ -49,6 +49,7 @@ export default function PerformanceTab({
   const [bankName, setBankName] = useState('');
   const [bankNumber, setBankNumber] = useState('');
   const [bankInitial, setBankInitial] = useState<string>('');
+  const [bankCurrency, setBankCurrency] = useState('ETB');
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [bankError, setBankError] = useState('');
 
@@ -57,6 +58,7 @@ export default function PerformanceTab({
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
   const [editInitial, setEditInitial] = useState<string>('');
+  const [editCurrency, setEditCurrency] = useState('ETB');
 
   // Deletion tracking state
   const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
@@ -157,13 +159,15 @@ export default function PerformanceTab({
       id: 'b_' + Date.now().toString(),
       name: bankName.trim(),
       accountNumber: bankNumber.trim() || undefined,
-      initialBalance: cleanInitial
+      initialBalance: cleanInitial,
+      currency: bankCurrency
     };
     
     onAddBankAccount(newAcct);
     setBankName('');
     setBankNumber('');
     setBankInitial('');
+    setBankCurrency('ETB');
     setIsAddingBank(false);
     setBankError('');
   };
@@ -173,6 +177,7 @@ export default function PerformanceTab({
     setEditName(b.name);
     setEditNumber(b.accountNumber || '');
     setEditInitial(b.initialBalance.toString());
+    setEditCurrency(b.currency || 'ETB');
   };
 
   const handleSaveEdit = (id: string) => {
@@ -183,7 +188,8 @@ export default function PerformanceTab({
       id,
       name: editName.trim(),
       accountNumber: editNumber.trim() || undefined,
-      initialBalance: cleanInitial
+      initialBalance: cleanInitial,
+      currency: editCurrency
     });
     setEditingBankId(null);
   };
@@ -238,39 +244,87 @@ export default function PerformanceTab({
     return true;
   });
 
-  // Total Gross Orders (ETB)
-  const totalGrossOrders = filteredCustomersForInterval.reduce((sum, c) => sum + (c.quantity * c.unitPrice), 0);
+  // Helper to resolve currency of a BankAccount ID
+  const getBankCurrency = (id?: string) => {
+    if (!id) return 'ETB';
+    const found = bankAccounts.find(b => b.id === id);
+    return found?.currency || 'ETB';
+  };
 
-  // Total customer advances paid on books
-  const totalAdvancePaid = filteredCustomersForInterval.reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
+  // 1. Total Gross Orders grouped by currency (Customer products are estimated in currency of Advance Payment Account, falling back to ETB)
+  const grossByCurrency: Record<string, number> = {};
+  filteredCustomersForInterval.forEach(c => {
+    const curr = getBankCurrency(c.paymentMethodId || c.bankRemainingId);
+    const val = c.quantity * c.unitPrice;
+    grossByCurrency[curr] = (grossByCurrency[curr] || 0) + val;
+  });
 
-  // Total completed client remaining balances paid on delivery
-  const totalRemainingPaid = filteredCustomersForInterval
-    .filter(c => !!(c.deliveryDate && c.bankRemainingId))
-    .reduce((sum, c) => {
+  // 2. Outgoing supplier material expenses & purchases grouped by payment account currency
+  const spentByCurrency: Record<string, number> = {};
+  filteredPurchasesForInterval.forEach(p => {
+    const curr = getBankCurrency(p.paymentMethodId);
+    const val = Number(p.totalPrice || 0);
+    spentByCurrency[curr] = (spentByCurrency[curr] || 0) + val;
+  });
+
+  // 3. Collected cash in-hand grouped by currency (inflow - outflow per currency)
+  const inflowByCurrency: Record<string, number> = {};
+  filteredCustomersForInterval.forEach(c => {
+    // Advance payment inflow
+    const advCurr = getBankCurrency(c.paymentMethodId);
+    const advVal = Number(c.advancePayment || 0);
+    inflowByCurrency[advCurr] = (inflowByCurrency[advCurr] || 0) + advVal;
+
+    // Remaining payment inflow
+    if (c.deliveryDate && c.bankRemainingId) {
+      const remCurr = getBankCurrency(c.bankRemainingId);
       const base = c.quantity * c.unitPrice;
       const vat = c.isVatAdded ? base * 0.15 : 0;
       const invoice = base + vat;
-      const remainingBytes = invoice - c.advancePayment;
-      return sum + Math.max(0, remainingBytes);
-    }, 0);
+      const remVal = Math.max(0, invoice - c.advancePayment);
+      inflowByCurrency[remCurr] = (inflowByCurrency[remCurr] || 0) + remVal;
+    }
+  });
 
-  // Total outgoing supplier material expenses & purchases
-  const totalPurchaseExpenses = purchases.reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
-  
-  // Net liquid cash left in treasury = total customer intake - total supplier payments
-  const collectedCashInHand = totalAdvancePaid + totalRemainingPaid - filteredExpenseSum;
+  // Unique currencies across all datasets
+  const allCurrencies = Array.from(new Set([
+    ...bankAccounts.map(b => b.currency || 'ETB'),
+    ...Object.keys(grossByCurrency),
+    ...Object.keys(spentByCurrency),
+    ...Object.keys(inflowByCurrency),
+    'ETB'
+  ]));
 
-  // Total Outstanding Debt (Active uncollected order receivables)
-  const totalOutstandingDebt = filteredCustomersForInterval.reduce((sum, c) => {
-    // If completed order, remaining is paid (0 debt). If not, full invoice minus advance is outstanding.
-    if (c.deliveryDate && c.bankRemainingId) return sum;
+  const formatGroupedAmounts = (grouped: Record<string, number>) => {
+    const items = Object.entries(grouped)
+      .filter(([_, val]) => val !== 0)
+      .map(([curr, val]) => `${val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${curr}`);
+    return items.length > 0 ? items.join(' | ') : '0.0 ETB';
+  };
+
+  const formatGroupedCollectedCash = () => {
+    const items = allCurrencies.map(curr => {
+      const inflow = inflowByCurrency[curr] || 0;
+      const spent = spentByCurrency[curr] || 0;
+      const balance = inflow - spent;
+      return { curr, balance };
+    }).filter(item => item.balance !== 0 || item.curr === 'ETB');
+
+    return items.map(item => `${item.balance.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${item.curr}`).join(' | ');
+  };
+
+  // 4. Total Outstanding Debt grouped by final payment method currency
+  const debtByCurrency: Record<string, number> = {};
+  filteredCustomersForInterval.forEach(c => {
+    if (c.deliveryDate && c.bankRemainingId) return;
+    const curr = getBankCurrency(c.bankRemainingId || c.paymentMethodId);
     const base = c.quantity * c.unitPrice;
     const vat = c.isVatAdded ? base * 0.15 : 0;
     const invoice = base + vat;
-    const remaining = invoice - c.advancePayment;
-    return sum + Math.max(0, remaining);
-  }, 0);
+    const remaining = Math.max(0, invoice - c.advancePayment);
+    debtByCurrency[curr] = (debtByCurrency[curr] || 0) + remaining;
+  });
+
 
   // --- EMPLOYEE LEADERBOARD (QUERY E) ---
   // GROUP BY E (Order Taken By)
@@ -490,16 +544,17 @@ export default function PerformanceTab({
       {/* Premium Scorecards representing precise calculations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Total Gross Orders (Cell V2 series equivalent) */}
+        {/* Total Gross Orders */}
         <div className="relative overflow-hidden bg-[#121212] text-white border border-[#262626] rounded-md p-6 shadow-none">
           <div className="flex items-center justify-between">
             <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Gross Orders</span>
             <span className="text-[10px] bg-[#31111E] text-[#ee317b] font-sans px-2 py-0.5 rounded-md border border-[#ee317b]/20">Sum of order values</span>
           </div>
-          <p className="text-3xl font-sans font-bold leading-normal mt-3 tracking-tight">
-            {totalGrossOrders.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-            <span className="text-sm font-semibold ml-1.5 text-gray-500 font-sans">ETB</span>
-          </p>
+          <div className="mt-3">
+            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-white whitespace-pre-wrap break-words">
+              {formatGroupedAmounts(grossByCurrency)}
+            </p>
+          </div>
           <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-405 font-sans">
             <span>Aggregated Order Values</span>
             <span>{customers.length} total sales entries</span>
@@ -516,10 +571,11 @@ export default function PerformanceTab({
               <span className="text-[10px] bg-[#1A1A40] text-[#7096FF] font-sans px-2 py-0.5 rounded-md border border-[#7096FF]/20">All-time sum</span>
             )}
           </div>
-          <p className="text-3xl font-sans font-bold leading-normal mt-3 tracking-tight text-[#f87171]">
-            {filteredExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-            <span className="text-xs font-semibold ml-1.5 text-gray-400 font-sans">ETB</span>
-          </p>
+          <div className="mt-3">
+            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-[#f87171] whitespace-pre-wrap break-words">
+              {formatGroupedAmounts(spentByCurrency)}
+            </p>
+          </div>
           <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-450 font-sans">
             <span>
               {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? 'Selected Costs' : 'All Registered Costs'}
@@ -545,11 +601,10 @@ export default function PerformanceTab({
           </div>
           
           <div className="mt-3">
-            <p className="text-3xl font-sans font-bold leading-normal tracking-tight text-[#71b536]">
-              {(totalAdvancePaid + totalRemainingPaid - filteredExpenseSum).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-              <span className="text-xs font-semibold ml-1 text-gray-400 font-sans">ETB</span>
+            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-[#71b536] whitespace-pre-wrap break-words">
+              {formatGroupedCollectedCash()}
             </p>
-            <span className="text-[10px] text-zinc-500 font-sans block -mt-1">
+            <span className="text-[10px] text-zinc-500 font-sans block mt-1">
               (Total Intake minus Selected Expense)
             </span>
           </div>
@@ -557,15 +612,11 @@ export default function PerformanceTab({
           <div className="mt-4 pt-3 border-t border-[#262626] space-y-1 font-sans text-[11px] text-gray-400">
             <div className="flex justify-between">
               <span>Total Client Inflow:</span>
-              <span className="text-emerald-500 font-bold">{(totalAdvancePaid + totalRemainingPaid).toLocaleString()} ETB</span>
+              <span className="text-emerald-500 font-bold whitespace-pre-wrap text-right">{formatGroupedAmounts(inflowByCurrency)}</span>
             </div>
             <div className="flex justify-between">
               <span>Selected Expense:</span>
-              <span className="text-[#f87171] font-bold">-{filteredExpenseSum.toLocaleString()} ETB</span>
-            </div>
-            <div className="flex justify-between pt-1 border-t border-[#262626]/40 text-[10px] text-zinc-500">
-              <span>All-Time Net Cash:</span>
-              <span className="text-stone-300 font-bold">{collectedCashInHand.toLocaleString()} ETB</span>
+              <span className="text-[#f87171] font-bold whitespace-pre-wrap text-right">-{formatGroupedAmounts(spentByCurrency)}</span>
             </div>
           </div>
         </div>
@@ -576,10 +627,11 @@ export default function PerformanceTab({
             <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Outstanding Debt</span>
             <span className="text-[10px] bg-[#2E181D] text-[#F87171] font-sans px-2 py-0.5 rounded-md border border-rose-550/20">Outstanding Balances</span>
           </div>
-          <p className="text-3xl font-sans font-bold leading-normal mt-3 tracking-tight">
-            {totalOutstandingDebt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-            <span className="text-sm font-semibold ml-1.5 text-gray-400 font-sans">ETB</span>
-          </p>
+          <div className="mt-3">
+            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-white whitespace-pre-wrap break-words">
+              {formatGroupedAmounts(debtByCurrency)}
+            </p>
+          </div>
           <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-405 font-sans">
             <span>Uncollected Account Balances</span>
             <span>Requires active customer collection</span>
@@ -661,7 +713,7 @@ export default function PerformanceTab({
               <p className="text-xs text-[#F87171] font-sans bg-[#2E181D]/30 p-2 border border-rose-500/25">{bankError}</p>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
                 <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Account &amp; Bank Name</label>
                 <input
@@ -686,7 +738,22 @@ export default function PerformanceTab({
               </div>
 
               <div>
-                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Initial / Purchased Stockpile (ETB, expression enabled)</label>
+                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Currency</label>
+                <select
+                  value={bankCurrency}
+                  onChange={(e) => setBankCurrency(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
+                >
+                  <option value="ETB">ETB</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="AED">AED</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Initial / Purchased Stockpile (expression enabled)</label>
                 <input
                   type="text"
                   value={bankInitial}
@@ -700,7 +767,7 @@ export default function PerformanceTab({
                   className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
                 />
                 <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                  Parsed: {parseFractionOrExpression(bankInitial)} ETB
+                  Parsed: {parseFractionOrExpression(bankInitial)} {bankCurrency}
                 </div>
               </div>
             </div>
@@ -815,22 +882,35 @@ export default function PerformanceTab({
                     </span>
                   </div>
 
-                  <div className="text-xs text-gray-400 font-sans">
+                  <div className="text-xs text-gray-400 font-sans flex flex-col gap-1">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        placeholder="A/C: optional"
-                        value={editNumber}
-                        onChange={(e) => setEditNumber(e.target.value)}
-                        className="px-1.5 py-0.5 mt-1 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
-                      />
+                      <>
+                        <input
+                          type="text"
+                          placeholder="A/C: optional"
+                          value={editNumber}
+                          onChange={(e) => setEditNumber(e.target.value)}
+                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
+                        />
+                        <select
+                          value={editCurrency}
+                          onChange={(e) => setEditCurrency(e.target.value)}
+                          className="px-1.5 py-0.5 mt-1 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
+                        >
+                          <option value="ETB">ETB</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="GBP">GBP</option>
+                          <option value="AED">AED</option>
+                        </select>
+                      </>
                     ) : b.accountNumber ? (
                       <span className="flex items-center gap-1 text-[11px]">
                         <CreditCard className="w-3.5 h-3.5 text-zinc-500" />
-                        A/C: {b.accountNumber}
+                        A/C: {b.accountNumber} ({b.currency || 'ETB'})
                       </span>
                     ) : (
-                      <span className="text-[10px] text-zinc-500 tracking-wider">NO ACCOUNT LISTED</span>
+                      <span className="text-[10px] text-zinc-500 tracking-wider">NO ACCOUNT LISTED ({b.currency || 'ETB'})</span>
                     )}
                   </div>
                 </div>
@@ -853,28 +933,28 @@ export default function PerformanceTab({
                         className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs text-right rounded-md outline-none w-24 font-sans"
                       />
                     ) : (
-                      <span className="text-stone-300 font-bold">{b.initialBalance.toLocaleString()} ETB</span>
+                      <span className="text-stone-300 font-bold">{b.initialBalance.toLocaleString()} {b.currency || 'ETB'}</span>
                     )}
                   </div>
 
                   <div className="flex justify-between text-[11px]">
                     <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Advances Deposited:</span>
-                    <span className="text-[#ee317b] font-bold">+{advancesForBank.toLocaleString()} ETB</span>
+                    <span className="text-[#ee317b] font-bold">+{advancesForBank.toLocaleString()} {b.currency || 'ETB'}</span>
                   </div>
 
                   <div className="flex justify-between text-[11px]">
                     <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Completes Deposited:</span>
-                    <span className="text-emerald-500 font-bold">+{completedRemainingForBank.toLocaleString()} ETB</span>
+                    <span className="text-emerald-500 font-bold">+{completedRemainingForBank.toLocaleString()} {b.currency || 'ETB'}</span>
                   </div>
 
                   <div className="flex justify-between text-[11px]">
                     <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Purchases Deducted:</span>
-                    <span className="text-red-400 font-bold">-{purchasesOutOfBank.toLocaleString()} ETB</span>
+                    <span className="text-red-400 font-bold">-{purchasesOutOfBank.toLocaleString()} {b.currency || 'ETB'}</span>
                   </div>
 
                   <div className="flex justify-between pt-2 border-t border-[#262626]/50 text-xs">
                     <span className="text-gray-400 font-sans font-medium uppercase tracking-wider">Net Available:</span>
-                    <span className="text-[#71b536] font-bold text-sm tracking-tight">{currentBalance.toLocaleString()} ETB</span>
+                    <span className="text-[#71b536] font-bold text-sm tracking-tight">{currentBalance.toLocaleString()} {b.currency || 'ETB'}</span>
                   </div>
                 </div>
 

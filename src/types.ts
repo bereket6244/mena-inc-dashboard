@@ -10,6 +10,7 @@ export interface BankAccount {
   name: string;
   accountNumber?: string;
   initialBalance: number;
+  currency?: string;
   isDeleted?: boolean;
   deletedBy?: string;
 }

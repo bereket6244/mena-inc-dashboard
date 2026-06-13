@@ -335,6 +335,7 @@ export function DataTable({
     };
 
     const handleEnd = () => {
+      table.classList.remove('resizing-active');
       if (activeResize) {
         const element = activeResize.element;
         const type = activeResize.type;
@@ -379,6 +380,26 @@ export function DataTable({
       if (target.classList.contains('col-resize-handle')) {
         e.stopPropagation();
         e.preventDefault();
+        
+        // Add resizing active class and freeze computed layout widths to avoid jumping
+        table.classList.add('resizing-active');
+        const ths = table.querySelectorAll('thead th');
+        ths.forEach((thElem: any, colIdx: number) => {
+          const currentWidth = thElem.offsetWidth;
+          thElem.style.width = `${currentWidth}px`;
+          thElem.style.minWidth = `${currentWidth}px`;
+          thElem.style.maxWidth = `${currentWidth}px`;
+          
+          Array.from(table.rows).forEach((row: any) => {
+            const cell = row.cells[colIdx];
+            if (cell) {
+              cell.style.width = `${currentWidth}px`;
+              cell.style.minWidth = `${currentWidth}px`;
+              cell.style.maxWidth = `${currentWidth}px`;
+            }
+          });
+        });
+
         const th = target.closest('th') as HTMLTableCellElement;
         const clientX = e.clientX || e.touches?.[0].clientX;
         
@@ -401,6 +422,8 @@ export function DataTable({
       } else if (target.classList.contains('row-resize-handle')) {
         e.stopPropagation();
         e.preventDefault();
+        
+        table.classList.add('resizing-active');
         const tr = target.closest('tr') as HTMLTableRowElement;
         const clientY = e.clientY || e.touches?.[0].clientY;
         
