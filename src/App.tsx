@@ -525,6 +525,15 @@ export default function App() {
                 cell.style.maxWidth = `${width}px`;
               }
             });
+
+            // Update sticky column CSS custom properties dynamically to prevent overlap
+            if (colIndex === 0) {
+              table.style.setProperty('--freeze-col-1', `${width}px`);
+            } else if (colIndex === 1) {
+              table.style.setProperty('--freeze-col-2', `${width}px`);
+            } else if (colIndex === 2) {
+              table.style.setProperty('--freeze-col-3', `${width}px`);
+            }
           }
         });
 

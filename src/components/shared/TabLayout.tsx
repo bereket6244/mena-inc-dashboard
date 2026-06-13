@@ -245,9 +245,11 @@ export function DataTable({
   const tableRef = useRef<HTMLTableElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const draggedColumnRef = useRef<number | null>(null);
+  const draggedRowRef = useRef<number | null>(null);
 
   // Indicators refs
   const colIndicatorRef = useRef<HTMLDivElement>(null);
+  const rowIndicatorRef = useRef<HTMLDivElement>(null);
 
   // Mobile Tapped Column/Row Refs
   const [tappedColIndex, setTappedColIndex] = useState<number | null>(null);
@@ -281,14 +283,26 @@ export function DataTable({
       }
     });
 
-    // Add row-resize-handles in tbody first cell
+    // Add row-resize-handles & row-grab-handle to tbody
     table.querySelectorAll('tbody tr').forEach((tr: any) => {
       const firstCell = tr.cells[0];
-      if (firstCell && !firstCell.querySelector('.row-resize-handle')) {
-        const handle = document.createElement('div');
-        handle.className = 'row-resize-handle';
-        firstCell.style.position = 'relative';
-        firstCell.appendChild(handle);
+      if (firstCell) {
+        firstCell.classList.add('row-grab-handle');
+        firstCell.setAttribute('title', 'Drag first cell to reorder row');
+        
+        if (!firstCell.querySelector('.row-resize-handle')) {
+          const handle = document.createElement('div');
+          handle.className = 'row-resize-handle';
+          firstCell.style.position = 'relative';
+          firstCell.appendChild(handle);
+        }
+      }
+
+      // Make rows draggable on desktop, or on mobile when edit layout is enabled
+      if (!isMobile || isEditMode) {
+        tr.setAttribute('draggable', 'true');
+      } else {
+        tr.removeAttribute('draggable');
       }
     });
   }, [children, isEditMode]);
@@ -330,6 +344,15 @@ export function DataTable({
             cell.style.maxWidth = `${newWidth}px`;
           }
         });
+
+        // Set sticky column CSS custom properties dynamically to prevent overlap
+        if (colIdx === 0) {
+          table.style.setProperty('--freeze-col-1', `${newWidth}px`);
+        } else if (colIdx === 1) {
+          table.style.setProperty('--freeze-col-2', `${newWidth}px`);
+        } else if (colIdx === 2) {
+          table.style.setProperty('--freeze-col-3', `${newWidth}px`);
+        }
       } else if (activeResize.type === 'row') {
         const deltaY = clientY - activeResize.startY;
         const newHeight = Math.max(20, activeResize.startSize + deltaY);
@@ -507,33 +530,68 @@ export function DataTable({
       return;
     }
 
-    const header = (e.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
-    if (!header || header.cellIndex < 2) {
-      e.preventDefault();
-      return;
-    }
+    const target = e.target as HTMLElement;
+    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
+    const th = target.closest('th') as HTMLTableCellElement | null;
 
-    draggedColumnRef.current = header.cellIndex;
-    e.dataTransfer.effectAllowed = 'move';
-    header.classList.add('mobile-dragging');
+    if (tr) {
+      // Row Dragging - only allow if started inside first cell
+      const firstCell = tr.cells[0];
+      if (!firstCell || !firstCell.contains(target)) {
+        e.preventDefault();
+        return;
+      }
+      draggedRowRef.current = tr.rowIndex;
+      e.dataTransfer.effectAllowed = 'move';
+      tr.classList.add('row-dragging');
+    } else if (th) {
+      // Column Dragging
+      if (th.cellIndex < 2) {
+        e.preventDefault();
+        return;
+      }
+      draggedColumnRef.current = th.cellIndex;
+      e.dataTransfer.effectAllowed = 'move';
+      th.classList.add('mobile-dragging');
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLTableElement>) => {
-    const header = (e.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
-    if (!header || draggedColumnRef.current === null || header.cellIndex < 2) return;
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && !isEditMode) return;
 
-    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
+    const th = target.closest('th') as HTMLTableCellElement | null;
 
-    const rect = header.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
-    const isLeft = e.clientX < midX;
+    if (draggedRowRef.current !== null && tr) {
+      e.preventDefault();
+      
+      const rect = tr.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const isTop = e.clientY < midY;
 
-    const tableRect = tableRef.current!.getBoundingClientRect();
-    const leftOffset = rect.left - tableRect.left + (isLeft ? 0 : rect.width);
+      const tableRect = tableRef.current!.getBoundingClientRect();
+      const topOffset = rect.top - tableRect.top + (isTop ? 0 : rect.height);
 
-    if (colIndicatorRef.current) {
-      colIndicatorRef.current.style.display = 'block';
-      colIndicatorRef.current.style.left = `${leftOffset}px`;
+      if (rowIndicatorRef.current) {
+        rowIndicatorRef.current.style.display = 'block';
+        rowIndicatorRef.current.style.top = `${topOffset}px`;
+      }
+    } else if (draggedColumnRef.current !== null && th && th.cellIndex >= 2) {
+      e.preventDefault();
+
+      const rect = th.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      const isLeft = e.clientX < midX;
+
+      const tableRect = tableRef.current!.getBoundingClientRect();
+      const leftOffset = rect.left - tableRect.left + (isLeft ? 0 : rect.width);
+
+      if (colIndicatorRef.current) {
+        colIndicatorRef.current.style.display = 'block';
+        colIndicatorRef.current.style.left = `${leftOffset}px`;
+      }
     }
   };
 
@@ -541,26 +599,35 @@ export function DataTable({
     if (colIndicatorRef.current) {
       colIndicatorRef.current.style.display = 'none';
     }
+    if (rowIndicatorRef.current) {
+      rowIndicatorRef.current.style.display = 'none';
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLTableElement>) => {
-    const header = (e.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
-    const fromIndex = draggedColumnRef.current;
+    const target = e.target as HTMLElement;
+    const tr = target.closest('tbody tr') as HTMLTableRowElement | null;
+    const th = target.closest('th') as HTMLTableCellElement | null;
     
     if (colIndicatorRef.current) {
       colIndicatorRef.current.style.display = 'none';
     }
-
-    if (!header || fromIndex === null || header.cellIndex < 2) {
-      draggedColumnRef.current = null;
-      return;
+    if (rowIndicatorRef.current) {
+      rowIndicatorRef.current.style.display = 'none';
     }
 
-    e.preventDefault();
-    moveColumn(tableRef.current!, fromIndex, header.cellIndex);
+    if (draggedRowRef.current !== null && tr) {
+      e.preventDefault();
+      moveRow(tableRef.current!, draggedRowRef.current, tr.rowIndex);
+    } else if (draggedColumnRef.current !== null && th && th.cellIndex >= 2) {
+      e.preventDefault();
+      moveColumn(tableRef.current!, draggedColumnRef.current, th.cellIndex);
+    }
     
     tableRef.current?.querySelectorAll('th').forEach(th => th.classList.remove('mobile-dragging'));
+    tableRef.current?.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-dragging'));
     draggedColumnRef.current = null;
+    draggedRowRef.current = null;
   };
 
   const moveColumn = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
@@ -572,6 +639,17 @@ export function DataTable({
       if (!fromCell || !toCell) return;
       row.insertBefore(fromCell, fromIndex < toIndex ? toCell.nextSibling : toCell);
     });
+  };
+
+  const moveRow = (table: HTMLTableElement, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 1 || toIndex < 1) return;
+    const tbody = table.tBodies[0];
+    if (!tbody) return;
+    const rows = Array.from(tbody.rows);
+    const fromRow = rows[fromIndex - 1];
+    const toRow = rows[toIndex - 1];
+    if (!fromRow || !toRow) return;
+    tbody.insertBefore(fromRow, fromIndex < toIndex ? toRow.nextSibling : toRow);
   };
 
   return (
@@ -598,6 +676,7 @@ export function DataTable({
 
       <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
         <div ref={colIndicatorRef} className="col-drop-indicator" style={{ display: 'none' }} />
+        <div ref={rowIndicatorRef} className="row-drop-indicator" style={{ display: 'none' }} />
 
         <table
           ref={tableRef}

@@ -750,11 +750,11 @@ body.light-theme {
 
 /* Shared data-table readability */
 .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
-  background-color: rgba(255, 248, 238, 0.035);
+  background-color: #151312;
 }
 
 .alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: #0d0c0b;
 }
 
 .light-theme .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
@@ -795,16 +795,16 @@ body.light-theme {
 }
 
 .alternating-table-rows tbody tr.completed-order-row:nth-child(even) td {
-  background-color: rgba(27, 43, 23, 0.78) !important;
+  background-color: #172615 !important;
 }
 .alternating-table-rows tbody tr.completed-order-row:nth-child(odd) td {
-  background-color: rgba(27, 43, 23, 0.58) !important;
+  background-color: #121e11 !important;
 }
 .alternating-table-rows tbody tr.incomplete-order-row:nth-child(even) td {
-  background-color: rgba(52, 25, 26, 0.88) !important;
+  background-color: #311516 !important;
 }
 .alternating-table-rows tbody tr.incomplete-order-row:nth-child(odd) td {
-  background-color: rgba(52, 25, 26, 0.68) !important;
+  background-color: #261011 !important;
 }
 .light-theme .alternating-table-rows tbody tr.completed-order-row:nth-child(even) td {
   background-color: #e8f6e1 !important;
@@ -1497,16 +1497,16 @@ input, textarea {
 }
 
 .alternating-table-rows tbody tr.low-stock-row:nth-child(even) td {
-  background-color: rgba(51, 39, 18, 0.86) !important;
+  background-color: #2f2512 !important;
 }
 .alternating-table-rows tbody tr.low-stock-row:nth-child(odd) td {
-  background-color: rgba(51, 39, 18, 0.64) !important;
+  background-color: #261e0e !important;
 }
 .alternating-table-rows tbody tr.out-of-stock-row:nth-child(even) td {
-  background-color: rgba(52, 25, 26, 0.9) !important;
+  background-color: #311516 !important;
 }
 .alternating-table-rows tbody tr.out-of-stock-row:nth-child(odd) td {
-  background-color: rgba(52, 25, 26, 0.68) !important;
+  background-color: #261011 !important;
 }
 .light-theme .alternating-table-rows tbody tr.low-stock-row:nth-child(even) td {
   background-color: #ffe9a8 !important;
@@ -2196,4 +2196,59 @@ option {
     height: 20px;
     bottom: -10px;
   }
+}
+
+/* Hover guide lines for resizing */
+.col-resize-handle:hover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 1px;
+  height: 2000px;
+  background-color: #ee317b;
+  pointer-events: none;
+  z-index: 100;
+}
+.light-theme .col-resize-handle:hover::after {
+  background-color: #4b5563;
+}
+
+.row-resize-handle:hover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 2000px;
+  height: 1px;
+  background-color: #ee317b;
+  pointer-events: none;
+  z-index: 100;
+}
+.light-theme .row-resize-handle:hover::after {
+  background-color: #4b5563;
+}
+
+/* Draggable column/row handle cursors */
+.freeze-pane-table th.draggable-header,
+.freeze-pane-table tbody tr td.row-grab-handle {
+  cursor: grab !important;
+}
+
+.freeze-pane-table th.draggable-header:active,
+.freeze-pane-table tbody tr.row-dragging td.row-grab-handle,
+.freeze-pane-table tbody tr td.row-grab-handle:active {
+  cursor: grabbing !important;
+}
+
+/* Disabled cursor rules */
+.freeze-pane-table button:disabled,
+.freeze-pane-table input:disabled,
+.freeze-pane-table select:disabled,
+.freeze-pane-table textarea:disabled,
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed !important;
 }
