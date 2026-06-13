@@ -2481,8 +2481,8 @@ textarea:disabled {
     display: flex !important;
     flex-direction: column !important;
     overflow-y: auto !important;
-    height: 100% !important;
-    max-height: 100% !important;
+    height: calc(100dvh - 8rem) !important;
+    max-height: calc(100dvh - 8rem) !important;
     padding-bottom: 2rem !important;
   }
   
