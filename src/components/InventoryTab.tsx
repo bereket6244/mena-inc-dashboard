@@ -370,7 +370,7 @@ export default function InventoryTab({
                 {/* Main stats */}
                 <div className="grid grid-cols-2 gap-1 border-t border-b border-[#262626]/40 py-1 mb-1.5">
                   <div>
-                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">Stock on Hand</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">SOH</span>
                     <span className={`block text-[15px] font-bold font-sans mt-0.5 leading-none ${
                       isOutOfStock ? 'text-[#F87171]' : isLowStock ? 'text-[#FACC15]' : 'text-[#71b536]'
                     }`}>
@@ -378,7 +378,7 @@ export default function InventoryTab({
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">Total Consumed</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-gray-500 font-sans leading-none">Consumed</span>
                     <span className="block text-[15px] font-bold font-sans text-yellow-400/90 mt-0.5 leading-none">
                       {stock.consumed.toLocaleString()}
                     </span>
@@ -536,7 +536,7 @@ export default function InventoryTab({
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
-                  Stock on Hand (High to Low)
+                  SOH (High to Low)
                 </button>
                 <button
                   type="button"
@@ -547,7 +547,7 @@ export default function InventoryTab({
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
-                  Stock on Hand (Low to High)
+                  SOH (Low to High)
                 </button>
                 <button
                   type="button"
@@ -558,7 +558,7 @@ export default function InventoryTab({
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
-                  Total Consumed (High to Low)
+                  Consumed (High to Low)
                 </button>
                 <button
                   type="button"
@@ -569,7 +569,7 @@ export default function InventoryTab({
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
-                  Total Consumed (Low to High)
+                  Consumed (Low to High)
                 </button>
               </div>
             </>
@@ -666,7 +666,7 @@ export default function InventoryTab({
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
-                    Stock on Hand (High to Low)
+                    SOH (High to Low)
                   </button>
                   <button
                     type="button"
@@ -677,7 +677,7 @@ export default function InventoryTab({
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
-                    Stock on Hand (Low to High)
+                    SOH (Low to High)
                   </button>
                   <button
                     type="button"
@@ -688,7 +688,7 @@ export default function InventoryTab({
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
-                    Total Consumed (High to Low)
+                    Consumed (High to Low)
                   </button>
                   <button
                     type="button"
@@ -699,7 +699,7 @@ export default function InventoryTab({
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
-                    Total Consumed (Low to High)
+                    Consumed (Low to High)
                   </button>
                 </div>
               </>
@@ -793,10 +793,10 @@ export default function InventoryTab({
             <SortHeader field="name">Stock Name</SortHeader>
           </SharedTh>
           <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('remaining')}>
-            <SortHeader field="remaining" align="right">Stock on Hand</SortHeader>
+            <SortHeader field="remaining" align="right">SOH</SortHeader>
           </SharedTh>
           <SharedTh align="right" className="cursor-pointer select-none" onClick={() => handleSort('consumed')}>
-            <SortHeader field="consumed" align="right">Total Consumed</SortHeader>
+            <SortHeader field="consumed" align="right">Consumed</SortHeader>
           </SharedTh>
           <SharedTh align="center" width="10rem">Actions</SharedTh>
         </>

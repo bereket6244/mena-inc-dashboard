@@ -2589,18 +2589,26 @@ textarea:disabled {
     margin-top: 10px !important;
   }
 
-  /* Format columns 3 and 4 in Inventory Table on mobile to fit on-screen together */
-  #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(3) {
-    width: 9rem !important;
-    min-width: 9rem !important;
-    max-width: 9rem !important;
+  /* Format columns in Inventory Table on mobile to fit on-screen together */
+  #inventory-tab-pnl .freeze-pane-table th,
+  #inventory-tab-pnl .freeze-pane-table td {
     white-space: normal !important;
     word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
-  #inventory-tab-pnl .freeze-pane-table :is(thead tr, tbody tr) > :nth-child(4) {
-    width: 5.5rem !important;
-    min-width: 5.5rem !important;
-    max-width: 5.5rem !important;
+  #inventory-tab-pnl .freeze-pane-table .inventory-stock-name-column {
+    width: 9.5rem !important;
+    min-width: 9.5rem !important;
+    max-width: 9.5rem !important;
+  }
+
+  #inventory-tab-pnl .freeze-pane-table td:nth-child(4),
+  #inventory-tab-pnl .freeze-pane-table th:nth-child(4),
+  #inventory-tab-pnl .freeze-pane-table td:nth-child(5),
+  #inventory-tab-pnl .freeze-pane-table th:nth-child(5) {
+    /* Auto adjust/shrink other columns to allow side-by-side display */
+    width: auto !important;
+    min-width: 4rem !important;
   }
 }
