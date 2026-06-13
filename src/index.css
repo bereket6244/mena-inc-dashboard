@@ -2345,10 +2345,14 @@ option {
   box-sizing: border-box !important;
 }
 
+.freeze-pane-table td.table-cell-wrap,
+.freeze-pane-table th.table-cell-wrap,
 .table-cell-wrap {
   white-space: normal !important;
-  word-break: break-word !important;
+  word-break: break-all !important;
   overflow-wrap: break-word !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
 }
 
 .hide-default-cursor,
