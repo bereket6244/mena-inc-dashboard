@@ -36,7 +36,8 @@ import {
   CheckCircle,
   CheckCircle2,
   RotateCcw,
-  Megaphone
+  Megaphone,
+  ArrowUpDown
 } from 'lucide-react';
 
 import { 
@@ -381,6 +382,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   };
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [showSortPopover, setShowSortPopover] = useState(false);
   const [activeContactMenuId, setActiveContactMenuId] = useState<string | null>(null);
   const [contactMenuPosition, setContactMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
@@ -1819,6 +1821,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         } else if (showFilterPopover) {
           event.preventDefault();
           setShowFilterPopover(false);
+        } else if (showSortPopover) {
+          event.preventDefault();
+          setShowSortPopover(false);
         } else if (showProductManager) {
           event.preventDefault();
           setShowProductManager(false);
@@ -1860,6 +1865,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   }, [
     showMobileFilters,
     showFilterPopover,
+    showSortPopover,
     showProductManager,
     showProformaModal,
     showBulkDeleteConfirm,
@@ -2194,16 +2200,85 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={handleRecordedOrderSort}
-              className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
-                customerSortBy === 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
-              }`}
-              title="Recorded order"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+                className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
+                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
+                }`}
+                title="Sort options"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </button>
+              {showSortPopover && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRecordedOrderSort();
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Recorded Order (Reset)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('clientName');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientName' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('clientType');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientType' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Type
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('quantity');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'quantity' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Quantity
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('remainingBalance');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'remainingBalance' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Balance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('deliveryDate');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'deliveryDate' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </>
         }
         desktopLeftControls={
@@ -2232,20 +2307,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
                   [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].some(f => f !== 'All')
-                    ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30'
+                    ? 'text-[#ee317b] bg-[#ee317b]/10'
                     : ''
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
-                <span>Filter</span>
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
                   <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                     {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
                   </span>
                 )}
-                <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
               </button>
 
               {showFilterPopover && (
@@ -2372,17 +2445,137 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={handleRecordedOrderSort}
-              className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
-                customerSortBy === 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
-              }`}
-              title="Recorded order"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
+                  customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30' : ''
+                }`}
+                title="Sort options"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>Sort</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
+              </button>
+              {showSortPopover && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRecordedOrderSort();
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Recorded Order (Reset)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('clientName');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientName' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('clientType');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientType' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Client Type
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('acquisitionSource');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'acquisitionSource' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Acquisition Source
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('orderTakenBy');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'orderTakenBy' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Order Taken By (Agent)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('quantity');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'quantity' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Quantity
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('unitPrice');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'unitPrice' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Unit Price
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('advancePayment');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'advancePayment' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Advance Payment
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('remainingBalance');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'remainingBalance' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Remaining Balance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('deliveryDate');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'deliveryDate' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Delivery Date
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCustomerSort('fullValue');
+                        setShowSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'fullValue' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Total Amount
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             <button
               type="button"

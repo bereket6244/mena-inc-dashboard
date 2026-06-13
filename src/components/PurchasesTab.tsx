@@ -1470,21 +1470,19 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setShowFilterPopover(!showFilterPopover)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
                     activeLedgerFilterCount > 0
-                      ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30'
+                      ? 'text-[#ee317b] bg-[#ee317b]/10'
                       : ''
                   }`}
                   title="Refine purchases"
                 >
                   <Filter className="w-3.5 h-3.5" />
-                  <span>Filter</span>
                   {activeLedgerFilterCount > 0 && (
                     <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                       {activeLedgerFilterCount}
                     </span>
                   )}
-                  <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
                 </button>
 
                 {showFilterPopover && (
@@ -1903,21 +1901,19 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setShowFilterPopover(!showFilterPopover)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
                     activeLedgerFilterCount > 0
-                      ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30'
+                      ? 'text-[#ee317b] bg-[#ee317b]/10'
                       : ''
                   }`}
                   title="Refine purchases"
                 >
                   <Filter className="w-3.5 h-3.5" />
-                  <span>Filter</span>
                   {activeLedgerFilterCount > 0 && (
                     <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                       {activeLedgerFilterCount}
                     </span>
                   )}
-                  <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
                 </button>
 
                 {showFilterPopover && (
