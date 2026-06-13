@@ -1000,12 +1000,24 @@ button[title="Search categories"] {
   width: max-content !important;
 }
 
+.data-table-scroll-outer {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  width: 100% !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 .data-table-scroll {
   max-height: min(68vh, 44rem);
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  overscroll-behavior-y: contain;
   border-bottom: 1px solid var(--app-sticky-border);
   background-color: #0b0a09 !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 .light-theme .data-table-scroll {
@@ -1279,14 +1291,23 @@ button[title="Search categories"] {
     margin-bottom: 10px !important;
   }
 
+  .data-table-scroll-outer {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .data-table-scroll {
     flex: none !important;
     height: calc(100dvh - 10.5rem) !important;
     max-height: calc(100dvh - 10.5rem) !important;
     min-height: 0 !important;
     overflow-y: auto !important;
-    overflow-x: auto !important;
-    touch-action: auto;
+    overflow-x: hidden !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: auto;
   }

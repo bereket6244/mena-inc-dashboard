@@ -103,73 +103,7 @@ export default function App() {
     localStorage.setItem('mena_inc_theme_v3', theme);
   }, [theme]);
 
-  useEffect(() => {
-    let activeContainer: HTMLElement | null = null;
-    let startX = 0;
-    let startY = 0;
-    let startScrollLeft = 0;
-    let startScrollTop = 0;
-    let lockedDirection: 'x' | 'y' | null = null;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      const container = target.closest('.data-table-scroll') as HTMLElement;
-      if (!container) return;
-
-      activeContainer = container;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startScrollLeft = container.scrollLeft;
-      startScrollTop = container.scrollTop;
-      lockedDirection = null;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!activeContainer) return;
-
-      const currentX = e.touches[0].clientX;
-      const currentY = e.touches[0].clientY;
-      const diffX = currentX - startX;
-      const diffY = currentY - startY;
-      const deltaX = Math.abs(diffX);
-      const deltaY = Math.abs(diffY);
-
-      if (lockedDirection === null) {
-        if (deltaX > 4 || deltaY > 4) {
-          if (deltaX > deltaY) {
-            lockedDirection = 'x';
-          } else {
-            lockedDirection = 'y';
-          }
-        }
-      }
-
-      if (lockedDirection === 'x') {
-        activeContainer.scrollLeft = startScrollLeft - diffX;
-        if (e.cancelable) e.preventDefault();
-      } else if (lockedDirection === 'y') {
-        activeContainer.scrollTop = startScrollTop - diffY;
-        if (e.cancelable) e.preventDefault();
-      }
-    };
-
-    const handleTouchEnd = () => {
-      activeContainer = null;
-      lockedDirection = null;
-    };
-
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, []);
 
   // 1. "i want the customer management to be first" -> tab defaults to 'customers'
   const [activeTab, setActiveTab] = useState<'customers' | 'inventory' | 'performance' | 'purchases'>('customers');

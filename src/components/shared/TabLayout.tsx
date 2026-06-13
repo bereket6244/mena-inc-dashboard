@@ -459,14 +459,16 @@ export function DataTable({
   }, []);
 
   return (
-    <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
-      <table
-        ref={tableRef}
-        id={id}
-        className={`freeze-pane-table w-full text-left border-collapse font-sans text-xs ${className}`}
-      >
-        {children}
-      </table>
+    <div className="data-table-scroll-outer scrollbar-none-x relative">
+      <div className="data-table-scroll app-main-table-scroll relative">
+        <table
+          ref={tableRef}
+          id={id}
+          className={`freeze-pane-table w-full text-left border-collapse font-sans text-xs ${className}`}
+        >
+          {children}
+        </table>
+      </div>
     </div>
   );
 }
