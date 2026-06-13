@@ -2516,7 +2516,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           : c.incompletionReason 
                             ? 'incomplete-order-row' 
                             : isSelected
-                              ? 'selected-row border-l-2 border-[#ee317b]'
+                              ? 'selected-row'
                               : 'hover:bg-[#1a1a1a]'
                       }`}
                     >
@@ -2551,14 +2551,15 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             >
                               {c.clientName}
                             </span>
-                            {copiedOrderMessageIds.includes(c.id) && (
+                            {copiedOrderMessageIds.includes(c.id) ? (
                               <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
                                 Copied
                               </span>
+                            ) : (
+                              <span className="shrink-0 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500" title={c.clientType || 'Client'}>
+                                {c.clientType || 'Client'}
+                              </span>
                             )}
-                            <span className="shrink-0 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500" title={c.clientType || 'Client'}>
-                              {c.clientType || 'Client'}
-                            </span>
                           </div>
                           <ContactInfoControl customer={c} />
                           <span className="inline-flex max-w-[150px] text-[10px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md text-gray-400 truncate" title={c.acquisitionSource}>

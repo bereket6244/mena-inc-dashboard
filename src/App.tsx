@@ -2335,68 +2335,6 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                               >
                                 Edit
                               </button>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const newName = window.prompt(`Update Name for ${emp.name}:`, emp.name);
-                                  if (newName === null) return;
-                                  if (!newName.trim()) {
-                                    alert('Name cannot be empty.');
-                                    return;
-                                  }
-
-                                  const newUsername = window.prompt(`Update Username for ${emp.name}:`, emp.username);
-                                  if (newUsername === null) return;
-                                  const cleanedUsername = newUsername.trim().toLowerCase();
-                                  if (!cleanedUsername) {
-                                    alert('Username cannot be empty.');
-                                    return;
-                                  }
-                                  if (
-                                    cleanedUsername !== emp.username.toLowerCase() &&
-                                    employees.some(e => e.username.toLowerCase() === cleanedUsername)
-                                  ) {
-                                    alert('Username already exists on record.');
-                                    return;
-                                  }
-
-                                  const newPass = window.prompt(`Update Password / Passkey for ${emp.name}:`, emp.password || '');
-                                  if (newPass === null) return;
-                                  if (!newPass.trim()) {
-                                    alert('Password cannot be empty.');
-                                    return;
-                                  }
-
-                                  const updatedEmp: EmployeeUser = {
-                                    ...emp,
-                                    name: newName.trim(),
-                                    username: cleanedUsername,
-                                    password: newPass.trim()
-                                  };
-
-                                  const updatedEmployees = employees.map(e => e.id === emp.id ? updatedEmp : e);
-                                  setEmployees(updatedEmployees);
-                                  localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updatedEmployees));
-
-                                  // Sync to Supabase table
-                                  try {
-                                    const { saveEmployeeDoc } = await import('./lib/dbService');
-                                    await saveEmployeeDoc(updatedEmp);
-                                    alert(`Successfully updated staff settings in database for "${updatedEmp.name}".`);
-                                  } catch (err) {
-                                    alert('Changes kept locally, but failed to sync to Supabase database.');
-                                  }
-
-                                  // If we updated the currently logged-in user, sync current session
-                                  if (currentUser && currentUser.id === emp.id) {
-                                    setCurrentUser(updatedEmp);
-                                    localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedEmp));
-                                  }
-                                }}
-                                className="px-2 py-0.5 bg-[#262626] text-gray-300 hover:text-white border border-[#262626] rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
-                              >
-                                Reset Staff Settings
-                              </button>
                             </>
                           )}
                           {currentUser && currentUser.role === 'admin' && currentUser.username !== emp.username && (

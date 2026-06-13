@@ -1132,6 +1132,12 @@ button[title="Search categories"] {
 :root:not(.light-theme) .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #241b20 !important;
 }
+.customer-ledger-table tbody tr.selected-row > :first-child {
+  box-shadow: inset 3px 0 0 var(--brand-pink), 1px 0 0 var(--app-sticky-border) !important;
+}
+.purchase-ledger-table tbody tr.selected-row > :first-child {
+  box-shadow: inset 3px 0 0 #71b536, 1px 0 0 var(--app-sticky-border) !important;
+}
 :root:not(.light-theme) .freeze-pane-table tbody tr.low-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #2f2512 !important;
 }
