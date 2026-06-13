@@ -2067,3 +2067,133 @@ option {
     user-select: text !important;
   }
 }
+
+/* App-style controlled table resize handles & drop indicators */
+.freeze-pane-table th {
+  position: relative;
+  cursor: default;
+}
+
+/* Handle cursor requirements */
+.freeze-pane-table th.draggable-header {
+  cursor: grab !important;
+}
+.freeze-pane-table th.draggable-header:active {
+  cursor: grabbing !important;
+}
+.freeze-pane-table td {
+  cursor: default;
+}
+.freeze-pane-table td input, 
+.freeze-pane-table td textarea {
+  cursor: text !important;
+}
+
+/* Column resizer handle */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize !important;
+  z-index: 20;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+:root:not(.light-theme) .col-resize-handle {
+  background-color: #262626;
+}
+.light-theme .col-resize-handle {
+  background-color: #e5e7eb;
+}
+
+:root:not(.light-theme) .col-resize-handle:hover {
+  background-color: #4b5563;
+}
+.light-theme .col-resize-handle:hover {
+  background-color: #9ca3af;
+}
+
+/* Row resizer handle */
+.row-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  cursor: row-resize !important;
+  z-index: 20;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+:root:not(.light-theme) .row-resize-handle {
+  background-color: #262626;
+}
+.light-theme .row-resize-handle {
+  background-color: #e5e7eb;
+}
+
+:root:not(.light-theme) .row-resize-handle:hover {
+  background-color: #4b5563;
+}
+.light-theme .row-resize-handle:hover {
+  background-color: #9ca3af;
+}
+
+/* Drop indicators (visual lines) */
+.col-drop-indicator {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30;
+}
+:root:not(.light-theme) .col-drop-indicator {
+  background-color: #ee317b;
+  box-shadow: 0 0 8px #ee317b;
+}
+.light-theme .col-drop-indicator {
+  background-color: #374151;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+
+.row-drop-indicator {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  pointer-events: none;
+  z-index: 30;
+}
+:root:not(.light-theme) .row-drop-indicator {
+  background-color: #ee317b;
+  box-shadow: 0 0 8px #ee317b;
+}
+.light-theme .row-drop-indicator {
+  background-color: #374151;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+
+/* Mobile Resize Tap Highlight */
+.mobile-tap-highlight {
+  box-shadow: inset 0 0 0 2px #ee317b !important;
+  background-color: rgba(238, 49, 123, 0.05) !important;
+}
+.light-theme .mobile-tap-highlight {
+  box-shadow: inset 0 0 0 2px #374151 !important;
+  background-color: rgba(55, 65, 81, 0.05) !important;
+}
+
+/* Large Touch Target Resizers on Mobile */
+@media (max-width: 768px) {
+  .col-resize-handle {
+    width: 20px;
+    right: -10px;
+  }
+  .row-resize-handle {
+    height: 20px;
+    bottom: -10px;
+  }
+}

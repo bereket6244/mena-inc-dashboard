@@ -31,7 +31,7 @@ import {
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
-import { FloatingAddButton } from './shared/TabLayout';
+import { FloatingAddButton, DataTable } from './shared/TabLayout';
 
 const PURCHASE_SORT_FIELDS = ['recordedOrder', 'lastAdded', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
 type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder' | 'lastAdded'>;
@@ -92,9 +92,6 @@ export default function PurchasesTab({
   const [isSortAsc, setIsSortAsc] = useState(() => {
     return localStorage.getItem(PURCHASE_SORT_ASC_STORAGE_KEY) === 'true';
   });
-  const purchaseDraggedColumnRef = useRef<number | null>(null);
-  const purchaseTableRef = useRef<HTMLTableElement>(null);
-
   // Form management for custom Purchase
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
@@ -315,11 +312,7 @@ export default function PurchasesTab({
     localStorage.setItem(PURCHASE_SORT_ASC_STORAGE_KEY, String(isSortAsc));
   }, [sortBy, isSortAsc]);
 
-  useEffect(() => {
-    purchaseTableRef.current?.querySelectorAll('th').forEach(th => {
-      th.setAttribute('draggable', 'true');
-    });
-  }, [purchases.length, sortBy, isSortAsc]);
+
 
   useEffect(() => {
     localStorage.setItem(PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY, String(isMobileCategoriesCollapsed));
@@ -2176,27 +2169,10 @@ export default function PurchasesTab({
 
           {/* Table Spreadsheet View */}
           <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mb-28 md:mb-0">
-            <div className="data-table-scroll app-main-table-scroll overflow-auto scrollbar-none-x relative">
-              <table
-                ref={purchaseTableRef}
-                className="freeze-pane-table w-full text-left border-collapse font-sans text-xs min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"
-                onDragStart={(event) => {
-                  const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
-                  purchaseDraggedColumnRef.current = header?.cellIndex ?? null;
-                  event.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(event) => {
-                  if ((event.target as HTMLElement).closest('th')) event.preventDefault();
-                }}
-                onDrop={(event) => {
-                  const header = (event.target as HTMLElement).closest('th') as HTMLTableCellElement | null;
-                  const fromIndex = purchaseDraggedColumnRef.current;
-                  if (!header || fromIndex === null) return;
-                  event.preventDefault();
-                  movePurchaseColumn(event.currentTarget, fromIndex, header.cellIndex);
-                  purchaseDraggedColumnRef.current = null;
-                }}
-              >
+            <DataTable
+              id="purchases-table"
+              className="min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"
+            >
                 <thead>
                   <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                     <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
@@ -2358,8 +2334,7 @@ export default function PurchasesTab({
                     })
                   )}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           </div>
         </div>
       </div>
