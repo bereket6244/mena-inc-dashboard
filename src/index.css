@@ -1197,7 +1197,7 @@ tr.out-of-stock-row td:first-child {
   .freeze-pane-table.wide-freeze-three-cols thead tr > :nth-child(2),
   .freeze-pane-table.wide-freeze-three-cols thead tr > :nth-child(3) {
     top: 0;
-    z-index: 16;
+    z-index: 35;
   }
 
   .freeze-pane-table.wide-freeze-three-cols tbody tr > :nth-child(1),
