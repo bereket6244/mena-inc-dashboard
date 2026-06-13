@@ -459,8 +459,8 @@ export function DataTable({
   }, []);
 
   return (
-    <div className="data-table-scroll-outer scrollbar-none-x relative">
-      <div className="data-table-scroll app-main-table-scroll relative">
+    <div className="data-table-scroll app-main-table-scroll relative">
+      <div className="data-table-scroll-outer scrollbar-none-x relative">
         <table
           ref={tableRef}
           id={id}
