@@ -1012,8 +1012,7 @@ button[title="Search categories"] {
   max-height: min(68vh, 44rem);
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  width: max-content !important;
-  min-width: 100% !important;
+  width: 100% !important;
   overscroll-behavior-y: contain;
   border-bottom: 1px solid var(--app-sticky-border);
   background-color: #0b0a09 !important;
@@ -1377,8 +1376,7 @@ tr.out-of-stock-row td:first-child {
     min-height: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    width: max-content !important;
-    min-width: 100% !important;
+    width: 100% !important;
     touch-action: auto;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: auto;
