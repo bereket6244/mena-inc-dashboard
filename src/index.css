@@ -999,6 +999,7 @@ button[title="Search categories"] {
   max-height: min(68vh, 44rem);
   overflow: auto;
   overscroll-behavior: contain;
+  border-bottom: 1px solid var(--app-sticky-border);
 }
 
 .freeze-pane-table {

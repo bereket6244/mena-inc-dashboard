@@ -2232,18 +2232,20 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans border border-[#262626] bg-transparent ${
                   [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].some(f => f !== 'All')
-                    ? 'text-[#ee317b] bg-[#ee317b]/10'
+                    ? 'text-[#ee317b] bg-[#ee317b]/10 border-[#ee317b]/30'
                     : ''
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
+                <span>Filter</span>
                 {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length > 0 && (
                   <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                     {[filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt].filter(f => f !== 'All').length}
                   </span>
                 )}
+                <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
               </button>
 
               {showFilterPopover && (
