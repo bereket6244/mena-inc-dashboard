@@ -2162,8 +2162,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   return (
     <SharedDataTableLayout
       id="customers-tab-pnl"
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+      disableResizing={true}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
         mobileToolbarClassName="customer-mobile-sticky-toolbar"
         mobileLeftControls={
           <>

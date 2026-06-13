@@ -20,6 +20,7 @@ interface SharedDataTableLayoutProps {
   children?: ReactNode;
   tablePreferenceKey?: string;
   tableClassName?: string;
+  disableResizing?: boolean;
 }
 
 export function SharedDataTableLayout({
@@ -40,6 +41,7 @@ export function SharedDataTableLayout({
   cardsView,
   children,
   tableClassName = '',
+  disableResizing = false,
 }: SharedDataTableLayoutProps) {
   const tableStateClasses = `alternating-table-rows ${tableClassName}`.trim();
 
@@ -61,7 +63,7 @@ export function SharedDataTableLayout({
         <>
           {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID */}
           <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mb-28 md:mb-0 !border-t md:!border md:!rounded-md`}>
-            <DataTable className={tableStateClasses}>
+            <DataTable className={tableStateClasses} disableResizing={disableResizing}>
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
                   {tableHeaders}

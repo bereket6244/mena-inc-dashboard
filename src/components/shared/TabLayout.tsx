@@ -236,15 +236,18 @@ export function DataTable({
   children,
   className = "",
   id,
+  disableResizing = false,
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
+  disableResizing?: boolean;
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Setup handles on render
   useEffect(() => {
+    if (disableResizing) return;
     const table = tableRef.current;
     if (!table) return;
 
@@ -270,10 +273,11 @@ export function DataTable({
         }
       }
     });
-  }, [children]);
+  }, [children, disableResizing]);
 
   // Handle Resize Events
   useEffect(() => {
+    if (disableResizing) return;
     const table = tableRef.current;
     if (!table) return;
 

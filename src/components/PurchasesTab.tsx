@@ -2267,7 +2267,7 @@ export default function PurchasesTab({
 
                           {/* Item notes / vendor metadata */}
                           <td className="py-2 px-3 border-r border-[#262626] text-gray-400 max-w-[220px]">
-                            <span className="block truncate" title={p.notesOrDescription || 'No notes'}>
+                            <span className="block" title={p.notesOrDescription || 'No notes'}>
                               {p.notesOrDescription || 'None'}
                             </span>
                           </td>
