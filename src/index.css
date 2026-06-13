@@ -1050,6 +1050,78 @@ button[title="Search categories"] {
   position: relative;
 }
 
+/* Freeze First Column Horizontally */
+.freeze-pane-table th:first-child,
+.freeze-pane-table td:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 20 !important;
+}
+
+/* Alternating Row first-child background to avoid bleed */
+.alternating-table-rows tbody tr:nth-child(even) td:first-child {
+  background-color: #151312 !important;
+}
+.alternating-table-rows tbody tr:nth-child(odd) td:first-child {
+  background-color: #0d0c0b !important;
+}
+
+/* Light Theme alternating row background */
+.light-theme .alternating-table-rows tbody tr:nth-child(even) td:first-child {
+  background-color: var(--surface-table-even) !important;
+}
+.light-theme .alternating-table-rows tbody tr:nth-child(odd) td:first-child {
+  background-color: var(--surface-table-odd) !important;
+}
+
+/* Highlighted states row backgrounds */
+tr.completed-order-row td:first-child {
+  background-color: #1b2b17 !important;
+}
+.light-theme tr.completed-order-row td:first-child {
+  background-color: var(--brand-green-soft) !important;
+}
+
+tr.incomplete-order-row td:first-child {
+  background-color: #34191a !important;
+}
+.light-theme tr.incomplete-order-row td:first-child {
+  background-color: var(--danger-soft) !important;
+}
+
+tr.low-stock-row td:first-child {
+  background-color: #2D210F !important;
+}
+.light-theme tr.low-stock-row td:first-child {
+  background-color: var(--warning-soft) !important;
+}
+
+tr.out-of-stock-row td:first-child {
+  background-color: #2E181D !important;
+}
+.light-theme tr.out-of-stock-row td:first-child {
+  background-color: var(--danger-soft) !important;
+}
+
+/* First Column Headers Z-Index & Separator */
+.freeze-pane-table th:first-child {
+  z-index: 40 !important;
+  background-color: var(--dark-table-header) !important;
+  box-shadow: 2px 0 0 var(--dark-border-soft), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.light-theme .freeze-pane-table th:first-child {
+  background-color: var(--surface-table-header) !important;
+  box-shadow: 2px 0 0 var(--border-soft), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Visual vertical borders for first frozen column cells */
+.freeze-pane-table td:first-child {
+  box-shadow: 2px 0 0 var(--dark-border-soft) !important;
+}
+.light-theme .freeze-pane-table td:first-child {
+  box-shadow: 2px 0 0 var(--border-soft) !important;
+}
+
 .freeze-pane-table thead th {
   position: sticky;
   top: 0;
