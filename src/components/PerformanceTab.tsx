@@ -419,7 +419,618 @@ export default function PerformanceTab({
   const maxEmployeeGross = Math.max(...employeeLeaderboard.map(e => e.totalGross), 1);
 
   return (
-    <div className="space-y-5 " id="performance-tab-pnl">
+    <div className="space-y-5 px-4 md:px-0 pb-28 md:pb-5 overflow-x-hidden w-full max-w-full" id="performance-tab-pnl">
+
+      {/* ========================================== */}
+      {/* MOBILE LAYOUT                              */}
+      {/* ========================================== */}
+      <div className="block md:hidden space-y-5 text-black">
+        {/* Mobile Top Section & Control Area */}
+        <div className="flex flex-col gap-2 py-1">
+          {/* Row 1 */}
+          <div className="flex items-center justify-between w-full h-10">
+            {/* Currency Selector (No dropdown arrow/chevron) */}
+            <div className="relative">
+              <select
+                value={selectedCurrency}
+                onChange={(e) => {
+                  setSelectedCurrency(e.target.value);
+                  setShowAllCurrencies(false);
+                }}
+                className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 shadow-xs focus:outline-none focus:border-[#ee317b]"
+              >
+                {newAccountCurrencies.map(curr => (
+                  <option key={curr} value={curr}>
+                    {curr}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search & Filter Controls on Right */}
+            <div className="flex items-center gap-2">
+              <AnimatePresence initial={false} mode="wait">
+                {!(isSearchExpanded || summarySearch) ? (
+                  <motion.div
+                    key="icons-normal"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-3"
+                  >
+                    {/* Search Icon */}
+                    <button
+                      type="button"
+                      onClick={() => setIsSearchExpanded(true)}
+                      className="p-1.5 text-stone-600 hover:text-black transition-colors"
+                      title="Search"
+                    >
+                      <Search className="w-4.5 h-4.5" />
+                    </button>
+
+                    {/* Filter Icon Popover */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterPopover(!showFilterPopover)}
+                        className={`p-1.5 text-stone-600 hover:text-black transition-colors ${
+                          (summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All')
+                            ? 'text-[#ee317b]'
+                            : ''
+                        }`}
+                        title="Filters"
+                      >
+                        <Filter className="w-4.5 h-4.5" />
+                      </button>
+
+                      {showFilterPopover && (
+                        <>
+                          <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setShowFilterPopover(false)} />
+                          <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E7E3D4] rounded-lg shadow-lg z-50 p-4 text-xs font-sans text-black">
+                            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                              <span className="font-bold text-stone-500 uppercase tracking-wider">Filters</span>
+                              {(summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSummaryStartDate('');
+                                    setSummaryEndDate('');
+                                    setSummaryAccount('All');
+                                    setSummaryEmployee('All');
+                                  }}
+                                  className="text-[#ee317b] font-bold"
+                                >
+                                  Clear All
+                                </button>
+                              )}
+                            </div>
+                            
+                            <div className="mt-3 space-y-3">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-stone-500 uppercase font-semibold">User</label>
+                                <select
+                                  value={summaryEmployee}
+                                  onChange={(e) => setSummaryEmployee(e.target.value)}
+                                  className="w-full bg-[#FAF8F2] border border-[#E7E3D4] rounded-md p-1.5 text-xs text-black"
+                                >
+                                  <option value="All">All Users</option>
+                                  {allEmployees.map(emp => (
+                                    <option key={emp} value={emp}>{emp}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-stone-500 uppercase font-semibold">Account</label>
+                                <select
+                                  value={summaryAccount}
+                                  onChange={(e) => setSummaryAccount(e.target.value)}
+                                  className="w-full bg-[#FAF8F2] border border-[#E7E3D4] rounded-md p-1.5 text-xs text-black"
+                                >
+                                  <option value="All">All Accounts</option>
+                                  {bankAccounts
+                                    .filter(b => b.currency === selectedCurrency)
+                                    .map(b => (
+                                      <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}
+                                </select>
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block text-[10px] text-stone-500 uppercase font-semibold">Date Range</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="date"
+                                    value={summaryStartDate}
+                                    onChange={(e) => setSummaryStartDate(e.target.value)}
+                                    className="bg-[#FAF8F2] border border-[#E7E3D4] rounded-md p-1.5 text-xs text-black"
+                                  />
+                                  <input
+                                    type="date"
+                                    value={summaryEndDate}
+                                    onChange={(e) => setSummaryEndDate(e.target.value)}
+                                    className="bg-[#FAF8F2] border border-[#E7E3D4] rounded-md p-1.5 text-xs text-black"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => applyDatePreset('all')}
+                                  className="px-2 py-1 text-[10px] bg-[#FAF8F2] border border-[#E7E3D4] rounded"
+                                >
+                                  All
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyDatePreset('thisMonth')}
+                                  className="px-2 py-1 text-[10px] bg-[#FAF8F2] border border-[#E7E3D4] rounded"
+                                >
+                                  This Month
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => applyDatePreset('last30')}
+                                  className="px-2 py-1 text-[10px] bg-[#FAF8F2] border border-[#E7E3D4] rounded"
+                                >
+                                  Last 30
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="search-active"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 140, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                    className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] px-2 py-1 h-8"
+                  >
+                    <Search className="h-3.5 w-3.5 text-stone-400 mr-1 flex-shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Search"
+                      value={summarySearch}
+                      onChange={(e) => setSummarySearch(e.target.value)}
+                      onBlur={() => {
+                        if (!summarySearch) setIsSearchExpanded(false);
+                      }}
+                      autoFocus
+                      className="bg-transparent text-xs text-black border-none outline-none focus:ring-0 w-full p-0 font-sans"
+                    />
+                    {summarySearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSummarySearch('');
+                          setIsSearchExpanded(false);
+                        }}
+                        className="text-stone-400 hover:text-black ml-1 flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Row 2: View All Currencies directly under currency button */}
+          <div className="flex items-center justify-start mt-0.5">
+            <button
+              type="button"
+              onClick={() => setShowAllCurrencies(!showAllCurrencies)}
+              className="flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-[#ee317b] transition-colors cursor-pointer"
+            >
+              <span>{showAllCurrencies ? `Collapse to ${selectedCurrency}` : `View all currencies (${newAccountCurrencies.length})`}</span>
+              {showAllCurrencies ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Financial Summary */}
+        <div className="space-y-4">
+          <div className="border-b border-[#E7E3D4] pb-1">
+            <h3 className="font-sans font-bold text-black uppercase tracking-wider text-sm">
+              Financial Summary
+            </h3>
+          </div>
+          {newAccountCurrencies
+            .filter(curr => showAllCurrencies || curr === selectedCurrency)
+            .map(curr => {
+              const gross = grossByCurrency[curr] || 0;
+              const spent = spentByCurrency[curr] || 0;
+              const inflow = inflowByCurrency[curr] || 0;
+              const cash = inflow - spent;
+              const debt = debtByCurrency[curr] || 0;
+              const isCollapsed = !!collapsedCurrencies[curr];
+
+              if (gross === 0 && spent === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+                return null;
+              }
+
+              return (
+                <div key={curr} className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-stone-500 tracking-wide">
+                      {curr} Currency
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedCurrencies(prev => ({ ...prev, [curr]: !prev[curr] }))}
+                      className="text-stone-400 hover:text-black"
+                    >
+                      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Debt</span>
+                          <div className="w-6 h-6 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
+                            <FileText className="w-3.5 h-3.5 text-[#a28031]" />
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className="text-[13px] font-sans font-bold leading-tight text-[#a28031] break-all">
+                            {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Gross</span>
+                          <div className="w-6 h-6 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
+                            <ShoppingBag className="w-3.5 h-3.5 text-[#71b536]" />
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className="text-[13px] font-sans font-bold leading-tight text-[#71b536] break-all">
+                            {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Spent</span>
+                          <div className="w-6 h-6 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
+                            <CreditCard className="w-3.5 h-3.5 text-[#ee317b]" />
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className="text-[13px] font-sans font-bold leading-tight text-[#ee317b] break-all">
+                            {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
+                          <div className={`w-6 h-6 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
+                            <Activity className={`w-3.5 h-3.5 ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`} />
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className={`text-[13px] font-sans font-bold leading-tight break-all ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`}>
+                            {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+
+        {/* Mobile Payment Accounts Section */}
+        <div className="space-y-4 pt-2">
+          <div className="border-b border-[#E7E3D4] pb-1">
+            <h3 className="font-sans font-bold text-black uppercase tracking-wider text-sm">
+              Payment Accounts
+            </h3>
+          </div>
+
+          <div className="flex gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setShowAllAccounts(!showAllAccounts)}
+              className="flex-1 px-3 py-2.5 bg-[#f5f4ee] hover:bg-[#eae9e2] border border-[#dfdccf] text-black font-sans text-xs font-semibold rounded-[8px] cursor-pointer transition-colors text-center"
+            >
+              {showAllAccounts ? 'Selected Currency' : 'View All Accounts'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setIsAddingBank(!isAddingBank)}
+              className="flex-1 bg-[#ee317b] hover:bg-[#ee317b]/90 text-white font-bold px-3 py-2.5 rounded-[8px] flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Account</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-4 w-full">
+            {bankAccounts
+              .filter(b => {
+                if (summarySearch.trim()) {
+                  const query = summarySearch.trim().toLowerCase();
+                  return b.name.toLowerCase().includes(query) || (b.accountNumber && b.accountNumber.toLowerCase().includes(query));
+                }
+                return showAllAccounts || b.currency === selectedCurrency;
+              })
+              .map((b) => {
+                const advancesForBank = customers
+                  .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
+                  .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
+
+                const completedRemainingForBank = customers
+                  .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
+                  .reduce((sum, c) => {
+                    const base = c.quantity * c.unitPrice;
+                    const vat = c.isVatAdded ? base * 0.15 : 0;
+                    const totalInvoice = base + vat;
+                    const remaining = totalInvoice - c.advancePayment;
+                    return sum + Math.max(0, remaining);
+                  }, 0);
+
+                const purchasesOutOfBank = purchases
+                  .filter(p => p.paymentMethodId === b.id)
+                  .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
+                
+                const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+                const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
+                const isEditing = editingBankId === b.id;
+
+                if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
+                  return null;
+                }
+
+                return (
+                  <div 
+                    key={b.id} 
+                    className="relative bg-white border border-[#E7E3D4] rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="px-2 py-1 bg-[#FAF8F2] border border-[#ee317b] text-black text-xs font-semibold rounded-md outline-none w-full"
+                            />
+                          ) : (
+                            <h4 className="font-bold text-black text-[13px] tracking-tight uppercase break-words" title={b.name}>
+                              {b.name}
+                            </h4>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setActiveMenuBankId(activeMenuBankId === b.id ? null : b.id)}
+                            className="text-stone-500 hover:text-black p-1 rounded transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                            </svg>
+                          </button>
+
+                          {activeMenuBankId === b.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setActiveMenuBankId(null)} />
+                              <div className="absolute right-0 mt-1 w-32 bg-white border border-[#E7E3D4] rounded shadow-lg z-50 py-1 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuBankId(null);
+                                    startEditing(b);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-stone-50 text-black flex items-center gap-1.5 font-medium"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  Edit Account
+                                </button>
+                                {!isSystemDefault ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuBankId(null);
+                                      setDeletingBankId(b.id);
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-stone-50 text-rose-500 font-bold flex items-center gap-1.5"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Delete
+                                  </button>
+                                ) : (
+                                  <div className="px-3 py-2 text-stone-400 flex items-center gap-1.5 cursor-not-allowed select-none">
+                                    <Lock className="w-3 h-3" />
+                                    System Lock
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-stone-500 font-sans">
+                        {isEditing ? (
+                          <div className="space-y-1.5 mt-2">
+                            <input
+                              type="text"
+                              placeholder="Account Number (optional)"
+                              value={editNumber}
+                              onChange={(e) => setEditNumber(e.target.value)}
+                              className="px-2 py-1 bg-[#FAF8F2] border border-[#E7E3D4] text-black text-[11px] rounded-md outline-none w-full"
+                            />
+                            <select
+                              value={editCurrency}
+                              onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
+                              className="w-full bg-[#FAF8F2] border border-[#E7E3D4] text-black text-[11px] rounded-md p-1 outline-none"
+                            >
+                              {newAccountCurrencies.map(curr => (
+                                <option key={curr} value={curr}>
+                                  {curr}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : b.accountNumber ? (
+                          <span className="text-[11px]">
+                            A/C: {b.accountNumber} ({b.currency || 'ETB'})
+                          </span>
+                        ) : (
+                          <span className="text-[10px] tracking-wider uppercase">Cash Account ({b.currency || 'ETB'})</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-stone-500 font-sans">Opening Balance</span>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editInitial}
+                            onChange={(e) => setEditInitial(cleanLeadingZeros(e.target.value))}
+                            className="px-2 py-0.5 bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs text-right rounded-md outline-none w-20 font-bold"
+                          />
+                        ) : (
+                          <span className="text-black font-semibold">{formatMockupValue(b.initialBalance)} {b.currency || 'ETB'}</span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-stone-500 font-sans">Received</span>
+                        <span className="text-[#71b536] font-bold">+{formatMockupValue(advancesForBank + completedRemainingForBank)} {b.currency || 'ETB'}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-stone-500 font-sans">Spent</span>
+                        <span className="text-[#ee317b] font-bold">-{formatMockupValue(purchasesOutOfBank)} {b.currency || 'ETB'}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2.5 border-t border-stone-100">
+                        <span className="text-stone-600 font-sans text-xs font-semibold">Available Balance</span>
+                        <span className="text-black font-extrabold text-[15px] tracking-tight">{formatMockupValue(currentBalance)} {b.currency || 'ETB'}</span>
+                      </div>
+                    </div>
+
+                    {isEditing && (
+                      <div className="flex items-center justify-end gap-2 mt-3 pt-2.5 border-t border-stone-100">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEdit(b.id)}
+                          className="px-2.5 py-1 text-xs bg-[#71b536] text-white rounded font-bold"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingBankId(null)}
+                          className="px-2.5 py-1 text-xs bg-stone-100 text-stone-600 rounded font-semibold border border-[#E7E3D4]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Mobile Leaderboard & Marketing (Stacked) */}
+        <div className="space-y-6 pt-2">
+          {/* Leaderboard */}
+          <div className="bg-white border border-[#E7E3D4] rounded-[12px] p-4 shadow-xs space-y-4 text-black">
+            <div>
+              <h3 className="font-sans font-bold text-black flex items-center gap-2 uppercase tracking-wider text-xs">
+                <UserCheck className="w-4 h-4 text-[#ee317b]" />
+                Employee Leaderboard
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {employeeLeaderboard.map((emp, idx) => {
+                const percentage = (emp.totalGross / maxEmployeeGross) * 100;
+                return (
+                  <div key={emp.name} className="space-y-1 font-sans">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-stone-700">{idx + 1}. {emp.name}</span>
+                      <span className="text-[#ee317b] font-bold">{emp.totalGross.toLocaleString()} ETB ({emp.completed} ord)</span>
+                    </div>
+                    <div className="w-full bg-[#FAF8F2] border border-stone-100 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="h-full bg-[#ee317b] rounded-full transition-all duration-1000"
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {employeeLeaderboard.length === 0 && (
+                <p className="text-center py-2 text-stone-400 text-xs">No staff data.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Marketing Performance */}
+          <div className="bg-white border border-[#E7E3D4] rounded-[12px] p-4 shadow-xs space-y-4 text-black">
+            <div>
+              <h3 className="font-sans font-bold text-black flex items-center gap-2 uppercase tracking-wider text-xs">
+                <Users className="w-4 h-4 text-[#ee317b]" />
+                Marketing Performance
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {marketingPerformance.map((lead) => {
+                const percentage = (lead.totalRevenue / maxRevenueChannel) * 100;
+                return (
+                  <div key={lead.channel} className="space-y-1 font-sans">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-stone-700">{lead.channel}</span>
+                      <span className="text-[#71b536] font-bold">{lead.totalRevenue.toLocaleString()} ETB ({lead.totalLeads} leads)</span>
+                    </div>
+                    <div className="w-full bg-[#FAF8F2] border border-stone-100 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#71b536] to-[#518524] rounded-full transition-all duration-1000"
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {marketingPerformance.length === 0 && (
+                <p className="text-center py-2 text-stone-400 text-xs">No marketing data.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* DESKTOP LAYOUT                             */}
+      {/* ========================================== */}
+      <div className="hidden md:block space-y-5">
 
       {/* Custom Redesigned Financial Toolbar to match mockup */}
       <div className="performance-sticky-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1207,12 +1818,9 @@ export default function PerformanceTab({
               })}
             </div>
           </div>
-
         </div>
-
       </div>
-
-
+      </div>
 
       <AnimatePresence>
         {deletingBankId && (() => {
