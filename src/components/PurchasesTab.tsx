@@ -2522,7 +2522,6 @@ export default function PurchasesTab({
                   <X className="w-5 h-5" />
                 </button>
               </div>
-
               {warningMessage && (
                 <div className="mx-6 mt-4 bg-rose-550 border border-rose-200 p-3 rounded-md text-rose-800 text-xs flex items-center gap-2 font-sans">
                   <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
@@ -2530,8 +2529,8 @@ export default function PurchasesTab({
                 </div>
               )}
 
-              {/* Form Inputs Container */}
-               <div className="flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto overscroll-contain pb-32">
+                     {/* Form Inputs Container */}
+               <div className="flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto overscroll-contain pb-4">
                 
                 {/* Batch Details Section */}
                 <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
@@ -2762,36 +2761,6 @@ export default function PurchasesTab({
                   </div>
                 </div>
 
-                {/* Purchase Summary Section */}
-                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
-                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
-                    Purchase Summary
-                  </h5>
-
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-sans text-xs space-y-2">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Base Purchase Total (Qty x Price):</span>
-                      <span className="text-slate-800 font-semibold">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
-                    </div>
-                    {hasVat && (
-                      <div className="flex justify-between text-slate-650">
-                        <span>VAT (15%):</span>
-                        <span className="font-semibold text-emerald-600">+{vatAmount.toLocaleString()} {purchaseCurrency}</span>
-                      </div>
-                    )}
-                    {hasWithholding && (
-                      <div className="flex justify-between text-slate-650">
-                        <span>Withholding (3%):</span>
-                        <span className="font-semibold text-rose-600">-{withholdingAmount.toLocaleString()} {purchaseCurrency}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-t border-slate-200 pt-3 text-sm font-bold text-[#ee317b]">
-                      <span>Net charged to bank:</span>
-                      <span>{currentCalculatedTotalPrice.toLocaleString()} {purchaseCurrency}</span>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Notes Section */}
                 <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
                   <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
@@ -2808,20 +2777,6 @@ export default function PurchasesTab({
                     />
                   </div>
                 </div>
-
-                {/* Add to Batch Button (Only show in Add Mode) */}
-                {!editingPurchase && (
-                  <div className="pt-1 flex pb-4">
-                    <button
-                      type="button"
-                      onClick={handleAddCurrentRowToBatch}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Item to Batch
-                    </button>
-                  </div>
-                )}
 
                 {/* BATCH OVERVIEW / PENDING SUMMARY BOX (Only in Add Mode) */}
                 {!editingPurchase && pendingBatchItems.length > 0 && (
@@ -2889,7 +2844,7 @@ export default function PurchasesTab({
                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-xs font-sans">
                       <div className="flex justify-between text-slate-650">
                         <span>Total Cumulative Base Amount:</span>
-                        <span className="text-slate-850 font-bold">
+                        <span className="text-slate-855 font-bold">
                           {pendingBatchItems.reduce((acc, c) => acc + c.baseAmount, 0).toLocaleString()} {purchaseCurrency}
                         </span>
                       </div>
@@ -2917,27 +2872,56 @@ export default function PurchasesTab({
 
               </div>
 
-              {/* Bottom confirmation tools (Sticky Footer) */}
-              <div className="border-t border-slate-200 px-4 py-4 bg-white flex items-center justify-end gap-3 flex-shrink-0 shadow-md">
-                <button
-                  type="button"
-                  onClick={() => setIsFormOpen(false)}
-                  className="flex-1 sm:flex-none px-4 py-2.5 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSavePurchase}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-md transition-colors shadow-sm text-center"
-                >
-                  {editingPurchase 
-                    ? 'Update Purchase' 
-                    : pendingBatchItems.length > 0 || itemOrServiceInput.trim() !== ''
-                      ? `Save to Ledger (${pendingBatchItems.length + (itemOrServiceInput.trim() !== '' ? 1 : 0)} items)`
-                      : 'Save to Ledger'
-                  }
-                </button>
+              {/* Sticky Bottom Section */}
+              <div className="border-t border-slate-200 bg-white flex flex-col flex-shrink-0 shadow-lg z-10">
+                {/* Compact Purchase Summary */}
+                <div className="px-4 pt-3 pb-2 border-b border-slate-100 font-sans text-xs space-y-1">
+                  <div className="flex justify-between text-slate-600">
+                    <span className="font-medium">Base Purchase Total:</span>
+                    <span className="font-semibold text-slate-800">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-[#ee317b]">
+                    <span>Net charged to bank:</span>
+                    <span>{currentCalculatedTotalPrice.toLocaleString()} {purchaseCurrency}</span>
+                  </div>
+                </div>
+
+                {/* Add Item to Batch Button (Only show in Add Mode) */}
+                {!editingPurchase && (
+                  <div className="px-4 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddCurrentRowToBatch}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Item to Batch
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel / Save to Ledger Buttons */}
+                <div className="px-4 py-3 bg-white flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsFormOpen(false)}
+                    className="flex-1 px-4 py-2.5 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePurchase}
+                    className="flex-1 px-5 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-md transition-colors shadow-sm text-center"
+                  >
+                    {editingPurchase 
+                      ? 'Update Purchase' 
+                      : pendingBatchItems.length > 0 || itemOrServiceInput.trim() !== ''
+                        ? `Save to Ledger (${pendingBatchItems.length + (itemOrServiceInput.trim() !== '' ? 1 : 0)} items)`
+                        : 'Save to Ledger'
+                    }
+                  </button>
+                </div>
               </div>
 
             </motion.div>
