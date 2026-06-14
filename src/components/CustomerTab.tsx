@@ -4946,7 +4946,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     color: #9ca3af !important;
                   }
                   .proforma-page .text-black,
-                  :root:not(.light-theme) .proforma-page .text-black {
+                  :root:not(.light-theme) .proforma-page .text-black,
+                  .proforma-page th,
+                  :root:not(.light-theme) .proforma-page th {
                     color: #000000 !important;
                   }
                   .proforma-page .text-\[\#ee317b\],
