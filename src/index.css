@@ -2688,3 +2688,51 @@ tr.selected-row.out-of-stock-row td,
 .light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #e3ecfc !important;
 }
+
+/* ======================================================== */
+/* Responsive CSS separation for Business Performance Tab   */
+/* ======================================================== */
+
+/* Desktop layout constraints (769px and above) */
+@media (min-width: 769px) {
+  #performance-tab-pnl {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 1.25rem !important;
+    overflow-x: visible !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  
+  /* Ensure navigation tabs are visible at the top */
+  .app-sticky-tabs {
+    display: block !important;
+  }
+  
+  /* Hide mobile bottom navigation bar */
+  nav.fixed.bottom-0 {
+    display: none !important;
+  }
+}
+
+/* Mobile layout constraints (768px and below) */
+@media (max-width: 768px) {
+  #performance-tab-pnl {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-bottom: 7rem !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Hide top desktop navigation tabs on mobile */
+  .app-sticky-tabs {
+    display: none !important;
+  }
+  
+  /* Show bottom mobile navigation bar */
+  nav.fixed.bottom-0 {
+    display: block !important;
+  }
+}

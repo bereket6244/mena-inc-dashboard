@@ -419,7 +419,7 @@ export default function PerformanceTab({
   const maxEmployeeGross = Math.max(...employeeLeaderboard.map(e => e.totalGross), 1);
 
   return (
-    <div className="space-y-5 px-4 md:px-0 pb-28 md:pb-5 overflow-x-hidden w-full max-w-full" id="performance-tab-pnl">
+    <div className="space-y-5" id="performance-tab-pnl">
 
       {/* ========================================== */}
       {/* MOBILE LAYOUT                              */}
