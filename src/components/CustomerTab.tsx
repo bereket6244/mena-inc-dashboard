@@ -2024,9 +2024,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       setEditedProductDescriptions({});
       
       let initialCurrency = 'ETB';
-      if (!isStandaloneProformaMode && proformaItemsToRender.length > 0) {
-        const firstCust = customers.find(c => selectedCustomerIds.includes(c.id));
-        initialCurrency = firstCust?.currency || 'ETB';
+      const itemsToInspect = isStandaloneProformaMode ? standaloneProformaItems : proformaItemsToRender;
+      if (itemsToInspect.length > 0) {
+        const firstId = itemsToInspect[0]?.id;
+        const matchingCust = customers.find(c => c.id === firstId);
+        initialCurrency = matchingCust?.currency || 'ETB';
       }
       setProformaCurrency(initialCurrency);
 
