@@ -184,7 +184,7 @@ export default function PurchasesTab({
   const [qtyInput, setQtyInput] = useState('');
   const quantity = Math.max(0, parseFractionOrExpression(qtyInput));
   const [unitPrice, setUnitPrice] = useState(0);
-  const [purchaseCurrency, setPurchaseCurrency] = useState('ETB');
+  const [purchaseCurrency, setPurchaseCurrency] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [paymentMethodId, setPaymentMethodId] = useState('');
   const [notesOrDescription, setNotesOrDescription] = useState('');
@@ -347,7 +347,7 @@ export default function PurchasesTab({
     setItemOrServiceInput('');
     setQtyInput('');
     setUnitPrice(0);
-    setPurchaseCurrency('ETB');
+    setPurchaseCurrency('');
     setHasVat(false);
     setHasWithholding(false);
     setPurchaseDate(new Date().toISOString().split('T')[0]);
@@ -366,7 +366,7 @@ export default function PurchasesTab({
     setItemOrServiceInput(p.itemOrService);
     setQtyInput(p.quantity.toString());
     setUnitPrice(p.unitPrice);
-    setPurchaseCurrency(p.currency || 'ETB');
+    setPurchaseCurrency(p.currency || '');
     
     // Support pre-populating historical custom tax items
     setHasVat(!!p.hasVat);
@@ -459,6 +459,11 @@ export default function PurchasesTab({
       return;
     }
 
+    if (!purchaseCurrency) {
+      showWarning('Please select a currency for the item.');
+      return;
+    }
+
     const finalItemName = itemOrServiceInput.trim();
     if (!finalItemName) {
       showWarning('Please specify the Item or Service purchased.');
@@ -515,7 +520,7 @@ export default function PurchasesTab({
     setItemOrServiceInput('');
     setQtyInput('');
     setUnitPrice(0);
-    setPurchaseCurrency('ETB');
+    setPurchaseCurrency('');
     setHasVat(false);
     setHasWithholding(false);
     setNotesOrDescription('');
@@ -540,6 +545,10 @@ export default function PurchasesTab({
 
     // If there is a partially drafted item in the form, append it to the batch automatically
     if (finalItemName) {
+      if (!purchaseCurrency) {
+        showWarning('Please select a currency for the item.');
+        return;
+      }
       if (quantity <= 0) {
         showWarning('Quantity must be greater than zero for the pending item.');
         return;
@@ -2504,14 +2513,14 @@ export default function PurchasesTab({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-slate-50 w-full max-w-2xl h-[100dvh] sm:h-full border-l border-slate-200 shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
+              className="bg-[#121212] w-full max-w-2xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
               onClick={(e) => e.stopPropagation()}
             >
               
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white flex-shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818] flex-shrink-0">
                 <div>
-                  <h4 className="font-sans font-bold text-slate-800 text-sm uppercase">
+                  <h4 className="font-sans font-bold text-white text-sm uppercase">
                     {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
                   </h4>
                 </div>
@@ -2519,7 +2528,7 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md cursor-pointer transition-colors"
+                  className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2530,31 +2539,31 @@ export default function PurchasesTab({
                   <span>{warningMessage}</span>
                 </div>
               )}
-
-                     {/* Form Inputs Container */}
+ 
+                      {/* Form Inputs Container */}
                <div className="flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto overscroll-contain pb-4">
                 
                 {/* Batch Details Section */}
-                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                <div className="bg-[#181818] border border-[#262626] p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
                   <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider flex items-center gap-1.5">
                     Batch Details
                   </h5>
-
+ 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="purchase-date-input">Purchase Date</label>
+                      <label className="block text-xs text-stone-300 font-medium mb-1.5" htmlFor="purchase-date-input">Purchase Date</label>
                       <input
                         id="purchase-date-input"
                         type="date"
                         required
                         value={purchaseDate}
                         onChange={(e) => setPurchaseDate(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                        className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
                       />
                     </div>
-
+ 
                     <div>
-                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="payment-method-select">Paid From / Charge Ledger</label>
+                      <label className="block text-xs text-stone-300 font-medium mb-1.5" htmlFor="payment-method-select">Paid From / Charge Ledger</label>
                       <SearchableSelect
                         id="payment-method-select"
                         value={paymentMethodId}
@@ -2564,37 +2573,37 @@ export default function PurchasesTab({
                           if (val) {
                             const bank = bankAccounts.find(b => b.id === val);
                             if (bank) {
-                              setPurchaseCurrency(bank.currency || 'ETB');
+                              setPurchaseCurrency(bank.currency || '');
                             }
                           }
                         }}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors purchase-ledger-bank-select cursor-pointer"
-                        inputClassName="text-left pl-1 pr-6"
+                        className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors purchase-ledger-bank-select cursor-pointer"
+                        inputClassName="text-left pl-1 pr-6 text-white"
                         placeholder="Select bank/cash..."
                       >
                         <option value="">Select bank/cash...</option>
                         {bankAccounts
-                          .filter(b => (b.currency || 'ETB') === purchaseCurrency)
+                          .filter(b => !purchaseCurrency || (b.currency || 'ETB') === purchaseCurrency)
                           .map((b) => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
                       </SearchableSelect>
                     </div>
                   </div>
-
-                  <div className="text-xs text-slate-500 flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-                    <span>Recorded by: <span className="font-semibold text-slate-700">{recordedBy}</span></span>
+ 
+                  <div className="text-xs text-stone-400 flex items-center justify-between border-t border-[#262626] pt-3 mt-1">
+                    <span>Recorded by: <span className="font-semibold text-stone-300">{recordedBy}</span></span>
                   </div>
                 </div>
-
+ 
                 {/* Add Item Section */}
-                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm relative">
+                <div className="bg-[#181818] border border-[#262626] p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm relative">
                   <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
                     {editingPurchase ? 'Item Parameters' : 'Add Item'}
                   </h5>
-
+ 
                   <div className="relative">
-                    <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="item-service-input">Item or Service Name</label>
+                    <label className="block text-xs text-stone-300 font-medium mb-1.5" htmlFor="item-service-input">Item or Service Name</label>
                     <input
                       id="item-service-input"
                       type="text"
@@ -2633,13 +2642,13 @@ export default function PurchasesTab({
                           }
                         }
                       }}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                      className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
                       placeholder="Type products (e.g. CMYK toner, Kraft backing...)"
                     />
-                    <div className="mt-1.5 text-xs text-slate-500">
+                    <div className="mt-1.5 text-xs text-stone-400">
                       Category: <span className="text-[#ee317b] font-medium">{displayedItemCategory || 'Choose an item from the catalog'}</span>
                     </div>
-
+ 
                     {/* Suggestions Floating Popup */}
                     <AnimatePresence>
                       {showSuggestions && (filteredSuggestions.length > 0 || showCreateSuggestion) && (
@@ -2648,14 +2657,14 @@ export default function PurchasesTab({
                           initial={{ opacity: 0, y: -5 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -5 }}
-                          className="absolute left-0 right-0 top-[70px] bg-white border border-slate-200 z-50 max-h-[220px] overflow-y-auto divide-y divide-slate-100 shadow-xl cursor-pointer rounded-md"
+                          className="absolute left-0 right-0 top-[70px] bg-[#181818] border border-[#262626] z-50 max-h-[220px] overflow-y-auto divide-y divide-[#262626] shadow-xl cursor-pointer rounded-md"
                         >
                           {filteredSuggestions.map((sug, idx) => (
                             <div
                               key={idx}
                               ref={(node) => { suggestionOptionRefs.current[idx] = node; }}
                               onClick={() => handleSuggestionClick(sug.name, sug.categoryName)}
-                              className={`px-3 py-2 text-xs text-slate-800 hover:bg-[#ee317b]/10 hover:text-[#ee317b] flex items-center justify-between font-sans font-medium ${activeSuggestionIndex === idx ? 'bg-[#ee317b]/10 text-[#ee317b]' : ''}`}
+                              className={`px-3 py-2 text-xs text-white hover:bg-[#ee317b]/10 hover:text-[#ee317b] flex items-center justify-between font-sans font-medium ${activeSuggestionIndex === idx ? 'bg-[#ee317b]/10 text-[#ee317b]' : ''}`}
                             >
                               <span>{sug.name}</span>
                               <span className="text-[9px] text-[#ee317b] bg-[#ee317b]/10 px-1.5 py-0.5 border border-[#ee317b]/20 rounded lowercase">
@@ -2663,12 +2672,12 @@ export default function PurchasesTab({
                               </span>
                             </div>
                           ))}
-
+ 
                           {showCreateSuggestion && (
                             <div
                               ref={(node) => { suggestionOptionRefs.current[filteredSuggestions.length] = node; }}
                               onClick={handleTriggerAddNewItemFlow}
-                              className={`px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-sans text-xs flex items-center justify-between cursor-pointer border-t border-slate-100 ${activeSuggestionIndex === filteredSuggestions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
+                              className={`px-3 py-2.5 bg-[#121212] hover:bg-[#262626] text-stone-300 font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626] ${activeSuggestionIndex === filteredSuggestions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
                             >
                               <div className="flex items-center gap-1.5">
                                 <PlusCircle className="w-4 h-4 text-[#ee317b]" />
@@ -2681,10 +2690,10 @@ export default function PurchasesTab({
                       )}
                     </AnimatePresence>
                   </div>
-
+ 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="quantity-input">Quantity</label>
+                      <label className="block text-xs text-stone-300 font-medium mb-1.5" htmlFor="quantity-input">Quantity</label>
                       <input
                         id="quantity-input"
                         type="text"
@@ -2701,13 +2710,13 @@ export default function PurchasesTab({
                             setQtyInput(res.toString());
                           }
                         }}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                        className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
                         placeholder="0"
                       />
                     </div>
-
+ 
                     <div>
-                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="unit-price-input">Unit Price</label>
+                      <label className="block text-xs text-stone-300 font-medium mb-1.5" htmlFor="unit-price-input">Unit Price</label>
                       <div className="flex -space-x-px">
                         <input
                           id="unit-price-input"
@@ -2717,15 +2726,16 @@ export default function PurchasesTab({
                           required
                           value={unitPrice || ''}
                           onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                          className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-l-md rounded-r-none outline-none font-sans transition-colors flex-1 min-w-0"
+                          className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-l-md rounded-r-none outline-none font-sans transition-colors flex-1 min-w-0"
                           placeholder="0.00"
                         />
                         <select
                           value={purchaseCurrency}
                           disabled={!!paymentMethodId}
                           onChange={(e) => setPurchaseCurrency(e.target.value)}
-                          className="bg-slate-50 border border-slate-300 text-slate-700 px-3 h-10 text-xs rounded-r-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] font-bold font-sans disabled:opacity-60 disabled:cursor-not-allowed border-l-0 cursor-pointer"
+                          className="bg-[#121212] border border-[#262626] text-white px-3 h-10 text-xs rounded-r-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] font-bold font-sans disabled:opacity-60 disabled:cursor-not-allowed border-l-0 cursor-pointer"
                         >
+                          <option value="">Select...</option>
                           {availableCurrencies.map(curr => (
                             <option key={curr} value={curr}>
                               {curr}
@@ -2736,15 +2746,15 @@ export default function PurchasesTab({
                     </div>
                   </div>
                 </div>
-
+ 
                 {/* Tax Section */}
-                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                <div className="bg-[#181818] border border-[#262626] p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
                   <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
                     Tax
                   </h5>
-
+ 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label className="flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-md cursor-pointer shadow-xs hover:bg-slate-50 transition-colors">
+                    <label className="flex items-center gap-3 px-3 py-2.5 bg-[#121212] border border-[#262626] rounded-md cursor-pointer shadow-xs hover:bg-[#262626] transition-colors">
                       <input
                         type="checkbox"
                         checked={hasVat}
@@ -2752,12 +2762,12 @@ export default function PurchasesTab({
                         className="accent-[#ee317b] w-4 h-4 cursor-pointer rounded"
                       />
                       <div className="font-sans leading-tight">
-                        <span className="text-xs font-semibold text-slate-750 block">Add 15% VAT</span>
-                        <span className="text-[10px] text-slate-450 block">Value Added Tax</span>
+                        <span className="text-xs font-semibold text-white block">Add 15% VAT</span>
+                        <span className="text-[10px] text-stone-400 block">Value Added Tax</span>
                       </div>
                     </label>
-
-                    <label className="flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-md cursor-pointer shadow-xs hover:bg-slate-50 transition-colors">
+ 
+                    <label className="flex items-center gap-3 px-3 py-2.5 bg-[#121212] border border-[#262626] rounded-md cursor-pointer shadow-xs hover:bg-[#262626] transition-colors">
                       <input
                         type="checkbox"
                         checked={hasWithholding}
@@ -2765,35 +2775,35 @@ export default function PurchasesTab({
                         className="accent-[#ee317b] w-4 h-4 cursor-pointer rounded"
                       />
                       <div className="font-sans leading-tight">
-                        <span className="text-xs font-semibold text-slate-755 block">Apply 3% withholding</span>
-                        <span className="text-[10px] text-slate-450 block">Tax deduction</span>
+                        <span className="text-xs font-semibold text-white block">Apply 3% withholding</span>
+                        <span className="text-[10px] text-stone-400 block">Tax deduction</span>
                       </div>
                     </label>
                   </div>
                 </div>
-
+ 
                 {/* Notes Section */}
-                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                <div className="bg-[#181818] border border-[#262626] p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
                   <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
                     Notes
                   </h5>
-
+ 
                   <div>
                     <textarea
                       value={notesOrDescription}
                       onChange={(e) => setNotesOrDescription(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors resize-none h-auto"
+                      className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors resize-none h-auto"
                       placeholder="Add manufacturer invoice number, roll weights, etc."
                     />
                   </div>
                 </div>
-
+ 
                 {/* BATCH OVERVIEW / PENDING SUMMARY BOX (Only in Add Mode) */}
                 {!editingPurchase && pendingBatchItems.length > 0 && (
-                  <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-3 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <div className="bg-[#181818] border border-[#262626] p-3.5 sm:p-4 space-y-3 rounded-lg shadow-sm">
+                    <div className="flex justify-between items-center border-b border-[#262626] pb-2">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <Calculator className="w-4 h-4 text-[#ee317b]" />
                         Reviewing Pending Batch Summary ({pendingBatchItems.length} Products)
                       </span>
@@ -2806,12 +2816,12 @@ export default function PurchasesTab({
                         Clear batch
                       </button>
                     </div>
-
+ 
                     {/* Small Grid pending items spreadsheet */}
-                    <div className="overflow-auto border border-slate-150 rounded-md text-xs font-sans bg-slate-50">
+                    <div className="overflow-auto border border-[#262626] rounded-md text-xs font-sans bg-[#121212]">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-500 uppercase text-[9px] border-b border-slate-200">
+                          <tr className="bg-[#181818] text-stone-400 uppercase text-[9px] border-b border-[#262626]">
                             <th className="p-2">Item Product</th>
                             <th className="p-2 text-right">Qty</th>
                             <th className="p-2 text-right">Unit Price</th>
@@ -2820,22 +2830,22 @@ export default function PurchasesTab({
                             <th className="p-2 text-center">Remove</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 text-slate-700">
+                        <tbody className="divide-y divide-[#262626] text-stone-300">
                           {pendingBatchItems.map((item, idx) => (
-                            <tr key={item.tempId} className="hover:bg-slate-100/40">
-                              <td className="p-2 font-semibold text-slate-800 max-w-[120px] truncate" title={item.itemOrService}>
+                            <tr key={item.tempId} className="hover:bg-[#262626]/40">
+                              <td className="p-2 font-semibold text-white max-w-[120px] truncate" title={item.itemOrService}>
                                 <span className="block truncate">{item.itemOrService}</span>
                                 <span className="block text-[9px] font-normal text-pink-500 truncate">{item.expenseCategory}</span>
                               </td>
-                              <td className="p-2 text-right text-slate-900 font-bold">{item.quantity}</td>
-                              <td className="p-2 text-right text-slate-600">{item.unitPrice.toLocaleString()} {item.currency}</td>
+                              <td className="p-2 text-right text-white font-bold">{item.quantity}</td>
+                              <td className="p-2 text-right text-stone-300">{item.unitPrice.toLocaleString()} {item.currency}</td>
                               <td className="p-2 text-center">
                                 <div className="flex gap-1 justify-center text-[9px] font-bold">
-                                  {item.hasVat && <span className="bg-emerald-50 text-emerald-700 border border-emerald-250 px-1 rounded">V</span>}
-                                  {item.hasWithholding && <span className="bg-rose-50 text-rose-700 border border-rose-250 px-1 rounded">W</span>}
+                                  {item.hasVat && <span className="bg-emerald-950/40 text-emerald-400 border border-emerald-900/40 px-1 rounded">V</span>}
+                                  {item.hasWithholding && <span className="bg-rose-950/40 text-rose-400 border border-rose-900/40 px-1 rounded">W</span>}
                                 </div>
                               </td>
-                              <td className="p-2 text-right text-slate-900 font-bold">{item.totalPrice.toLocaleString()} {item.currency}</td>
+                              <td className="p-2 text-right text-white font-bold">{item.totalPrice.toLocaleString()} {item.currency}</td>
                               <td className="p-2 text-center">
                                 <button
                                   type="button"
@@ -2850,28 +2860,28 @@ export default function PurchasesTab({
                         </tbody>
                       </table>
                     </div>
-
+ 
                     {/* Cumulative Pricing Mathematics */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-xs font-sans">
-                      <div className="flex justify-between text-slate-650">
+                    <div className="bg-[#121212] border border-[#262626] rounded-lg p-3 space-y-2 text-xs font-sans">
+                      <div className="flex justify-between text-stone-300">
                         <span>Total Cumulative Base Amount:</span>
-                        <span className="text-slate-855 font-bold">
+                        <span className="text-white font-bold">
                           {pendingBatchItems.reduce((acc, c) => acc + c.baseAmount, 0).toLocaleString()} {purchaseCurrency}
                         </span>
                       </div>
-                      <div className="flex justify-between text-emerald-750 font-medium">
+                      <div className="flex justify-between text-emerald-500 font-medium">
                         <span>Total Cumulative VAT Added (15%):</span>
                         <span>
                           +{pendingBatchItems.reduce((acc, c) => acc + c.vatAmount, 0).toLocaleString()} {purchaseCurrency}
                         </span>
                       </div>
-                      <div className="flex justify-between text-rose-750 font-medium">
+                      <div className="flex justify-between text-rose-500 font-medium">
                         <span>Total Cumulative Supplier Withholding Deducted (3%):</span>
                         <span>
                           -{pendingBatchItems.reduce((acc, c) => acc + c.withholdingAmount, 0).toLocaleString()} {purchaseCurrency}
                         </span>
                       </div>
-                      <div className="flex justify-between border-t border-slate-250 pt-2 text-sm font-extrabold text-[#ee317b]">
+                      <div className="flex justify-between border-t border-[#262626] pt-2 text-sm font-extrabold text-[#ee317b]">
                         <span>NET CHARGES TO CHARGE LEDGER BANK:</span>
                         <span>
                           {pendingBatchItems.reduce((acc, c) => acc + c.totalPrice, 0).toLocaleString()} {purchaseCurrency}
@@ -2880,27 +2890,27 @@ export default function PurchasesTab({
                     </div>
                   </div>
                 )}
-
+ 
               </div>
-
+ 
               {/* Sticky Bottom Section */}
-              <div className="border-t border-slate-200 bg-white flex flex-col flex-shrink-0 shadow-lg z-10">
+              <div className="border-t border-[#262626] bg-[#181818] flex flex-col flex-shrink-0 shadow-lg z-10">
                 {/* Compact Purchase Summary */}
-                <div className="px-4 pt-3 pb-2 border-b border-slate-100 font-sans text-xs space-y-1">
-                  <div className="flex justify-between text-slate-600">
+                <div className="px-4 pt-3 pb-2 border-b border-[#262626] font-sans text-xs space-y-1">
+                  <div className="flex justify-between text-stone-300">
                     <span className="font-medium">Base Purchase Total:</span>
-                    <span className="font-semibold text-slate-800">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
+                    <span className="font-semibold text-white">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
                   </div>
                   {hasVat && vatAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-stone-300">
                       <span className="font-medium">VAT (15%):</span>
-                      <span className="font-semibold text-emerald-600">+{vatAmount.toLocaleString()} {purchaseCurrency}</span>
+                      <span className="font-semibold text-emerald-500">+{vatAmount.toLocaleString()} {purchaseCurrency}</span>
                     </div>
                   )}
                   {hasWithholding && withholdingAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-stone-300">
                       <span className="font-medium">Withholding (3%):</span>
-                      <span className="font-semibold text-rose-600 font-mono">-{withholdingAmount.toLocaleString()} {purchaseCurrency}</span>
+                      <span className="font-semibold text-rose-500 font-mono">-{withholdingAmount.toLocaleString()} {purchaseCurrency}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-[#ee317b]">
@@ -2908,7 +2918,7 @@ export default function PurchasesTab({
                     <span>{currentCalculatedTotalPrice.toLocaleString()} {purchaseCurrency}</span>
                   </div>
                 </div>
-
+ 
                 {/* Add Item to Batch Button (Only show in Add Mode) */}
                 {!editingPurchase && (
                   <div className="px-4 pt-2">
@@ -2922,13 +2932,13 @@ export default function PurchasesTab({
                     </button>
                   </div>
                 )}
-
+ 
                 {/* Cancel / Save to Ledger Buttons */}
-                <div className="px-4 py-3 bg-white flex items-center gap-3">
+                <div className="px-4 py-3 bg-[#181818] flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="flex-1 px-4 py-2 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
+                    className="flex-1 px-4 py-2 bg-transparent text-stone-300 hover:text-white text-xs font-sans font-semibold cursor-pointer border border-[#262626] hover:bg-[#262626] rounded-md transition-colors text-center"
                   >
                     Cancel
                   </button>
@@ -2946,7 +2956,6 @@ export default function PurchasesTab({
                   </button>
                 </div>
               </div>
-
             </motion.div>
           </div>
         )}

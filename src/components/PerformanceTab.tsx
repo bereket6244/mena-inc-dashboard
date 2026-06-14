@@ -292,8 +292,8 @@ export default function PerformanceTab({
     if (summaryEndDate && (!orderDate || orderDate > summaryEndDate)) return false;
     if (summarySearch) {
       const searchLower = summarySearch.toLowerCase();
-      const nameMatch = c.name?.toLowerCase().includes(searchLower);
-      const productMatch = c.productName?.toLowerCase().includes(searchLower);
+      const nameMatch = c.clientName?.toLowerCase().includes(searchLower);
+      const productMatch = c.productType?.toLowerCase().includes(searchLower);
       const empMatch = c.orderTakenBy?.toLowerCase().includes(searchLower);
       if (!nameMatch && !productMatch && !empMatch) return false;
     }
