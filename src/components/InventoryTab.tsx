@@ -53,7 +53,8 @@ export default function InventoryTab({
   
   const [searchQuery, setSearchQuery] = useState('');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>('grid');
-  const [showSortPopover, setShowSortPopover] = useState(false);
+  const [showMobileSortPopover, setShowMobileSortPopover] = useState(false);
+  const [showDesktopSortPopover, setShowDesktopSortPopover] = useState(false);
 
   // State for Add/Edit Stock
   const [editingStock, setEditingStock] = useState<PaperStock | null>(null);
@@ -471,7 +472,7 @@ export default function InventoryTab({
         <div className="relative">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+            onClick={(e) => { e.stopPropagation(); setShowMobileSortPopover(!showMobileSortPopover); }}
             className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
               (sortBy !== 'recordedOrder' && sortBy !== 'lastAdded') ? 'text-[#ee317b]' : 'text-gray-300'
             }`}
@@ -479,26 +480,26 @@ export default function InventoryTab({
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
           </button>
-          {showSortPopover && (
+          {showMobileSortPopover && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+              <div className="fixed inset-0 z-40" onClick={() => setShowMobileSortPopover(false)} />
               <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1">
                 <button
-                  type="button"
-                  onClick={() => {
-                    handleRecordedOrderSort();
-                    setShowSortPopover(false);
-                  }}
-                  className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
+                   type="button"
+                   onClick={() => {
+                     handleRecordedOrderSort();
+                     setShowMobileSortPopover(false);
+                   }}
+                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                 >
-                  Recorded Order (Reset)
+                  First Added (Oldest First)
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setSortBy('lastAdded');
                     setSortDirection('desc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -510,7 +511,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('name');
                     setSortDirection('asc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -521,7 +522,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('name');
                     setSortDirection('desc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -532,7 +533,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('remaining');
                     setSortDirection('desc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -543,7 +544,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('remaining');
                     setSortDirection('asc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -554,7 +555,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('consumed');
                     setSortDirection('desc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -565,7 +566,7 @@ export default function InventoryTab({
                   onClick={() => {
                     setSortBy('consumed');
                     setSortDirection('asc');
-                    setShowSortPopover(false);
+                    setShowMobileSortPopover(false);
                   }}
                   className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                 >
@@ -601,7 +602,7 @@ export default function InventoryTab({
           <div className="relative">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+              onClick={(e) => { e.stopPropagation(); setShowDesktopSortPopover(!showDesktopSortPopover); }}
               className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
                 (sortBy !== 'recordedOrder' && sortBy !== 'lastAdded') ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
               }`}
@@ -609,26 +610,26 @@ export default function InventoryTab({
             >
               <ArrowUpDown className="w-3.5 h-3.5" />
             </button>
-            {showSortPopover && (
+            {showDesktopSortPopover && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                <div className="fixed inset-0 z-40" onClick={() => setShowDesktopSortPopover(false)} />
                 <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1">
                   <button
                     type="button"
                     onClick={() => {
                       handleRecordedOrderSort();
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                   >
-                    Recorded Order (Reset)
+                    First Added (Oldest First)
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setSortBy('lastAdded');
                       setSortDirection('desc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${sortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -640,7 +641,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('name');
                       setSortDirection('asc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -651,7 +652,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('name');
                       setSortDirection('desc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'name' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -662,7 +663,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('remaining');
                       setSortDirection('desc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -673,7 +674,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('remaining');
                       setSortDirection('asc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'remaining' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -684,7 +685,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('consumed');
                       setSortDirection('desc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'desc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >
@@ -695,7 +696,7 @@ export default function InventoryTab({
                     onClick={() => {
                       setSortBy('consumed');
                       setSortDirection('asc');
-                      setShowSortPopover(false);
+                      setShowDesktopSortPopover(false);
                     }}
                     className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${(sortBy === 'consumed' && sortDirection === 'asc') ? 'text-[#ee317b] font-bold' : ''}`}
                   >

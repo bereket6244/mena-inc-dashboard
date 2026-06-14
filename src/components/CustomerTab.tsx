@@ -74,6 +74,7 @@ const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
 const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
 const CUSTOMER_SORT_FIELDS = [
   'recordedOrder',
+  'lastAdded',
   'clientType',
   'clientName',
   'phone',
@@ -102,7 +103,7 @@ const CUSTOMER_SORT_FIELDS = [
   'incompletionReason',
 ] as const;
 type CustomerSortField = typeof CUSTOMER_SORT_FIELDS[number];
-type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder'>;
+type CustomerColumnSortField = Exclude<CustomerSortField, 'recordedOrder' | 'lastAdded'>;
 const CUSTOMER_SORT_BY_STORAGE_KEY = 'ui.customer.sortBy';
 const CUSTOMER_SORT_DIRECTION_STORAGE_KEY = 'ui.customer.sortDirection';
 const DEFAULT_ACQUISITION_CHANNELS = ['TikTok', 'Instagram', 'Telegram', 'Word of Mouth', 'Repeat'];
@@ -382,7 +383,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   };
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
-  const [showSortPopover, setShowSortPopover] = useState(false);
+  const [showMobileSortPopover, setShowMobileSortPopover] = useState(false);
+  const [showDesktopSortPopover, setShowDesktopSortPopover] = useState(false);
   const [activeContactMenuId, setActiveContactMenuId] = useState<string | null>(null);
   const [contactMenuPosition, setContactMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
@@ -676,62 +678,76 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         return res;
       };
 
-      const container = document.getElementById('proforma-print-container');
-      if (!container) {
-        throw new Error('Proforma container element not found.');
-      }
+      const wasDark = !document.documentElement.classList.contains('light-theme');
+      let clone: HTMLElement;
+      try {
+        if (wasDark) {
+          document.documentElement.classList.add('light-theme');
+          document.body.classList.add('light-theme');
+        }
 
-      // Clone the container to completely escape ancestor CSS transforms (like mobile scaling) which cause severe text squishing
-      const clone = container.cloneNode(true) as HTMLElement;
-      
-      // Bake all computed styles inline on every element so the clone renders identically
-      // This is critical because cloneNode doesn't carry over stylesheet-computed values
-      const sourceElements = container.querySelectorAll('*');
-      const cloneElements = clone.querySelectorAll('*');
-      
-      const stylesToCopy = [
-        'font-size', 'font-weight', 'font-family', 'font-style',
-        'line-height', 'letter-spacing', 'text-align', 'text-transform', 'text-decoration',
-        'color', 'background-color', 'background',
-        'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
-        'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
-        'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-        'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
-        'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
-        'border-collapse', 'border-spacing',
-        'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height',
-        'display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-self',
-        'gap', 'row-gap', 'column-gap', 'flex-grow', 'flex-shrink', 'flex-basis',
-        'position', 'top', 'right', 'bottom', 'left',
-        'overflow', 'overflow-x', 'overflow-y',
-        'white-space', 'word-break', 'word-spacing',
-        'opacity', 'visibility', 'vertical-align',
-        'box-sizing', 'table-layout',
-      ];
-      
-      // Inline styles on the root clone element itself
-      const rootStyles = window.getComputedStyle(container);
-      for (const prop of stylesToCopy) {
-        try {
-          let val = rootStyles.getPropertyValue(prop);
-          if (val) clone.style.setProperty(prop, convertColorStringToRgb(val));
-        } catch (_) {}
-      }
-      
-      // Inline styles on every child element
-      for (let i = 0; i < sourceElements.length && i < cloneElements.length; i++) {
-        const srcEl = sourceElements[i] as HTMLElement;
-        const clnEl = cloneElements[i] as HTMLElement;
-        if (!clnEl.style) continue;
-        try {
-          const computed = window.getComputedStyle(srcEl);
-          for (const prop of stylesToCopy) {
-            try {
-              let val = computed.getPropertyValue(prop);
-              if (val) clnEl.style.setProperty(prop, convertColorStringToRgb(val));
-            } catch (_) {}
-          }
-        } catch (_) {}
+        const container = document.getElementById('proforma-print-container');
+        if (!container) {
+          throw new Error('Proforma container element not found.');
+        }
+
+        // Clone the container to completely escape ancestor CSS transforms (like mobile scaling) which cause severe text squishing
+        clone = container.cloneNode(true) as HTMLElement;
+        
+        // Bake all computed styles inline on every element so the clone renders identically
+        // This is critical because cloneNode doesn't carry over stylesheet-computed values
+        const sourceElements = container.querySelectorAll('*');
+        const cloneElements = clone.querySelectorAll('*');
+        
+        const stylesToCopy = [
+          'font-size', 'font-weight', 'font-family', 'font-style',
+          'line-height', 'letter-spacing', 'text-align', 'text-transform', 'text-decoration',
+          'color', 'background-color', 'background',
+          'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+          'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+          'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+          'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
+          'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+          'border-collapse', 'border-spacing',
+          'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height',
+          'display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-self',
+          'gap', 'row-gap', 'column-gap', 'flex-grow', 'flex-shrink', 'flex-basis',
+          'position', 'top', 'right', 'bottom', 'left',
+          'overflow', 'overflow-x', 'overflow-y',
+          'white-space', 'word-break', 'word-spacing',
+          'opacity', 'visibility', 'vertical-align',
+          'box-sizing', 'table-layout',
+        ];
+        
+        // Inline styles on the root clone element itself
+        const rootStyles = window.getComputedStyle(container);
+        for (const prop of stylesToCopy) {
+          try {
+            let val = rootStyles.getPropertyValue(prop);
+            if (val) clone.style.setProperty(prop, convertColorStringToRgb(val));
+          } catch (_) {}
+        }
+        
+        // Inline styles on every child element
+        for (let i = 0; i < sourceElements.length && i < cloneElements.length; i++) {
+          const srcEl = sourceElements[i] as HTMLElement;
+          const clnEl = cloneElements[i] as HTMLElement;
+          if (!clnEl.style) continue;
+          try {
+            const computed = window.getComputedStyle(srcEl);
+            for (const prop of stylesToCopy) {
+              try {
+                let val = computed.getPropertyValue(prop);
+                if (val) clnEl.style.setProperty(prop, convertColorStringToRgb(val));
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      } finally {
+        if (wasDark) {
+          document.documentElement.classList.remove('light-theme');
+          document.body.classList.remove('light-theme');
+        }
       }
       
       // Place clone off-screen in body
@@ -1821,9 +1837,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         } else if (showFilterPopover) {
           event.preventDefault();
           setShowFilterPopover(false);
-        } else if (showSortPopover) {
+        } else if (showMobileSortPopover) {
           event.preventDefault();
-          setShowSortPopover(false);
+          setShowMobileSortPopover(false);
+        } else if (showDesktopSortPopover) {
+          event.preventDefault();
+          setShowDesktopSortPopover(false);
         } else if (showProductManager) {
           event.preventDefault();
           setShowProductManager(false);
@@ -1865,7 +1884,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   }, [
     showMobileFilters,
     showFilterPopover,
-    showSortPopover,
+    showMobileSortPopover,
+    showDesktopSortPopover,
     showProductManager,
     showProformaModal,
     showBulkDeleteConfirm,
@@ -1894,9 +1914,20 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   // Filter application
   const filteredCustomers = customers.filter(c => {
+    const getSigDigits = (p: string) => {
+      const d = p.replace(/\D/g, '');
+      if (d.startsWith('251') && d.length > 3) return d.substring(3);
+      if (d.startsWith('0') && d.length > 1) return d.substring(1);
+      return d;
+    };
+    
+    const cleanPhone = c.phone ? getSigDigits(c.phone) : '';
+    const cleanSearch = searchQuery ? getSigDigits(searchQuery) : '';
+    const matchesPhone = cleanSearch !== '' && cleanPhone.includes(cleanSearch);
+
     const matchesSearch = 
       c.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.phone && c.phone.includes(searchQuery)) ||
+      (c.phone && (c.phone.includes(searchQuery) || matchesPhone)) ||
       c.productType.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesAgent = filterAgent === 'All' || c.orderTakenBy === filterAgent;
@@ -1931,6 +1962,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     return matchesSearch && matchesAgent && matchesSource && matchesPayment && matchesCompletion && matchesReceipt;
   }).sort((a, b) => {
     if (customerSortBy === 'recordedOrder') return 0;
+    if (customerSortBy === 'lastAdded') {
+      const indexA = customers.findIndex(c => c.id === a.id);
+      const indexB = customers.findIndex(c => c.id === b.id);
+      return indexB - indexA;
+    }
     const direction = customerSortDirection === 'asc' ? 1 : -1;
     const valA = getCustomerSortValue(a, customerSortBy);
     const valB = getCustomerSortValue(b, customerSortBy);
@@ -2204,7 +2240,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             <div className="relative">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+                onClick={(e) => { e.stopPropagation(); setShowMobileSortPopover(!showMobileSortPopover); }}
                 className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${
                   customerSortBy !== 'recordedOrder' ? 'text-[#ee317b]' : 'text-gray-300'
                 }`}
@@ -2212,25 +2248,37 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
               </button>
-              {showSortPopover && (
+              {showMobileSortPopover && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMobileSortPopover(false)} />
                   <div className="absolute right-0 mt-1.5 w-48 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-60 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => {
                         handleRecordedOrderSort();
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
-                      Recorded Order (Reset)
+                      First Added (Oldest First)
                     </button>
                     <button
                       type="button"
                       onClick={() => {
+                        setCustomerSortBy('lastAdded');
+                        setCustomerSortDirection('desc');
+                        setShowMobileSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Last Added (Newest First)
+                    </button>
+                    <div className="h-px bg-[#262626] my-0.5" />
+                    <button
+                      type="button"
+                      onClick={() => {
                         handleCustomerSort('clientName');
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientName' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2240,7 +2288,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('clientType');
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientType' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2250,7 +2298,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('quantity');
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'quantity' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2260,7 +2308,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('remainingBalance');
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'remainingBalance' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2270,7 +2318,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('deliveryDate');
-                        setShowSortPopover(false);
+                        setShowMobileSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'deliveryDate' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2449,7 +2497,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             <div className="relative">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setShowSortPopover(!showSortPopover); }}
+                onClick={(e) => { e.stopPropagation(); setShowDesktopSortPopover(!showDesktopSortPopover); }}
                 className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
                   customerSortBy !== 'recordedOrder' ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
                 }`}
@@ -2457,25 +2505,37 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
               </button>
-              {showSortPopover && (
+              {showDesktopSortPopover && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowSortPopover(false)} />
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDesktopSortPopover(false)} />
                   <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => {
                         handleRecordedOrderSort();
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'recordedOrder' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
-                      Recorded Order (Reset)
+                      First Added (Oldest First)
                     </button>
                     <button
                       type="button"
                       onClick={() => {
+                        setCustomerSortBy('lastAdded');
+                        setCustomerSortDirection('desc');
+                        setShowDesktopSortPopover(false);
+                      }}
+                      className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'lastAdded' ? 'text-[#ee317b] font-bold' : ''}`}
+                    >
+                      Last Added (Newest First)
+                    </button>
+                    <div className="h-px bg-[#262626] my-0.5" />
+                    <button
+                      type="button"
+                      onClick={() => {
                         handleCustomerSort('clientName');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientName' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2485,7 +2545,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('clientType');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'clientType' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2495,7 +2555,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('acquisitionSource');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'acquisitionSource' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2505,7 +2565,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('orderTakenBy');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'orderTakenBy' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2515,7 +2575,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('quantity');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'quantity' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2525,7 +2585,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('unitPrice');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'unitPrice' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2535,7 +2595,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('advancePayment');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'advancePayment' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2545,7 +2605,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('remainingBalance');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'remainingBalance' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2555,7 +2615,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('deliveryDate');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'deliveryDate' ? 'text-[#ee317b] font-bold' : ''}`}
                     >
@@ -2565,7 +2625,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       type="button"
                       onClick={() => {
                         handleCustomerSort('fullValue');
-                        setShowSortPopover(false);
+                        setShowDesktopSortPopover(false);
                       }}
                       className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${customerSortBy === 'fullValue' ? 'text-[#ee317b] font-bold' : ''}`}
                     >

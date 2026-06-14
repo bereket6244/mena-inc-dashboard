@@ -1681,7 +1681,7 @@ tr.out-of-stock-row td:first-child {
     border-bottom: 1px solid var(--app-sticky-border) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .purchase-mobile-toolbar-sticky .purchase-mobile-icon-button {
