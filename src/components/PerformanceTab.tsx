@@ -725,8 +725,8 @@ export default function PerformanceTab({
                         </div>
                       </div>
 
-                      {/* KPI Card 4: Net Cash (col-span-2) */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2.5 shadow-xs flex flex-col justify-between h-20 col-span-2">
+                      {/* KPI Card 4: Net Cash */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
                           <div className={`w-5 h-5 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
