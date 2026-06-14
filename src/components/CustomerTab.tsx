@@ -4554,7 +4554,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         }}
                         className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
                       >
-                        {['ETB', 'USD', 'AED', 'GBP', 'CNY', 'SAR'].map((curr) => (
+                        {availableCurrencies.map((curr) => (
                           <option key={curr} value={curr}>
                             {curr}
                           </option>
