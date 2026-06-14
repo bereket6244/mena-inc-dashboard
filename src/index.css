@@ -2650,3 +2650,40 @@ textarea:disabled {
     padding-right: 1.5rem;
   }
 }
+
+/* Force selected-row backgrounds to override any status indicator colors (completed, incomplete, stock status, etc.) */
+tr.selected-row td,
+tr.selected-row th,
+tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+tr.selected-row.completed-order-row td,
+tr.selected-row.incomplete-order-row td,
+tr.selected-row.low-stock-row td,
+tr.selected-row.out-of-stock-row td,
+.alternating-table-rows tbody tr.selected-row.completed-order-row td,
+.alternating-table-rows tbody tr.selected-row.incomplete-order-row td,
+.alternating-table-rows tbody tr.selected-row.low-stock-row td,
+.alternating-table-rows tbody tr.selected-row.out-of-stock-row td,
+.freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #1d2336 !important;
+}
+
+.light-theme tr.selected-row td,
+.light-theme tr.selected-row th,
+.light-theme tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme tr.selected-row.completed-order-row td,
+.light-theme tr.selected-row.incomplete-order-row td,
+.light-theme tr.selected-row.low-stock-row td,
+.light-theme tr.selected-row.out-of-stock-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row td,
+.light-theme .freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #e3ecfc !important;
+}

@@ -12,6 +12,7 @@ import {
   LayoutGrid, 
   Table as TableIcon, 
   ChevronRight, 
+  ChevronLeft,
   X, 
   AlertCircle, 
   Phone, 
@@ -211,6 +212,22 @@ export default function CustomerTab({
     const savedLayout = localStorage.getItem(CUSTOMER_LAYOUT_STORAGE_KEY);
     return savedLayout === 'cards' ? 'cards' : 'grid';
   });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+
+  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  };
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
   const [customerSortBy, setCustomerSortBy] = useState<CustomerSortField>(() => {
     const savedSortBy = localStorage.getItem(CUSTOMER_SORT_BY_STORAGE_KEY);
     return CUSTOMER_SORT_FIELDS.includes(savedSortBy as CustomerSortField) ? savedSortBy as CustomerSortField : 'recordedOrder';
@@ -1621,7 +1638,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim()) {
-      setFormError('Client name is required.');
+      showToast('Input client name', 'error');
       return;
     }
 
@@ -1671,8 +1688,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       advancePaymentDate,
       bankRemainingId,
       incompletionReason: incompletionReason.trim(),
-      isVatAdded,
-      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined,
       currency: orderCurrency
     };
 
@@ -1681,13 +1696,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     } else {
       onAddCustomer(payload);
     }
+    showToast('order recorded', 'success');
     setIsFormOpen(false);
   };
 
   const handleSaveAndAddAnother = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim()) {
-      setFormError('Client name is required.');
+      showToast('Input client name', 'error');
       return;
     }
 
@@ -1741,6 +1757,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     };
 
     onAddCustomer(payload);
+    showToast('order recorded', 'success');
 
     // Keep the core customer details that persist (name, phone, clientType, channel, agent, dates)
     // but reset the product-specific and sheet-deduction configurations for the next item order
@@ -3263,7 +3280,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       <AnimatePresence>
         {isFormOpen && (
           <div 
-            className="fixed inset-0 z-50 flex items-center justify-end bg-black/75 backdrop-blur-xs  overscroll-contain"
+            className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs overscroll-contain"
             onClick={(e) => { if (e.target === e.currentTarget) setIsFormOpen(false); }}
           >
             <motion.div 
@@ -3271,11 +3288,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#121212] w-full max-w-xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
+              className="bg-[#121212] w-full max-w-xl h-[100dvh] border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
             >
               
               {/* Header */}
-              <div>
+              <div className="flex-shrink-0">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
                   <div>
                     <h3 className="font-sans font-bold text-white text-base flex items-center gap-1.5 uppercase">
@@ -3286,32 +3303,32 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="p-1.5 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 {/* Wizard Tab buttons */}
-                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-sans font-semibold text-[11px]  bg-[#181818]">
+                <div className="grid grid-cols-3 border-b border-[#262626] text-center font-sans font-semibold text-[11px] bg-[#181818]">
                   <button
                     type="button"
                     onClick={() => setFormStep(1)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 1 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors ${formStep === 1 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212] font-bold' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     1. Account Info
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormStep(2)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 2 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors ${formStep === 2 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212] font-bold' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     2. Primary Items
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormStep(3)}
-                    className={`py-3 border-b-2 cursor-pointer transition-colors rounded-md ${formStep === 3 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212]' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    className={`py-3 border-b-2 cursor-pointer transition-colors ${formStep === 3 ? 'border-[#ee317b] text-[#ee317b] bg-[#121212] font-bold' : 'border-transparent text-gray-400 hover:text-white'}`}
                   >
                     3. Aux &amp; Special
                   </button>
@@ -3327,7 +3344,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               )}
 
               {/* Step Forms */}
-              <form onSubmit={handleFormSubmit} className="flex-1 px-6 pt-5 pb-2 overflow-y-auto space-y-6 overscroll-contain">
+              <form onSubmit={handleFormSubmit} className="flex-1 flex flex-col justify-between overflow-hidden">
+                <div className="flex-1 px-4 sm:px-6 pt-5 pb-4 overflow-y-auto space-y-5 sm:space-y-6 overscroll-contain">
                 
                 {formStep === 1 && (
                   <div className="space-y-5 font-sans">
@@ -3604,7 +3622,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               <span className="text-[10px] text-gray-300 uppercase tracking-wider font-bold">Add 15% VAT</span>
                             </label>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex -space-x-px">
                             <input
                               id="field-client-price"
                               type="text"
@@ -3627,12 +3645,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                   setUnitPrice(res);
                                 }
                               }}
-                              className="flex-1 px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="flex-1 px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-l-md rounded-r-none outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed min-w-0"
                             />
                             <select
                               value={orderCurrency}
                               onChange={(e) => setOrderCurrency(e.target.value)}
-                              className="bg-[#121212] border border-[#262626] text-white px-2.5 py-1.5 text-xs rounded-md outline-none focus:border-[#ee317b] w-20 font-bold font-sans cursor-pointer"
+                              className="bg-[#121212] border border-[#262626] text-white px-3 py-2 text-xs rounded-r-md outline-none focus:border-[#ee317b] w-20 font-bold font-sans cursor-pointer border-l-0"
                             >
                               {availableCurrencies.map(curr => (
                                 <option key={curr} value={curr}>
@@ -3745,46 +3763,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       </div>
                     </div>
 
-                    {/* Card 4: Order Summary */}
-                    <div className="bg-[#121212] border border-[#262626] rounded-md p-4 space-y-3">
-                      <h4 className="text-xs font-sans uppercase tracking-wider text-gray-500 font-bold border-b border-[#262626] pb-1.5 flex justify-between items-center">
-                        Order Summary
-                        <span className="text-[10px] text-[#ee317b] animate-pulse">Live Calc</span>
-                      </h4>
-                      
-                      <div className="grid grid-cols-2 gap-y-2 text-xs font-sans">
-                        <div className="text-gray-400">Subtotal</div>
-                        <div className="text-right text-gray-200">
-                          {isVatAdded 
-                            ? (parseFractionOrExpression(baseUnitPriceInput) * quantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
-                            : computedFullPayment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB
-                        </div>
-
-                        {isVatAdded && (
-                          <>
-                            <div className="text-gray-400">VAT (15%)</div>
-                            <div className="text-right text-[#ee317b]">
-                              + {(parseFractionOrExpression(baseUnitPriceInput) * quantity * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ETB
-                            </div>
-                          </>
-                        )}
-
-                        <div className="text-gray-400 font-bold pt-2 border-t border-[#262626]">Total Output Price</div>
-                        <div className="text-right text-white font-bold pt-2 border-t border-[#262626]">
-                          {computedFullPayment.toLocaleString()} ETB
-                        </div>
-
-                        <div className="text-gray-400">Advance Paid</div>
-                        <div className="text-right text-gray-200">
-                          - {(parseFractionOrExpression(advanceInput) || 0).toLocaleString()} ETB
-                        </div>
-
-                        <div className="text-gray-400 font-bold pt-2 border-t border-[#262626]">Remaining Due</div>
-                        <div className={`text-right font-bold pt-2 border-t border-[#262626] ${computedRemainingBalance > 0 ? 'text-[#F87171]' : 'text-[#71b536]'}`}>
-                          {computedRemainingBalance <= 0 ? 'Paid (0 ETB)' : `${computedRemainingBalance.toLocaleString()} ETB`}
-                        </div>
-                      </div>
-                    </div>
 
                   </div>
                 )}
@@ -4113,61 +4091,141 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </div>
                   </div>
                 )}
+                </div>
 
+                {/* Sticky Bottom Dock */}
+                <div className="border-t border-[#262626] bg-[#181818] flex flex-col flex-shrink-0 shadow-lg z-10 p-3 pb-safe space-y-2">
+                  {/* Compact Order Summary - Only on Page 1 */}
+                  {formStep === 1 && (
+                    <div className="bg-[#121212] border border-[#262626] rounded-[10px] p-2.5 font-sans text-xs space-y-0.5">
+                      <div className="flex justify-between items-center border-b border-[#262626] pb-0.5 mb-0.5">
+                        <span className="font-bold text-gray-300 uppercase tracking-wider text-[10px]">Order Summary</span>
+                        <span className="text-[9px] text-[#ee317b] uppercase tracking-wider font-extrabold animate-pulse">Live Calc</span>
+                      </div>
+
+                      <div className="flex justify-between text-gray-400">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold text-gray-200">
+                          {isVatAdded 
+                            ? (parseFractionOrExpression(baseUnitPriceInput) * quantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                            : computedFullPayment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} {orderCurrency}
+                        </span>
+                      </div>
+
+                      {isVatAdded && (
+                        <div className="flex justify-between text-gray-450">
+                          <span>VAT (15%):</span>
+                          <span className="font-semibold text-[#ee317b]">
+                            + {(parseFractionOrExpression(baseUnitPriceInput) * quantity * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} {orderCurrency}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between text-gray-300 font-bold border-t border-[#262626] pt-0.5">
+                        <span>Total Output Price:</span>
+                        <span>{computedFullPayment.toLocaleString()} {orderCurrency}</span>
+                      </div>
+
+                      <div className="flex justify-between text-gray-400">
+                        <span>Advance Paid:</span>
+                        <span>- {(parseFractionOrExpression(advanceInput) || 0).toLocaleString()} {orderCurrency}</span>
+                      </div>
+
+                      <div className="flex justify-between font-bold border-t border-[#262626] pt-0.5">
+                        <span className="text-gray-300">Remaining Due:</span>
+                        <span className={computedRemainingBalance > 0 ? 'text-[#F87171]' : 'text-[#71b536]'}>
+                          {computedRemainingBalance <= 0 ? `Paid (0 ${orderCurrency})` : `${computedRemainingBalance.toLocaleString()} ${orderCurrency}`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Row 1 Navigation */}
+                    {formStep === 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!clientName.trim()) {
+                            showToast('Input client name', 'error');
+                            return;
+                          }
+                          setFormError('');
+                          setFormStep(2);
+                        }}
+                        className="col-span-2 w-full h-12 bg-transparent text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center justify-center gap-1.5 cursor-pointer rounded-[10px] text-center transition-colors"
+                      >
+                        <span>Next Page</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {formStep === 2 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(1)}
+                          className="w-full h-12 bg-transparent text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center justify-center gap-1.5 cursor-pointer rounded-[10px] text-center transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span>Back</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(3)}
+                          className="w-full h-12 bg-transparent text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center justify-center gap-1.5 cursor-pointer rounded-[10px] text-center transition-colors"
+                        >
+                          <span>Next Page</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+
+                    {formStep === 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormStep(2)}
+                        className="col-span-2 w-full h-12 bg-transparent text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center justify-center gap-1.5 cursor-pointer rounded-[10px] text-center transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Back</span>
+                      </button>
+                    )}
+
+                    {/* Row 2: Save / Complete */}
+                    {!editingCustomer ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleSaveAndAddAnother}
+                          className="w-full h-12 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 bg-transparent text-[11px] sm:text-xs font-sans font-bold cursor-pointer rounded-[10px] transition-colors text-center flex flex-col sm:flex-row items-center justify-center leading-tight sm:leading-normal px-1"
+                          title="Save this order, and immediately start another order for this same customer"
+                        >
+                          <span className="sm:hidden">Save &amp; Add</span>
+                          <span className="sm:hidden">Another Order</span>
+                          <span className="hidden sm:inline">Save &amp; Add Another Order</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFormSubmit}
+                          className="w-full h-12 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-[10px] text-center transition-colors shadow-sm flex items-center justify-center"
+                        >
+                          Complete
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleFormSubmit}
+                        className="col-span-2 w-full h-12 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-[10px] text-center transition-colors shadow-sm flex items-center justify-center"
+                      >
+                        Save Modification
+                      </button>
+                    )}
+                  </div>
+                </div>
               </form>
-
-              {/* Bottom Nav */}
-              <div className="border-t border-[#262626] px-4 sm:px-6 py-4 bg-[#181818] flex flex-wrap items-center justify-between gap-3 sm:gap-4 sticky bottom-0 z-10">
-                <div>
-                  {formStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setFormStep((prev) => (prev - 1) as 1 | 2 | 3)}
-                      className="px-4 py-2 bg-transparent text-gray-300 hover:text-white border border-[#262626]  text-xs font-sans font-bold cursor-pointer"
-                    >
-                      Back
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 justify-end">
-                  {!editingCustomer && (
-                    <button
-                      type="button"
-                      onClick={handleSaveAndAddAnother}
-                      className="px-4 py-2 border border-[#ee317b] text-[#ee317b] hover:bg-[#ee317b]/10 text-xs font-sans font-bold cursor-pointer "
-                      title="Save this order, and immediately start another order for this same customer"
-                    >
-                      Save & Add Another Order
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleFormSubmit}
-                    className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer "
-                  >
-                    {editingCustomer ? 'Save Modification' : 'Complete Record Order'}
-                  </button>
-
-                  {formStep < 3 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (formStep === 1 && !clientName.trim()) {
-                          setFormError('Client name holds metadata requirements and must be inputted.');
-                          return;
-                        }
-                        setFormError('');
-                        setFormStep((prev) => (prev + 1) as 1 | 2 | 3);
-                      }}
-                      className="px-4 py-2 bg-[#262626] text-stone-300 border border-[#3e3e3e] font-sans font-bold text-xs hover:bg-[#323232] hover:text-white flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Next Page</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
             </motion.div>
           </div>
         )}
@@ -5578,6 +5636,34 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 Delete
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toaster Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-lg shadow-xl font-sans text-xs flex items-center gap-2 border ${
+              toastType === 'error'
+                ? 'bg-[#2E181D] border-red-500/30 text-[#F87171]'
+                : toastType === 'success'
+                ? 'bg-[#121912]/95 border-[#71b536]/30 text-[#71b536]'
+                : 'bg-[#121212]/95 border-[#ee317b]/30 text-white'
+            }`}
+          >
+            {toastType === 'error' ? (
+              <AlertCircle className="w-4 h-4 text-[#F87171] shrink-0" />
+            ) : toastType === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-[#71b536] shrink-0" />
+            ) : (
+              <div className="w-2 h-2 rounded-full bg-[#ee317b] shrink-0" />
+            )}
+            <span className="font-semibold">{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>

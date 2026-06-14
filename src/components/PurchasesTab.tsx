@@ -2928,14 +2928,14 @@ export default function PurchasesTab({
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="flex-1 px-4 py-2.5 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
+                    className="flex-1 px-4 py-2 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSavePurchase}
-                    className="flex-1 px-5 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-md transition-colors shadow-sm text-center"
+                    className="flex-1 px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-md transition-colors shadow-sm text-center"
                   >
                     {editingPurchase 
                       ? 'Update Purchase' 
