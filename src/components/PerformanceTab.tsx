@@ -680,58 +680,62 @@ export default function PerformanceTab({
 
                   {!isCollapsed && (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                      {/* KPI Card 1: Debt */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Debt</span>
-                          <div className="w-6 h-6 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
-                            <FileText className="w-3.5 h-3.5 text-[#a28031]" />
+                          <div className="w-5 h-5 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
+                            <FileText className="w-3 h-3 text-[#a28031]" />
                           </div>
                         </div>
                         <div className="mt-1">
-                          <p className="text-[13px] font-sans font-bold leading-tight text-[#a28031] break-all">
-                            {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          <p className="text-[15px] font-sans font-bold leading-tight text-[#a28031] break-all">
+                            {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                      {/* KPI Card 2: Gross */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Gross</span>
-                          <div className="w-6 h-6 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
-                            <ShoppingBag className="w-3.5 h-3.5 text-[#71b536]" />
+                          <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
+                            <ShoppingBag className="w-3 h-3 text-[#71b536]" />
                           </div>
                         </div>
                         <div className="mt-1">
-                          <p className="text-[13px] font-sans font-bold leading-tight text-[#71b536] break-all">
-                            {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          <p className="text-[15px] font-sans font-bold leading-tight text-[#71b536] break-all">
+                            {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                      {/* KPI Card 3: Spent */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Spent</span>
-                          <div className="w-6 h-6 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
-                            <CreditCard className="w-3.5 h-3.5 text-[#ee317b]" />
+                          <div className="w-5 h-5 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
+                            <CreditCard className="w-3 h-3 text-[#ee317b]" />
                           </div>
                         </div>
                         <div className="mt-1">
-                          <p className="text-[13px] font-sans font-bold leading-tight text-[#ee317b] break-all">
-                            {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          <p className="text-[15px] font-sans font-bold leading-tight text-[#ee317b] break-all">
+                            {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-3 shadow-xs flex flex-col justify-between h-24">
+                      {/* KPI Card 4: Net Cash (col-span-2) */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2.5 shadow-xs flex flex-col justify-between h-20 col-span-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
-                          <div className={`w-6 h-6 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
-                            <Activity className={`w-3.5 h-3.5 ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`} />
+                          <div className={`w-5 h-5 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
+                            <Activity className={`w-3 h-3 ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`} />
                           </div>
                         </div>
                         <div className="mt-1">
-                          <p className={`text-[13px] font-sans font-bold leading-tight break-all ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`}>
-                            {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[9px] font-semibold">{curr}</span>
+                          <p className={`text-[15px] font-sans font-bold leading-tight break-all ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`}>
+                            {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
                           </p>
                         </div>
                       </div>
