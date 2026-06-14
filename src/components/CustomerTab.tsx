@@ -423,6 +423,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   // Proforma VAT State variables inside modal scope integration
   const [proformaIncludeVat, setProformaIncludeVat] = useState(true);
+  const [proformaCurrency, setProformaCurrency] = useState('ETB');
   const [proformaMobileTab, setProformaMobileTab] = useState<'edit' | 'preview'>('edit');
   const [proformaZoom, setProformaZoom] = useState(1);
   const [standaloneClientName, setStandaloneClientName] = useState('');
@@ -2022,6 +2023,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     if (showProformaModal && !lastShowProformaModalRef.current) {
       setEditedProductDescriptions({});
       
+      let initialCurrency = 'ETB';
+      if (!isStandaloneProformaMode && proformaItemsToRender.length > 0) {
+        const firstCust = customers.find(c => selectedCustomerIds.includes(c.id));
+        initialCurrency = firstCust?.currency || 'ETB';
+      }
+      setProformaCurrency(initialCurrency);
+
       if (isStandaloneProformaMode) {
         setProformaClientName(standaloneClientName || 'Valued Corporate Client');
         setProformaClientPhone(standaloneClientPhone || '+251 900 000 000');
@@ -2065,8 +2073,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       setProformaColNo('No.');
       setProformaColDesc('Description of Product Line');
       setProformaColQty('Qty (pcs)');
-      setProformaColPrice('Unit Price (ETB)');
-      setProformaColTotal('Subtotal (ETB)');
+      setProformaColPrice(`Unit Price (${initialCurrency})`);
+      setProformaColTotal(`Subtotal (${initialCurrency})`);
       setProformaTermsTitle('Terms & General Conditions');
       setProformaTerm1Prefix('1. Delivery Term: ');
       setProformaDeliveryTerm('Within 7 to 10 days from order receipt validation.');
@@ -4534,6 +4542,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         ))}
                       </SearchableSelect>
                     </label>
+                    <label className="flex items-center justify-between text-stone-300 text-xs w-full">
+                      <span className="font-bold text-gray-400 uppercase text-[9px]">Proforma Currency</span>
+                      <SearchableSelect
+                        value={proformaCurrency}
+                        onChange={(e) => {
+                          const newCurr = e.target.value;
+                          setProformaCurrency(newCurr);
+                          setProformaColPrice(`Unit Price (${newCurr})`);
+                          setProformaColTotal(`Subtotal (${newCurr})`);
+                        }}
+                        className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
+                      >
+                        {['ETB', 'USD', 'AED', 'GBP', 'CNY', 'SAR'].map((curr) => (
+                          <option key={curr} value={curr}>
+                            {curr}
+                          </option>
+                        ))}
+                      </SearchableSelect>
+                    </label>
                     <label className="flex items-center justify-between text-stone-300 cursor-pointer text-xs w-full hover:bg-[#1a1215] p-1.5 rounded transition-colors -mx-1.5 px-1.5">
                       <span className="font-bold text-gray-400 uppercase text-[9px]">Apply PLC Stamp Seal</span>
                       <input
@@ -4868,9 +4895,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                const globalIndexOffset = proformaPages.slice(0, pageIndex).reduce((acc, curr) => acc + curr.length, 0);
                                return (
                                  <div key={pageIndex} className="proforma-page relative bg-white text-black pl-16 pr-10 pt-6 pb-10 shadow-inner border border-gray-300 select-text font-sans w-[800px] h-[1131px] overflow-hidden max-w-none flex flex-col" style={{ pageBreakAfter: isLastPage ? 'auto' : 'always', breakInside: 'avoid' }}>
-                <style dangerouslySetInnerHTML={{__html: `
+                 <style dangerouslySetInnerHTML={{__html: `
                   /* Explicit print-safe hex color overrides for all elements in the proforma container */
-                  .proforma-page {
+                  .proforma-page,
+                  :root:not(.light-theme) .proforma-page {
                     background-color: #ffffff !important;
                     color: #111827 !important;
                     border-color: #e5e7eb !important;
@@ -4880,91 +4908,128 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     margin: 0 auto;
                   }
                   .proforma-page .text-gray-900,
+                  :root:not(.light-theme) .proforma-page .text-gray-900,
                   #proforma-print-container strong,
+                  :root:not(.light-theme) #proforma-print-container strong,
                   #proforma-print-container h1,
-                  #proforma-print-container h2 {
+                  :root:not(.light-theme) #proforma-print-container h1,
+                  #proforma-print-container h2,
+                  :root:not(.light-theme) #proforma-print-container h2 {
                     color: #111827 !important;
                   }
                   .proforma-page .text-gray-800,
+                  :root:not(.light-theme) .proforma-page .text-gray-800,
                   .proforma-page .text-gray-750,
-                  .proforma-page .text-gray-705 {
+                  :root:not(.light-theme) .proforma-page .text-gray-750,
+                  .proforma-page .text-gray-705,
+                  :root:not(.light-theme) .proforma-page .text-gray-705 {
                     color: #1f2937 !important;
                   }
                   .proforma-page .text-gray-700,
-                  .proforma-page .text-gray-600 {
+                  :root:not(.light-theme) .proforma-page .text-gray-700,
+                  .proforma-page .text-gray-600,
+                  :root:not(.light-theme) .proforma-page .text-gray-600 {
                     color: #374151 !important;
                   }
                   .proforma-page .text-gray-550,
+                  :root:not(.light-theme) .proforma-page .text-gray-550,
                   .proforma-page .text-gray-500,
-                  .proforma-page .text-gray-450 {
+                  :root:not(.light-theme) .proforma-page .text-gray-500,
+                  .proforma-page .text-gray-450,
+                  :root:not(.light-theme) .proforma-page .text-gray-450 {
                     color: #6b7280 !important;
                   }
-                  .proforma-page .text-gray-400 {
+                  .proforma-page .text-gray-400,
+                  :root:not(.light-theme) .proforma-page .text-gray-400 {
                     color: #9ca3af !important;
                   }
-                  .proforma-page .text-black {
+                  .proforma-page .text-black,
+                  :root:not(.light-theme) .proforma-page .text-black {
                     color: #000000 !important;
                   }
-                  .proforma-page .text-\[\#ee317b\] {
+                  .proforma-page .text-\[\#ee317b\],
+                  :root:not(.light-theme) .proforma-page .text-\[\#ee317b\] {
                     color: #ee317b !important;
                   }
-                  .proforma-page .text-\[\#71b536\] {
+                  .proforma-page .text-\[\#71b536\],
+                  :root:not(.light-theme) .proforma-page .text-\[\#71b536\] {
                     color: #71b536 !important;
                   }
-                  .proforma-page .text-green-700 {
+                  .proforma-page .text-green-700,
+                  :root:not(.light-theme) .proforma-page .text-green-700 {
                     color: #15803d !important;
                   }
-                  .proforma-page .text-red-700 {
+                  .proforma-page .text-red-700,
+                  :root:not(.light-theme) .proforma-page .text-red-700 {
                     color: #b91c1c !important;
                   }
                   
-                  .proforma-page .border-gray-100 {
+                  .proforma-page .border-gray-100,
+                  :root:not(.light-theme) .proforma-page .border-gray-100 {
                     border-color: #f3f4f6 !important;
                   }
-                  .proforma-page .border-gray-200 {
+                  .proforma-page .border-gray-200,
+                  :root:not(.light-theme) .proforma-page .border-gray-200 {
                     border-color: #e5e7eb !important;
                   }
-                  .proforma-page .border-gray-250 {
+                  .proforma-page .border-gray-250,
+                  :root:not(.light-theme) .proforma-page .border-gray-250 {
                     border-color: #e2e8f0 !important;
                   }
-                  .proforma-page .border-gray-300 {
+                  .proforma-page .border-gray-300,
+                  :root:not(.light-theme) .proforma-page .border-gray-300 {
                     border-color: #d1d5db !important;
                   }
-                  .proforma-page .border-gray-350 {
+                  .proforma-page .border-gray-350,
+                  :root:not(.light-theme) .proforma-page .border-gray-350 {
                     border-color: #cbd5e1 !important;
                   }
-                  .proforma-page .border-gray-400 {
+                  .proforma-page .border-gray-400,
+                  :root:not(.light-theme) .proforma-page .border-gray-400 {
                     border-color: #9ca3af !important;
                   }
                   #proforma-print-container table,
+                  :root:not(.light-theme) #proforma-print-container table,
                   #proforma-print-container th,
+                  :root:not(.light-theme) #proforma-print-container th,
                   #proforma-print-container td,
+                  :root:not(.light-theme) #proforma-print-container td,
                   #proforma-print-container tr,
-                  #proforma-print-container div {
-                    border-color: #d1d5db;
+                  :root:not(.light-theme) #proforma-print-container tr,
+                  #proforma-print-container div,
+                  :root:not(.light-theme) #proforma-print-container div {
+                    border-color: #d1d5db !important;
                   }
                   
-                  .proforma-page .bg-white {
+                  .proforma-page .bg-white,
+                  :root:not(.light-theme) .proforma-page .bg-white {
                     background-color: #ffffff !important;
                   }
-                  .proforma-page .bg-gray-100 {
+                  .proforma-page .bg-gray-100,
+                  :root:not(.light-theme) .proforma-page .bg-gray-100 {
                     background-color: #f3f4f6 !important;
                   }
-                  .proforma-page .bg-gray-50 {
+                  .proforma-page .bg-gray-50,
+                  :root:not(.light-theme) .proforma-page .bg-gray-50 {
                     background-color: #f9fafb !important;
                   }
-                  .proforma-page .bg-gray-55 {
+                  .proforma-page .bg-gray-55,
+                  :root:not(.light-theme) .proforma-page .bg-gray-55 {
                     background-color: #f9fafb !important;
                   }
-                  .proforma-page .bg-gray-50\/50 {
+                  .proforma-page .bg-gray-50\/50,
+                  :root:not(.light-theme) .proforma-page .bg-gray-50\/50 {
                     background-color: rgba(249, 250, 251, 0.5) !important;
                   }
-                  .proforma-page .bg-gray-50\/20 {
+                  .proforma-page .bg-gray-50\/20,
+                  :root:not(.light-theme) .proforma-page .bg-gray-50\/20 {
                     background-color: rgba(249, 250, 251, 0.2) !important;
                   }
-
+ 
                   .proforma-page,
-                  .proforma-page * {
+                  :root:not(.light-theme) .proforma-page,
+                  .proforma-page *,
+                  :root:not(.light-theme) .proforma-page * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                     box-shadow: none !important;
@@ -5107,8 +5172,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <th className="py-2 px-3 border-r border-gray-300 font-bold w-12 text-center bg-gray-100">No.</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-left bg-gray-100">Description of Product Line</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-20 bg-gray-100">Qty (pcs)</th>
-                        <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-28 bg-gray-100">Unit Price (ETB)</th>
-                        <th className="py-2 px-3 font-bold text-right w-32 bg-gray-100">Subtotal (ETB)</th>
+                        <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-28 bg-gray-100">{proformaColPrice}</th>
+                        <th className="py-2 px-3 font-bold text-right w-32 bg-gray-100">{proformaColTotal}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-800 text-center">
@@ -5146,14 +5211,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       <div className="flex justify-between text-gray-600">
                         <span>Itemized Sub-Total:</span>
                         <span className="font-bold text-gray-900">
-                          {proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0).toFixed(2)} ETB
+                          {proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                       {proformaIncludeVat && (
                         <div className="flex justify-between text-gray-600">
                           <span>VAT (15.00%):</span>
                           <span className="font-bold text-gray-900">
-                            {(proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 0.15).toFixed(2)} ETB
+                            {(proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 0.15).toFixed(2)} {proformaCurrency}
                           </span>
                         </div>
                       )}
@@ -5163,13 +5228,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           {(
                             proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 
                             (proformaIncludeVat ? 1.15 : 1)
-                          ).toFixed(2)} ETB
+                          ).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                       <div className="flex justify-between pt-1 text-gray-600 text-[10px] border-b pb-1.5 border-dashed">
                         <span className="text-green-700 font-bold">Total Recorded Paid (Adv):</span>
                         <span className="font-bold text-green-700">
-                          -{proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0).toFixed(2)} ETB
+                          -{proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                       <div className="flex justify-between pt-1.5 text-[11.5px] font-black text-red-700">
@@ -5178,7 +5243,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           {Math.max(0, 
                             (proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * (proformaIncludeVat ? 1.15 : 1)) - 
                             proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0)
-                          ).toFixed(2)} ETB
+                          ).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                     </div>
