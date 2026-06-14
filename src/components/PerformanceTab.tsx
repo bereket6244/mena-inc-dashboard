@@ -103,10 +103,16 @@ export default function PerformanceTab({
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        if (!summarySearch) {
+          setIsSearchExpanded(false);
+        }
+      }
+      if (mobileSearchWrapperRef.current && !mobileSearchWrapperRef.current.contains(e.target as Node)) {
         if (!summarySearch) {
           setIsSearchExpanded(false);
         }
@@ -424,12 +430,12 @@ export default function PerformanceTab({
       {/* ========================================== */}
       {/* MOBILE LAYOUT                              */}
       {/* ========================================== */}
-      <div className="block md:hidden space-y-5 text-black">
+      <div className="block md:hidden space-y-3.5 text-black">
         {/* Mobile Top Section & Control Area */}
-        <div className="flex flex-col gap-2 py-1">
+        <div className="flex flex-col gap-1.5 py-1">
           {/* Row 1 */}
           <div className="flex items-center justify-between w-full h-10">
-            {/* Currency Selector (No dropdown arrow/chevron) */}
+            {/* Currency Selector (No dropdown arrow/chevron, text centered) */}
             <div className="relative">
               <select
                 value={selectedCurrency}
@@ -437,7 +443,8 @@ export default function PerformanceTab({
                   setSelectedCurrency(e.target.value);
                   setShowAllCurrencies(false);
                 }}
-                className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 shadow-xs focus:outline-none focus:border-[#ee317b]"
+                style={{ textAlign: 'center', textAlignLast: 'center' }}
+                className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 text-center shadow-xs focus:outline-none focus:border-[#ee317b]"
               >
                 {newAccountCurrencies.map(curr => (
                   <option key={curr} value={curr}>
@@ -448,7 +455,7 @@ export default function PerformanceTab({
             </div>
 
             {/* Search & Filter Controls on Right */}
-            <div className="flex items-center gap-2">
+            <div ref={mobileSearchWrapperRef} className="flex items-center gap-2">
               <AnimatePresence initial={false} mode="wait">
                 {!(isSearchExpanded || summarySearch) ? (
                   <motion.div
@@ -456,37 +463,37 @@ export default function PerformanceTab({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-2"
                   >
-                    {/* Search Icon */}
+                    {/* Search Icon (Visually same as desktop) */}
                     <button
                       type="button"
                       onClick={() => setIsSearchExpanded(true)}
-                      className="p-1.5 text-stone-600 hover:text-black transition-colors"
+                      className="flex items-center justify-center p-1.5 rounded text-stone-600 hover:bg-[#dfdccf]/35 hover:text-black transition-colors cursor-pointer"
                       title="Search"
                     >
-                      <Search className="w-4.5 h-4.5" />
+                      <Search className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* Filter Icon Popover */}
+                    {/* Filter Icon Popover (Visually same as desktop) */}
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setShowFilterPopover(!showFilterPopover)}
-                        className={`p-1.5 text-stone-600 hover:text-black transition-colors ${
+                        className={`flex items-center justify-center p-1.5 rounded text-stone-600 hover:bg-[#dfdccf]/35 hover:text-black transition-colors cursor-pointer ${
                           (summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All')
                             ? 'text-[#ee317b]'
                             : ''
                         }`}
                         title="Filters"
                       >
-                        <Filter className="w-4.5 h-4.5" />
+                        <Filter className="w-3.5 h-3.5" />
                       </button>
 
                       {showFilterPopover && (
                         <>
                           <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setShowFilterPopover(false)} />
-                          <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E7E3D4] rounded-lg shadow-lg z-50 p-4 text-xs font-sans text-black">
+                          <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E7E3D4] rounded-lg shadow-lg z-50 p-4 text-xs font-sans text-black animate-fadeIn">
                             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                               <span className="font-bold text-stone-500 uppercase tracking-wider">Filters</span>
                               {(summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All') && (
@@ -587,7 +594,7 @@ export default function PerformanceTab({
                   <motion.div
                     key="search-active"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 140, opacity: 1 }}
+                    animate={{ width: 130, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 20, stiffness: 200 }}
                     className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] px-2 py-1 h-8"
