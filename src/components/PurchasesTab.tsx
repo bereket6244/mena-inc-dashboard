@@ -32,6 +32,7 @@ import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
 import { FloatingAddButton, DataTable } from './shared/TabLayout';
+import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 
 const PURCHASE_SORT_FIELDS = ['recordedOrder', 'lastAdded', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
 type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder' | 'lastAdded'>;
@@ -180,7 +181,8 @@ export default function PurchasesTab({
   const [purchasedBy, setPurchasedBy] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
   const [itemOrServiceInput, setItemOrServiceInput] = useState('');
-  const [quantity, setQuantity] = useState(0);
+  const [qtyInput, setQtyInput] = useState('');
+  const quantity = Math.max(0, parseFractionOrExpression(qtyInput));
   const [unitPrice, setUnitPrice] = useState(0);
   const [purchaseCurrency, setPurchaseCurrency] = useState('ETB');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -343,7 +345,7 @@ export default function PurchasesTab({
     setPurchasedBy(currentUser?.name || '');
     setExpenseCategory('');
     setItemOrServiceInput('');
-    setQuantity(0);
+    setQtyInput('');
     setUnitPrice(0);
     setPurchaseCurrency('ETB');
     setHasVat(false);
@@ -362,7 +364,7 @@ export default function PurchasesTab({
     setPurchasedBy(p.purchasedBy);
     setExpenseCategory(p.expenseCategory);
     setItemOrServiceInput(p.itemOrService);
-    setQuantity(p.quantity);
+    setQtyInput(p.quantity.toString());
     setUnitPrice(p.unitPrice);
     setPurchaseCurrency(p.currency || 'ETB');
     
@@ -511,7 +513,7 @@ export default function PurchasesTab({
 
     // Reset item level form inputs for next catalog item
     setItemOrServiceInput('');
-    setQuantity(0);
+    setQtyInput('');
     setUnitPrice(0);
     setPurchaseCurrency('ETB');
     setHasVat(false);
@@ -2685,11 +2687,20 @@ export default function PurchasesTab({
                       <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="quantity-input">Quantity</label>
                       <input
                         id="quantity-input"
-                        type="number"
-                        min="0"
+                        type="text"
                         required
-                        value={quantity || ''}
-                        onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                        value={qtyInput}
+                        onChange={(e) => {
+                          const v = cleanLeadingZeros(e.target.value);
+                          setQtyInput(v);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const res = parseFractionOrExpression(qtyInput);
+                            setQtyInput(res.toString());
+                          }
+                        }}
                         className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
                         placeholder="0"
                       />
@@ -2880,6 +2891,18 @@ export default function PurchasesTab({
                     <span className="font-medium">Base Purchase Total:</span>
                     <span className="font-semibold text-slate-800">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
                   </div>
+                  {hasVat && vatAmount > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span className="font-medium">VAT (15%):</span>
+                      <span className="font-semibold text-emerald-600">+{vatAmount.toLocaleString()} {purchaseCurrency}</span>
+                    </div>
+                  )}
+                  {hasWithholding && withholdingAmount > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span className="font-medium">Withholding (3%):</span>
+                      <span className="font-semibold text-rose-600 font-mono">-{withholdingAmount.toLocaleString()} {purchaseCurrency}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-[#ee317b]">
                     <span>Net charged to bank:</span>
                     <span>{currentCalculatedTotalPrice.toLocaleString()} {purchaseCurrency}</span>
