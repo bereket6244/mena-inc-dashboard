@@ -149,8 +149,10 @@ export async function saveCustomerDoc(customer: Customer): Promise<void> {
         .from('customers')
         .upsert(customer);
       if (error) throw error;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Supabase saveCustomerDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}. Order changes were kept locally but could not be written to Supabase.`);
+      throw err;
     }
   }
 }
@@ -163,8 +165,10 @@ export async function deleteCustomerDoc(id: string, deletedBy?: string): Promise
         .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Supabase deleteCustomerDoc failed:", err);
+      setSupabaseValidationError(`Database Delete Error: ${err?.message || String(err)}`);
+      throw err;
     }
   }
 }
@@ -250,12 +254,36 @@ export async function fetchAllPurchases(localFallback: Purchase[]): Promise<Purc
 export async function savePurchaseDoc(purchase: Purchase): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
+      const payload = {
+        id: purchase.id,
+        purchasedBy: purchase.purchasedBy,
+        itemOrService: purchase.itemOrService,
+        quantity: purchase.quantity,
+        unitPrice: purchase.unitPrice,
+        purchaseDate: purchase.purchaseDate,
+        paymentMethodId: purchase.paymentMethodId,
+        totalPrice: purchase.totalPrice,
+        notesOrDescription: purchase.notesOrDescription,
+        recordedBy: purchase.recordedBy,
+        expenseCategory: purchase.expenseCategory,
+        currency: purchase.currency || 'ETB',
+        hasVat: purchase.hasVat,
+        vatAmount: purchase.vatAmount,
+        hasWithholding: purchase.hasWithholding,
+        withholdingAmount: purchase.withholdingAmount,
+        baseAmount: purchase.baseAmount,
+        isDeleted: purchase.isDeleted || false,
+        deletedBy: purchase.deletedBy || null
+      };
+
       const { error } = await supabase
         .from('purchases')
-        .upsert(purchase);
+        .upsert(payload);
       if (error) throw error;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Supabase savePurchaseDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}. Purchase changes were kept locally but could not be written to Supabase.`);
+      throw err;
     }
   }
 }
@@ -268,8 +296,10 @@ export async function deletePurchaseDoc(id: string, deletedBy?: string): Promise
         .update({ isDeleted: true, deletedBy })
         .eq('id', id);
       if (error) throw error;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Supabase deletePurchaseDoc failed:", err);
+      setSupabaseValidationError(`Database Delete Error: ${err?.message || String(err)}`);
+      throw err;
     }
   }
 }

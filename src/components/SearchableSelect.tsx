@@ -236,15 +236,25 @@ export default function SearchableSelect({
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-[#ee317b]' : 'text-gray-500'}`} />
         </div>
       </div>
-
       {/* Portal Dropdown Menu */}
       {isOpen && createPortal(
-        <div 
-          ref={dropdownRef}
-          style={dropdownStyle}
-          className="bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden"
-        >
-          <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 py-1">
+        <>
+          <style>{`
+            @keyframes selectDropdownFadeIn {
+              from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .animate-select-dropdown {
+              animation: selectDropdownFadeIn 120ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+              transform-origin: top;
+            }
+          `}</style>
+          <div 
+            ref={dropdownRef}
+            style={dropdownStyle}
+            className="bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden animate-select-dropdown"
+          >
+            <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 py-1">
             {filteredOptions.length === 0 && !showCreateOption ? (
               <div className="px-3 py-3 text-xs text-gray-500 text-center italic">
                 No matches found
@@ -294,7 +304,8 @@ export default function SearchableSelect({
               </>
             )}
           </div>
-        </div>,
+        </div>
+        </>,
         document.body
       )}
     </div>

@@ -60,6 +60,11 @@ export default function PurchasesTab({
 }: PurchasesTabProps) {
   
   // Search & Filters
+  const availableCurrencies = Array.from(new Set([
+    'ETB', 'USD', 'EUR', 'GBP', 'AED',
+    ...bankAccounts.map(b => b.currency || 'ETB')
+  ]));
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
@@ -177,6 +182,7 @@ export default function PurchasesTab({
   const [itemOrServiceInput, setItemOrServiceInput] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [unitPrice, setUnitPrice] = useState(0);
+  const [purchaseCurrency, setPurchaseCurrency] = useState('ETB');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [paymentMethodId, setPaymentMethodId] = useState('');
   const [notesOrDescription, setNotesOrDescription] = useState('');
@@ -199,6 +205,7 @@ export default function PurchasesTab({
     expenseCategory: string;
     quantity: number;
     unitPrice: number;
+    currency: string;
     hasVat: boolean;
     vatAmount: number;
     hasWithholding: boolean;
@@ -208,7 +215,7 @@ export default function PurchasesTab({
     notesOrDescription: string;
   }
   const [pendingBatchItems, setPendingBatchItems] = useState<PendingPurchaseItem[]>([]);
-  const purchaseFormInputClass = "w-full h-9 px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans";
+  const purchaseFormInputClass = "w-full h-9 px-2.5 py-2 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans";
 
   // Category Configuration inputs
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -338,6 +345,7 @@ export default function PurchasesTab({
     setItemOrServiceInput('');
     setQuantity(0);
     setUnitPrice(0);
+    setPurchaseCurrency('ETB');
     setHasVat(false);
     setHasWithholding(false);
     setPurchaseDate(new Date().toISOString().split('T')[0]);
@@ -356,6 +364,7 @@ export default function PurchasesTab({
     setItemOrServiceInput(p.itemOrService);
     setQuantity(p.quantity);
     setUnitPrice(p.unitPrice);
+    setPurchaseCurrency(p.currency || 'ETB');
     
     // Support pre-populating historical custom tax items
     setHasVat(!!p.hasVat);
@@ -473,6 +482,7 @@ export default function PurchasesTab({
       expenseCategory: expenseCategory || categories[0]?.name || 'Uncategorized',
       quantity,
       unitPrice,
+      currency: purchaseCurrency,
       hasVat,
       vatAmount: calculatedVat,
       hasWithholding,
@@ -503,6 +513,7 @@ export default function PurchasesTab({
     setItemOrServiceInput('');
     setQuantity(0);
     setUnitPrice(0);
+    setPurchaseCurrency('ETB');
     setHasVat(false);
     setHasWithholding(false);
     setNotesOrDescription('');
@@ -547,6 +558,7 @@ export default function PurchasesTab({
         expenseCategory: expenseCategory || categories[0]?.name || 'Uncategorized',
         quantity,
         unitPrice,
+        currency: purchaseCurrency,
         hasVat,
         vatAmount: calculatedVat,
         hasWithholding,
@@ -590,6 +602,7 @@ export default function PurchasesTab({
               itemOrService: item.itemOrService,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
+              currency: item.currency,
               purchaseDate,
               paymentMethodId,
               totalPrice: item.totalPrice,
@@ -614,6 +627,7 @@ export default function PurchasesTab({
           itemOrService: item.itemOrService,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          currency: item.currency,
           purchaseDate,
           paymentMethodId,
           totalPrice: item.totalPrice,
@@ -2167,8 +2181,8 @@ export default function PurchasesTab({
                     <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left min-w-[180px]">Item Notes</th>
                     <SortablePurchaseHeader field="expenseCategory">Category</SortablePurchaseHeader>
                     <SortablePurchaseHeader field="quantity" align="right">Qty</SortablePurchaseHeader>
-                    <SortablePurchaseHeader field="unitPrice" align="right">Unit P. (ETB)</SortablePurchaseHeader>
-                    <SortablePurchaseHeader field="totalPrice" align="right">Total Charged (ETB)</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="unitPrice" align="right">Unit P.</SortablePurchaseHeader>
+                    <SortablePurchaseHeader field="totalPrice" align="right">Total Charged</SortablePurchaseHeader>
                     <SortablePurchaseHeader field="purchaseDate">Date</SortablePurchaseHeader>
                     <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Payment Account</th>
                     <th className="py-2.5 px-3 font-semibold text-gray-300 border-r border-[#262626] text-left">Recorded By</th>
@@ -2248,15 +2262,15 @@ export default function PurchasesTab({
                           <td className="py-2 px-3 border-r border-[#262626] text-right font-bold text-stone-200">{p.quantity}</td>
 
                           {/* Unit Price */}
-                          <td className="py-2 px-3 border-r border-[#262626] text-right text-gray-400">{Number(p.unitPrice).toLocaleString()}</td>
+                          <td className="py-2 px-3 border-r border-[#262626] text-right text-gray-400">{Number(p.unitPrice).toLocaleString()} {p.currency || 'ETB'}</td>
 
                           {/* Total Price */}
                           <td className="py-2 px-3 border-r border-[#262626] text-right text-red-400 font-bold font-sans">
                             <div className="flex flex-col items-end">
-                              <span>{Number(p.totalPrice).toLocaleString()} ETB</span>
+                              <span>{Number(p.totalPrice).toLocaleString()} {p.currency || 'ETB'}</span>
                               {p.baseAmount && (p.hasVat || p.hasWithholding) && (
                                 <span className="text-[9px] text-gray-500 font-normal">
-                                  Base: {p.baseAmount.toLocaleString()}
+                                  Base: {p.baseAmount.toLocaleString()} {p.currency || 'ETB'}
                                 </span>
                               )}
                             </div>
@@ -2480,7 +2494,7 @@ export default function PurchasesTab({
       <AnimatePresence>
         {isFormOpen && (
           <div
-            className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-end  overscroll-contain"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-end overscroll-contain"
             onClick={() => setIsFormOpen(false)}
           >
             <motion.div 
@@ -2488,14 +2502,14 @@ export default function PurchasesTab({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#121212] w-full max-w-2xl h-[100dvh] sm:h-full border-l border-[#262626] shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
+              className="bg-slate-50 w-full max-w-2xl h-[100dvh] sm:h-full border-l border-slate-200 shadow-2xl overflow-hidden flex flex-col justify-between overscroll-contain"
               onClick={(e) => e.stopPropagation()}
             >
               
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818] flex-shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white flex-shrink-0">
                 <div>
-                  <h4 className="font-sans font-bold text-white text-sm uppercase">
+                  <h4 className="font-sans font-bold text-slate-800 text-sm uppercase">
                     {editingPurchase ? 'Edit Purchase Order' : 'Record Purchases Batch'}
                   </h4>
                 </div>
@@ -2503,395 +2517,425 @@ export default function PurchasesTab({
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="p-1 text-gray-400 hover:text-white hover:bg-[#262626] rounded-md cursor-pointer"
+                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {warningMessage && (
-                <div className="mx-6 mt-4 bg-[#31111E] border border-[#ee317b]/30 p-3 rounded-md text-[#F87171] text-xs flex items-center gap-2 font-sans">
-                  <AlertCircle className="w-4 h-4 text-[#F87171] flex-shrink-0" />
+                <div className="mx-6 mt-4 bg-rose-550 border border-rose-200 p-3 rounded-md text-rose-800 text-xs flex items-center gap-2 font-sans">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
                   <span>{warningMessage}</span>
                 </div>
               )}
 
               {/* Form Inputs Container */}
-               <div className="flex-1 p-6 space-y-5 overflow-y-auto overscroll-contain">
+               <div className="flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto overscroll-contain pb-32">
                 
-                {/* BATCH CORE DETAILS (Date, Charger bank, Operator, logger) */}
-                <div className="purchase-batch-config-card bg-stone-100 dark:bg-[#161616]/70 border border-stone-250 dark:border-[#232323] p-4 space-y-4 rounded-md">
-                    <span className="text-[10px] font-sans font-extrabold text-[#71b536] uppercase tracking-widest block border-b border-stone-250 dark:border-[#222222] pb-1.5">
-                      Step 1: Batch Configuration Details
-                    </span>
+                {/* Batch Details Section */}
+                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider flex items-center gap-1.5">
+                    Batch Details
+                  </h5>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5">Purchase Date</label>
-                        <input
-                          type="date"
-                          required
-                          value={purchaseDate}
-                          onChange={(e) => setPurchaseDate(e.target.value)}
-                          className={purchaseFormInputClass}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5">Charge Ledger Bank/Cash</label>
-                        <SearchableSelect
-                          value={paymentMethodId}
-                          onChange={(e) => setPaymentMethodId(e.target.value)}
-                          className={`${purchaseFormInputClass} purchase-ledger-bank-select cursor-pointer`}
-                          inputClassName="text-center pl-7"
-                          placeholder="Select bank/cash..."
-                        >
-                          <option value="">Select bank/cash...</option>
-                          {bankAccounts.map((b) => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </SearchableSelect>
-                      </div>
-                    </div>
-
-                    {/* Personnel Inputs - ONLY RECORDED BY */}
-                    <div className="grid grid-cols-1">
-                      <div>
-                        <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                          Recorded By (Logger)
-                          <Lock className="w-3 h-3 text-[#ee317b]" />
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            required
-                            disabled={true}
-                            value={recordedBy}
-                            onChange={(e) => setRecordedBy(e.target.value)}
-                            className={`${purchaseFormInputClass} bg-stone-50 dark:bg-[#181818]/60 text-stone-500 dark:text-zinc-500 border-stone-200 dark:border-[#222222] cursor-not-allowed`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ITEM INPUT ENGINE */}
-                  <div className="border border-stone-250 dark:border-[#2d2d2d] bg-stone-50 dark:bg-[#1a1215]/30 p-4 space-y-4 rounded-md relative">
-                    <span className="text-[10px] font-sans font-extrabold text-[#ee317b] uppercase tracking-widest block border-b border-stone-250 dark:border-[#2d2024] pb-1.5">
-                      {editingPurchase ? 'Edit Ledger Item Parameters' : 'Step 2: Add New Item to batch'}
-                    </span>
-
-                    {/* Search Suggestive Autocompleting Item Name Input */}
-                    <div className="relative">
-                      <label className="block text-[10px] text-stone-600 dark:text-gray-400 font-bold uppercase tracking-widest mb-1.5">Item or Service Name (Type to Match Catalog)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="purchase-date-input">Purchase Date</label>
                       <input
-                        type="text"
+                        id="purchase-date-input"
+                        type="date"
                         required
-                        value={itemOrServiceInput}
-                        onChange={(e) => handleItemInputChange(e.target.value)}
-                        onFocus={() => setShowSuggestions(true)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            if (!showSuggestions) {
-                              setShowSuggestions(true);
-                              return;
-                            }
-                            if (suggestionOptionCount > 0) {
-                              setActiveSuggestionIndex(prev => (prev + 1) % suggestionOptionCount);
-                            }
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            if (!showSuggestions) {
-                              setShowSuggestions(true);
-                              return;
-                            }
-                            if (suggestionOptionCount > 0) {
-                              setActiveSuggestionIndex(prev => (prev - 1 + suggestionOptionCount) % suggestionOptionCount);
-                            }
-                          } else if (e.key === 'Enter') {
-                            if (showSuggestions && suggestionOptionCount > 0) {
-                              e.preventDefault();
-                              selectActiveSuggestion();
-                            }
-                          } else if (e.key === 'Escape') {
-                            if (showSuggestions) {
-                              e.preventDefault();
-                              setShowSuggestions(false);
+                        value={purchaseDate}
+                        onChange={(e) => setPurchaseDate(e.target.value)}
+                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="payment-method-select">Paid From / Charge Ledger</label>
+                      <SearchableSelect
+                        id="payment-method-select"
+                        value={paymentMethodId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPaymentMethodId(val);
+                          if (val) {
+                            const bank = bankAccounts.find(b => b.id === val);
+                            if (bank) {
+                              setPurchaseCurrency(bank.currency || 'ETB');
                             }
                           }
                         }}
-                        className={purchaseFormInputClass}
-                        placeholder="Type products (e.g. CMYK toner, Kraft backing...)"
-                      />
-                      <div className="mt-1 text-[10px] font-sans text-gray-500">
-                        Category: <span className="text-[#ee317b]">{displayedItemCategory || 'Choose an item from the catalog'}</span>
-                      </div>
+                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors purchase-ledger-bank-select cursor-pointer"
+                        inputClassName="text-left pl-1 pr-6"
+                        placeholder="Select bank/cash..."
+                      >
+                        <option value="">Select bank/cash...</option>
+                        {bankAccounts
+                          .filter(b => (b.currency || 'ETB') === purchaseCurrency)
+                          .map((b) => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                      </SearchableSelect>
+                    </div>
+                  </div>
 
-                      {/* Suggestions Floating Popup Dropdown container */}
-                      <AnimatePresence>
-                        {showSuggestions && (filteredSuggestions.length > 0 || showCreateSuggestion) && (
-                          <motion.div 
-                            ref={suggestionRef}
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -5 }}
-                            className="absolute left-0 right-0 top-[65px] bg-white dark:bg-[#151515] border border-stone-300 dark:border-[#2d2d2d] z-50 max-h-[220px] overflow-y-auto divide-y divide-stone-200 dark:divide-[#222222] shadow-2xl cursor-pointer"
-                          >
-                            {filteredSuggestions.map((sug, idx) => (
-                              <div
-                                key={idx}
-                                ref={(node) => { suggestionOptionRefs.current[idx] = node; }}
-                                onClick={() => handleSuggestionClick(sug.name, sug.categoryName)}
-                                className={`px-3 py-2 text-xs text-stone-850 dark:text-stone-250 hover:bg-[#ee317b]/10 hover:text-[#ee317b] dark:hover:text-white flex items-center justify-between font-sans font-medium ${activeSuggestionIndex === idx ? 'bg-[#ee317b]/10 text-[#ee317b] dark:text-white' : ''}`}
-                              >
-                                <span>{sug.name}</span>
-                                <span className="text-[9px] text-[#ee317b] bg-[#ee317b]/10 dark:bg-[#31111E] px-1.5 py-0.5 border border-[#ee317b]/20 lowercase">
-                                  {sug.categoryName}
-                                </span>
-                              </div>
-                            ))}
+                  <div className="text-xs text-slate-500 flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
+                    <span>Recorded by: <span className="font-semibold text-slate-700">{recordedBy}</span></span>
+                  </div>
+                </div>
 
-                            {showCreateSuggestion && (
-                              <div
-                                ref={(node) => { suggestionOptionRefs.current[filteredSuggestions.length] = node; }}
-                                onClick={handleTriggerAddNewItemFlow}
-                                className={`px-3 py-2.5 bg-[#ee317b]/5 hover:bg-[#ee317b]/10 dark:bg-[#ee317b]/10 dark:hover:bg-[#ee317b]/20 text-stone-950 dark:text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-stone-200 dark:border-[#2d2d2d] ${activeSuggestionIndex === filteredSuggestions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <PlusCircle className="w-4 h-4 text-[#ee317b]" />
-                                  <span>Create <strong className="text-[#ee317b]">"{itemOrServiceInput.trim()}"</strong> as a new item...</span>
-                                </div>
-                                <span className="text-[10px] text-[#ee317b] uppercase font-sans font-bold tracking-wider">Catalog Tool</span>
-                              </div>
-                            )}
-                          </motion.div>
-                        )}
-                      </ AnimatePresence>
+                {/* Add Item Section */}
+                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm relative">
+                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
+                    {editingPurchase ? 'Item Parameters' : 'Add Item'}
+                  </h5>
+
+                  <div className="relative">
+                    <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="item-service-input">Item or Service Name</label>
+                    <input
+                      id="item-service-input"
+                      type="text"
+                      required
+                      value={itemOrServiceInput}
+                      onChange={(e) => handleItemInputChange(e.target.value)}
+                      onFocus={() => setShowSuggestions(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          if (!showSuggestions) {
+                            setShowSuggestions(true);
+                            return;
+                          }
+                          if (suggestionOptionCount > 0) {
+                            setActiveSuggestionIndex(prev => (prev + 1) % suggestionOptionCount);
+                          }
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          if (!showSuggestions) {
+                            setShowSuggestions(true);
+                            return;
+                          }
+                          if (suggestionOptionCount > 0) {
+                            setActiveSuggestionIndex(prev => (prev - 1 + suggestionOptionCount) % suggestionOptionCount);
+                          }
+                        } else if (e.key === 'Enter') {
+                          if (showSuggestions && suggestionOptionCount > 0) {
+                            e.preventDefault();
+                            selectActiveSuggestion();
+                          }
+                        } else if (e.key === 'Escape') {
+                          if (showSuggestions) {
+                            e.preventDefault();
+                            setShowSuggestions(false);
+                          }
+                        }
+                      }}
+                      className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                      placeholder="Type products (e.g. CMYK toner, Kraft backing...)"
+                    />
+                    <div className="mt-1.5 text-xs text-slate-500">
+                      Category: <span className="text-[#ee317b] font-medium">{displayedItemCategory || 'Choose an item from the catalog'}</span>
                     </div>
 
-                    {/* Quantity and Unit Price */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5">Quantity</label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={quantity || ''}
-                          onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-                          className={purchaseFormInputClass}
-                        />
-                      </div>
+                    {/* Suggestions Floating Popup */}
+                    <AnimatePresence>
+                      {showSuggestions && (filteredSuggestions.length > 0 || showCreateSuggestion) && (
+                        <motion.div 
+                          ref={suggestionRef}
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="absolute left-0 right-0 top-[70px] bg-white border border-slate-200 z-50 max-h-[220px] overflow-y-auto divide-y divide-slate-100 shadow-xl cursor-pointer rounded-md"
+                        >
+                          {filteredSuggestions.map((sug, idx) => (
+                            <div
+                              key={idx}
+                              ref={(node) => { suggestionOptionRefs.current[idx] = node; }}
+                              onClick={() => handleSuggestionClick(sug.name, sug.categoryName)}
+                              className={`px-3 py-2 text-xs text-slate-800 hover:bg-[#ee317b]/10 hover:text-[#ee317b] flex items-center justify-between font-sans font-medium ${activeSuggestionIndex === idx ? 'bg-[#ee317b]/10 text-[#ee317b]' : ''}`}
+                            >
+                              <span>{sug.name}</span>
+                              <span className="text-[9px] text-[#ee317b] bg-[#ee317b]/10 px-1.5 py-0.5 border border-[#ee317b]/20 rounded lowercase">
+                                {sug.categoryName}
+                              </span>
+                            </div>
+                          ))}
 
-                      <div>
-                        <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5">Unit Price (ETB)</label>
+                          {showCreateSuggestion && (
+                            <div
+                              ref={(node) => { suggestionOptionRefs.current[filteredSuggestions.length] = node; }}
+                              onClick={handleTriggerAddNewItemFlow}
+                              className={`px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-sans text-xs flex items-center justify-between cursor-pointer border-t border-slate-100 ${activeSuggestionIndex === filteredSuggestions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <PlusCircle className="w-4 h-4 text-[#ee317b]" />
+                                <span>Create <strong className="text-[#ee317b]">"{itemOrServiceInput.trim()}"</strong> as a new item...</span>
+                              </div>
+                              <span className="text-[10px] text-[#ee317b] uppercase font-sans font-bold tracking-wider">Catalog Tool</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="quantity-input">Quantity</label>
+                      <input
+                        id="quantity-input"
+                        type="number"
+                        min="0"
+                        required
+                        value={quantity || ''}
+                        onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-650 font-medium mb-1.5" htmlFor="unit-price-input">Unit Price</label>
+                      <div className="flex -space-x-px">
                         <input
+                          id="unit-price-input"
                           type="number"
                           min="0"
                           step="any"
                           required
                           value={unitPrice || ''}
                           onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                          className={purchaseFormInputClass}
+                          className="w-full h-10 px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-l-md rounded-r-none outline-none font-sans transition-colors flex-1 min-w-0"
+                          placeholder="0.00"
                         />
-                      </div>
-                    </div>
-
-                    {/* Tax Options: VAT & Withholding Toggles */}
-                    <div className="grid grid-cols-2 gap-4 pt-1">
-                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer ">
-                        <input
-                          type="checkbox"
-                          checked={hasVat}
-                          onChange={(e) => setHasVat(e.target.checked)}
-                          className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <div className="font-sans">
-                          <span className="text-[10px] uppercase font-bold text-gray-300 block">Add 15% VAT</span>
-                          <span className="text-[9px] text-gray-500 block">Value Added Tax</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center gap-2 px-3 py-2.5 bg-[#181818] border border-[#262626] cursor-pointer ">
-                        <input
-                          type="checkbox"
-                          checked={hasWithholding}
-                          onChange={(e) => setHasWithholding(e.target.checked)}
-                          className="accent-[#ee317b] w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <div className="font-sans">
-                          <span className="text-[10px] uppercase font-bold text-gray-300 block">3% Withholding</span>
-                          <span className="text-[9px] text-gray-500 block">Supplier tax deduction</span>
-                        </div>
-                      </label>
-                    </div>
-
-                    {/* LIVE MATHEMATICAL TAX BREAKDOWN BLOCK */}
-                    <div className="bg-[#181818] border border-[#262626] p-3 text-mono text-xs text-gray-400 space-y-1.5">
-                      <div className="flex justify-between">
-                        <span>Base Purchase Total (Qty x Price):</span>
-                        <span className="text-white font-semibold">{baseAmount.toLocaleString()} ETB</span>
-                      </div>
-                      {hasVat && (
-                        <div className="flex justify-between text-emerald-400">
-                          <span>+ VAT (15%):</span>
-                          <span>+{vatAmount.toLocaleString()} ETB</span>
-                        </div>
-                      )}
-                      {hasWithholding && (
-                        <div className="flex justify-between text-red-400">
-                          <span>- Withholding Tax (3% supplier deduction):</span>
-                          <span>-{withholdingAmount.toLocaleString()} ETB</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between border-t border-[#2a2a2a] pt-2 text-sm font-bold text-[#ee317b]">
-                        <span>Computed Net Charged to bank:</span>
-                        <span>{currentCalculatedTotalPrice.toLocaleString()} ETB</span>
-                      </div>
-                    </div>
-
-                    {/* Notes / Description */}
-                    <div>
-                      <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5">Item notes / vendor metadata</label>
-                      <textarea
-                        value={notesOrDescription}
-                        onChange={(e) => setNotesOrDescription(e.target.value)}
-                        rows={1.5}
-                        className={`${purchaseFormInputClass} resize-none`}
-                        placeholder="Add manufacturer invoice number, roll weights, etc."
-                      />
-                    </div>
-
-                    {/* Add to Batch Button (Only show in Add Mode) */}
-                    {!editingPurchase && (
-                      <div className="pt-1 flex">
-                        <button
-                          type="button"
-                          onClick={handleAddCurrentRowToBatch}
-                          className="w-full py-2.5 bg-[#1f2d1e] hover:bg-[#2d422a] text-[#71b536] border border-[#71b536]/30 font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all"
+                        <select
+                          value={purchaseCurrency}
+                          disabled={!!paymentMethodId}
+                          onChange={(e) => setPurchaseCurrency(e.target.value)}
+                          className="bg-slate-50 border border-slate-300 text-slate-700 px-3 h-10 text-xs rounded-r-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] font-bold font-sans disabled:opacity-60 disabled:cursor-not-allowed border-l-0 cursor-pointer"
                         >
-                          <Check className="w-4 h-4" />
-                          Confirm &amp; Add Another Item to Batch
-                        </button>
+                          {availableCurrencies.map(curr => (
+                            <option key={curr} value={curr}>
+                              {curr}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    )}
-
+                    </div>
                   </div>
-
-                  {/* BATCH OVERVIEW / PENDING SUMMARY BOX (Only in Add Mode) */}
-                  {!editingPurchase && pendingBatchItems.length > 0 && (
-                    <div className="border border-zinc-700 bg-[#141414] p-4 space-y-4 rounded-md h-auto">
-                      <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                        <span className="text-[11px] font-sans font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          <Calculator className="w-4 h-4 text-[#ee317b]" />
-                          Reviewing Pending Batch Summary ({pendingBatchItems.length} Products)
-                        </span>
-                        
-                        <button
-                          type="button"
-                          onClick={() => setPendingBatchItems([])}
-                          className="text-[9px] text-rose-400 hover:text-rose-300 uppercase tracking-wider font-sans outline-none"
-                        >
-                          Clear batch
-                        </button>
-                      </div>
-
-                      {/* Small Grid pending items spreadsheet */}
-                      <div className="data-table-scroll overflow-auto border border-[#222222] text-[11px] font-sans bg-[#101010]">
-                        <table className="freeze-pane-table w-full text-left border-collapse">
-                          <thead>
-                            <tr className="bg-[#181818] text-gray-500 uppercase text-[9px] border-b border-[#222222]">
-                              <th className="p-2">Item Product</th>
-                              <th className="p-2 text-right">Qty</th>
-                              <th className="p-2 text-right">Unit Price</th>
-                              <th className="p-2 text-center">Taxes</th>
-                              <th className="p-2 text-right">Net total</th>
-                              <th className="p-2 text-center">Remove</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#202020] text-gray-300">
-                            {pendingBatchItems.map((item, idx) => (
-                              <tr key={item.tempId} className="hover:bg-[#151515]">
-                                <td className="p-2 font-semibold text-white max-w-[120px] truncate" title={item.itemOrService}>
-                                  <span className="block truncate">{item.itemOrService}</span>
-                                  <span className="block text-[9px] font-normal text-pink-400 truncate">{item.expenseCategory}</span>
-                                </td>
-                                <td className="p-2 text-right text-white font-bold">{item.quantity}</td>
-                                <td className="p-2 text-right">{item.unitPrice.toLocaleString()}</td>
-                                <td className="p-2 text-center">
-                                  <div className="flex gap-1 justify-center text-[9px]">
-                                    {item.hasVat && <span className="bg-[#182318] text-emerald-400 px-0.5">V</span>}
-                                    {item.hasWithholding && <span className="bg-[#31111E] text-red-400 px-0.5">W</span>}
-                                  </div>
-                                </td>
-                                <td className="p-2 text-right text-white font-bold">{item.totalPrice.toLocaleString()} ETB</td>
-                                <td className="p-2 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveItemFromBatch(item.tempId)}
-                                    className="p-1 text-rose-500 hover:text-rose-300 hover:bg-rose-950/20 cursor-pointer"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Cumulative Pricing Mathematics */}
-                      <div className="bg-[#181818] text-xs font-sans p-3 space-y-1.5 text-gray-400 border border-[#2d2d2d] rounded-md">
-                        <div className="flex justify-between">
-                          <span>Total Cumulative Base Amount:</span>
-                          <span className="text-white font-bold">
-                            {pendingBatchItems.reduce((acc, c) => acc + c.baseAmount, 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-emerald-400">
-                          <span>Total Cumulative VAT Added (15%):</span>
-                          <span>
-                            +{pendingBatchItems.reduce((acc, c) => acc + c.vatAmount, 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-red-400">
-                          <span>Total Cumulative Supplier Withholding Deducted (3%):</span>
-                          <span>
-                            -{pendingBatchItems.reduce((acc, c) => acc + c.withholdingAmount, 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t border-[#2a2a2a] pt-2 text-sm font-extrabold text-[#71b536]">
-                          <span>NET CHARGES TO CHARGE LEDGER BANK:</span>
-                          <span>
-                            {pendingBatchItems.reduce((acc, c) => acc + c.totalPrice, 0).toLocaleString()} ETB
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                 </div>
 
-              {/* Bottom confirmation tools */}
-              <div className="border-t border-[#262626] px-6 py-4 bg-[#181818] flex items-center justify-end gap-3  flex-shrink-0">
+                {/* Tax Section */}
+                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
+                    Tax
+                  </h5>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-md cursor-pointer shadow-xs hover:bg-slate-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={hasVat}
+                        onChange={(e) => setHasVat(e.target.checked)}
+                        className="accent-[#ee317b] w-4 h-4 cursor-pointer rounded"
+                      />
+                      <div className="font-sans leading-tight">
+                        <span className="text-xs font-semibold text-slate-750 block">Add 15% VAT</span>
+                        <span className="text-[10px] text-slate-450 block">Value Added Tax</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-md cursor-pointer shadow-xs hover:bg-slate-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={hasWithholding}
+                        onChange={(e) => setHasWithholding(e.target.checked)}
+                        className="accent-[#ee317b] w-4 h-4 cursor-pointer rounded"
+                      />
+                      <div className="font-sans leading-tight">
+                        <span className="text-xs font-semibold text-slate-755 block">Apply 3% withholding</span>
+                        <span className="text-[10px] text-slate-450 block">Tax deduction</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Purchase Summary Section */}
+                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
+                    Purchase Summary
+                  </h5>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-sans text-xs space-y-2">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Base Purchase Total (Qty x Price):</span>
+                      <span className="text-slate-800 font-semibold">{baseAmount.toLocaleString()} {purchaseCurrency}</span>
+                    </div>
+                    {hasVat && (
+                      <div className="flex justify-between text-slate-650">
+                        <span>VAT (15%):</span>
+                        <span className="font-semibold text-emerald-600">+{vatAmount.toLocaleString()} {purchaseCurrency}</span>
+                      </div>
+                    )}
+                    {hasWithholding && (
+                      <div className="flex justify-between text-slate-650">
+                        <span>Withholding (3%):</span>
+                        <span className="font-semibold text-rose-600">-{withholdingAmount.toLocaleString()} {purchaseCurrency}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-slate-200 pt-3 text-sm font-bold text-[#ee317b]">
+                      <span>Net charged to bank:</span>
+                      <span>{currentCalculatedTotalPrice.toLocaleString()} {purchaseCurrency}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-4 rounded-lg shadow-sm">
+                  <h5 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider">
+                    Notes
+                  </h5>
+
+                  <div>
+                    <textarea
+                      value={notesOrDescription}
+                      onChange={(e) => setNotesOrDescription(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm bg-white text-slate-850 border border-slate-300 focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors resize-none h-auto"
+                      placeholder="Add manufacturer invoice number, roll weights, etc."
+                    />
+                  </div>
+                </div>
+
+                {/* Add to Batch Button (Only show in Add Mode) */}
+                {!editingPurchase && (
+                  <div className="pt-1 flex pb-4">
+                    <button
+                      type="button"
+                      onClick={handleAddCurrentRowToBatch}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 rounded-md transition-all shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Item to Batch
+                    </button>
+                  </div>
+                )}
+
+                {/* BATCH OVERVIEW / PENDING SUMMARY BOX (Only in Add Mode) */}
+                {!editingPurchase && pendingBatchItems.length > 0 && (
+                  <div className="bg-white border border-slate-200 p-3.5 sm:p-4 space-y-3 rounded-lg shadow-sm">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Calculator className="w-4 h-4 text-[#ee317b]" />
+                        Reviewing Pending Batch Summary ({pendingBatchItems.length} Products)
+                      </span>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setPendingBatchItems([])}
+                        className="text-[10px] text-rose-600 hover:text-rose-800 font-bold uppercase tracking-wider font-sans outline-none"
+                      >
+                        Clear batch
+                      </button>
+                    </div>
+
+                    {/* Small Grid pending items spreadsheet */}
+                    <div className="overflow-auto border border-slate-150 rounded-md text-xs font-sans bg-slate-50">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-500 uppercase text-[9px] border-b border-slate-200">
+                            <th className="p-2">Item Product</th>
+                            <th className="p-2 text-right">Qty</th>
+                            <th className="p-2 text-right">Unit Price</th>
+                            <th className="p-2 text-center">Taxes</th>
+                            <th className="p-2 text-right">Net total</th>
+                            <th className="p-2 text-center">Remove</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 text-slate-700">
+                          {pendingBatchItems.map((item, idx) => (
+                            <tr key={item.tempId} className="hover:bg-slate-100/40">
+                              <td className="p-2 font-semibold text-slate-800 max-w-[120px] truncate" title={item.itemOrService}>
+                                <span className="block truncate">{item.itemOrService}</span>
+                                <span className="block text-[9px] font-normal text-pink-500 truncate">{item.expenseCategory}</span>
+                              </td>
+                              <td className="p-2 text-right text-slate-900 font-bold">{item.quantity}</td>
+                              <td className="p-2 text-right text-slate-600">{item.unitPrice.toLocaleString()} {item.currency}</td>
+                              <td className="p-2 text-center">
+                                <div className="flex gap-1 justify-center text-[9px] font-bold">
+                                  {item.hasVat && <span className="bg-emerald-50 text-emerald-700 border border-emerald-250 px-1 rounded">V</span>}
+                                  {item.hasWithholding && <span className="bg-rose-50 text-rose-700 border border-rose-250 px-1 rounded">W</span>}
+                                </div>
+                              </td>
+                              <td className="p-2 text-right text-slate-900 font-bold">{item.totalPrice.toLocaleString()} {item.currency}</td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItemFromBatch(item.tempId)}
+                                  className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Cumulative Pricing Mathematics */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-xs font-sans">
+                      <div className="flex justify-between text-slate-650">
+                        <span>Total Cumulative Base Amount:</span>
+                        <span className="text-slate-850 font-bold">
+                          {pendingBatchItems.reduce((acc, c) => acc + c.baseAmount, 0).toLocaleString()} {purchaseCurrency}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-emerald-750 font-medium">
+                        <span>Total Cumulative VAT Added (15%):</span>
+                        <span>
+                          +{pendingBatchItems.reduce((acc, c) => acc + c.vatAmount, 0).toLocaleString()} {purchaseCurrency}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-rose-750 font-medium">
+                        <span>Total Cumulative Supplier Withholding Deducted (3%):</span>
+                        <span>
+                          -{pendingBatchItems.reduce((acc, c) => acc + c.withholdingAmount, 0).toLocaleString()} {purchaseCurrency}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-250 pt-2 text-sm font-extrabold text-[#ee317b]">
+                        <span>NET CHARGES TO CHARGE LEDGER BANK:</span>
+                        <span>
+                          {pendingBatchItems.reduce((acc, c) => acc + c.totalPrice, 0).toLocaleString()} {purchaseCurrency}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Bottom confirmation tools (Sticky Footer) */}
+              <div className="border-t border-slate-200 px-4 py-4 bg-white flex items-center justify-end gap-3 flex-shrink-0 shadow-md">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 bg-transparent text-gray-400 hover:text-white text-xs font-sans  cursor-pointer border border-[#262626] hover:bg-[#202020] rounded-md"
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-transparent text-slate-500 hover:text-slate-700 text-xs font-sans font-semibold cursor-pointer border border-slate-350 hover:bg-slate-50 rounded-md transition-colors text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSavePurchase}
-                  className="px-5 py-2 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer  rounded-md"
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-[#ee317b] hover:bg-[#d61e63] text-white text-xs font-sans font-bold cursor-pointer rounded-md transition-colors shadow-sm text-center"
                 >
                   {editingPurchase 
-                    ? 'Update Single Ledger Row' 
+                    ? 'Update Purchase' 
                     : pendingBatchItems.length > 0 || itemOrServiceInput.trim() !== ''
-                      ? `Complete (${pendingBatchItems.length + (itemOrServiceInput.trim() !== '' ? 1 : 0)} items)`
-                      : 'Save Purchase To Ledger'
+                      ? `Save to Ledger (${pendingBatchItems.length + (itemOrServiceInput.trim() !== '' ? 1 : 0)} items)`
+                      : 'Save to Ledger'
                   }
                 </button>
               </div>
@@ -2909,22 +2953,22 @@ export default function PurchasesTab({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-[#121212] border border-stone-300 dark:border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-5 shadow-2xl rounded-md animate-fadeIn"
+              className="bg-[#121212] border border-[#262626] max-w-md w-full p-6 text-left space-y-5 shadow-2xl rounded-md animate-fadeIn"
             >
               <div>
-                <h3 className="font-sans text-stone-950 dark:text-white font-bold uppercase tracking-wider text-sm flex items-center gap-1.5">
+                <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm flex items-center gap-1.5">
                   <Tag className="w-4 h-4 text-[#ee317b]" />
                   Add New Item to Catalog
                 </h3>
-                <p className="text-stone-500 dark:text-gray-400 text-[11px] leading-relaxed font-sans mt-1">
+                <p className="text-gray-400 text-[11px] leading-relaxed font-sans mt-1">
                   You are registering <strong className="text-[#ee317b]">"{addingNewItemFromSearch}"</strong> to the business catalog. Assign it to an expense category below.
                 </p>
               </div>
 
               <div className="space-y-4">
                 {/* Category Option Selector Mode Toggle */}
-                <div className="flex gap-4 border-b border-stone-200 dark:border-[#222222] pb-2 text-xs font-sans">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-stone-900 dark:text-white">
+                <div className="flex gap-4 border-b border-[#262626] pb-2 text-xs font-sans">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-white">
                     <input
                       type="radio"
                       checked={!isNewCategoryModeInModal}
@@ -2933,7 +2977,7 @@ export default function PurchasesTab({
                     />
                     Choose Existing Category
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-stone-900 dark:text-white">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-white">
                     <input
                       type="radio"
                       checked={isNewCategoryModeInModal}
@@ -2946,11 +2990,11 @@ export default function PurchasesTab({
 
                 {!isNewCategoryModeInModal ? (
                   <div>
-                    <label className="block text-[10px] text-stone-505 dark:text-gray-400 uppercase tracking-widest mb-1.5 font-bold">Select Category</label>
+                    <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-bold">Select Category</label>
                     <SearchableSelect
                       value={newItemTargetCategory}
                       onChange={(e) => setNewItemTargetCategory(e.target.value)}
-                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
+                      className="w-full px-2.5 py-2 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                     >
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -2959,24 +3003,24 @@ export default function PurchasesTab({
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-[10px] text-stone-505 dark:text-gray-400 uppercase tracking-widest mb-1.5 font-bold">New Category Name</label>
+                    <label className="block text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-bold">New Category Name</label>
                     <input
                       type="text"
                       required
                       value={modalNewCategoryName}
                       onChange={(e) => setModalNewCategoryName(e.target.value)}
                       placeholder="e.g. Licensing & Compliance"
-                      className="w-full px-2.5 py-2 text-xs bg-white dark:bg-[#181818] text-stone-900 dark:text-white border border-stone-300 dark:border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
+                      className="w-full px-2.5 py-2 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-stone-200 dark:border-[#222222] font-sans">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
                 <button
                   type="button"
                   onClick={() => setAddingNewItemFromSearch(null)}
-                  className="px-4 py-1.5 bg-stone-100 dark:bg-[#1a1a1a] border border-stone-300 dark:border-[#2d2d2d] text-stone-700 dark:text-gray-300 hover:text-stone-950 dark:hover:text-white cursor-pointer text-xs rounded-md"
+                  className="px-4 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 hover:text-white cursor-pointer text-xs rounded-md"
                 >
                   Cancel
                 </button>

@@ -201,6 +201,11 @@ export default function CustomerTab({
   setShowGlobalProforma
 }: CustomerTabProps) {
   
+  const availableCurrencies = Array.from(new Set([
+    'ETB', 'USD', 'EUR', 'GBP', 'AED',
+    ...bankAccounts.map(b => b.currency || 'ETB')
+  ]));
+
   // View states
   const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>(() => {
     const savedLayout = localStorage.getItem(CUSTOMER_LAYOUT_STORAGE_KEY);
@@ -991,6 +996,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [orderCurrency, setOrderCurrency] = useState<string>('ETB');
 
   // Math expression string inputs for the numerical editing fields
   const [qtyInput, setQtyInput] = useState<string>('');
@@ -1483,6 +1489,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setPriceInput('');
     setAdvanceInput('');
     setPaymentMethodId('');
+    setOrderCurrency('ETB');
     setPaperType1('None');
     setAmount1('');
     setPaperType2('None');
@@ -1525,6 +1532,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
+    setOrderCurrency(customer.currency || 'ETB');
     
     setPaperType1(getCustomerStockId(customer, 'paperType1', paperStocks));
     setAmount1(customer.amount1.toString());
@@ -1567,6 +1575,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
+    setOrderCurrency(customer.currency || 'ETB');
     
     setPaperType1(getCustomerStockId(customer, 'paperType1', paperStocks));
     setAmount1(customer.amount1.toString());
@@ -1663,7 +1672,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       bankRemainingId,
       incompletionReason: incompletionReason.trim(),
       isVatAdded,
-      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined
+      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined,
+      currency: orderCurrency
     };
 
     if (editingCustomer) {
@@ -1726,7 +1736,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       bankRemainingId,
       incompletionReason: incompletionReason.trim(),
       isVatAdded,
-      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined
+      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined,
+      currency: orderCurrency
     };
 
     onAddCustomer(payload);
@@ -2070,7 +2081,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     lastShowProformaModalRef.current = showProformaModal;
   }, [showProformaModal, isStandaloneProformaMode, standaloneClientName, standaloneClientPhone, currentUser, bankAccounts, proformaItemsToRender]);
 
-  const formatMoney = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatMoney = (val: number, currency: string = 'ETB') => {
+    return `${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  };
   const getBankName = (id?: string) => id ? (bankAccounts.find(b => b.id === id)?.name || 'Unknown account') : 'Empty / Unpaid';
   const getStatusLabel = (customer: Customer) => {
     if (customer.deliveryDate && customer.bankRemainingId) return 'Completed';
@@ -2854,10 +2867,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           {miniLabel('By', c.orderTakenBy, '', 'text-gray-300')}
                           {miniLabel('Product', c.productType, '', 'text-gray-200')}
                           {miniLabel('Qty', c.quantity.toLocaleString(), '', 'text-white')}
-                          {miniLabel('Unit', formatMoney(c.unitPrice), '', 'text-gray-300')}
+                          {miniLabel('Unit', formatMoney(c.unitPrice, c.currency), '', 'text-gray-300')}
                           <div className="col-span-2 flex items-center justify-between gap-2 border-t border-[#262626]/80 pt-0.5">
                             <span className="text-[8px] uppercase tracking-wider text-gray-500">Total</span>
-                            <span className="text-[12px] font-bold text-white">{formatMoney(fullVal)}</span>
+                            <span className="text-[12px] font-bold text-white">{formatMoney(fullVal, c.currency)}</span>
                           </div>
                           {c.isVatAdded && <span className="col-span-2 text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</span>}
                         </div>
@@ -2877,7 +2890,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       {/* Payment Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[230px]">
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
-                            {miniLabel('Advance', formatMoney(c.advancePayment), '', 'text-[#71b536]')}
+                            {miniLabel('Advance', formatMoney(c.advancePayment, c.currency), '', 'text-[#71b536]')}
                             <div>
                               <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
                               <input
@@ -2889,8 +2902,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               />
                             </div>
                             {miniLabel('Advance Bank', getBankName(c.paymentMethodId), '', 'text-gray-400')}
-                            {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
-                            {miniLabel('Full', formatMoney(fullVal), '', 'text-white font-bold')}
+                            {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal, c.currency), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
+                            {miniLabel('Full', formatMoney(fullVal, c.currency), '', 'text-white font-bold')}
                         </div>
                       </td>
                       
@@ -3567,7 +3580,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <div>
                           <div className="flex justify-between items-center mb-1">
                             <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider" htmlFor="field-client-price">
-                              Unit Price (ETB) <span className="text-[#F87171]">*</span>
+                              Unit Price <span className="text-[#F87171]">*</span>
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
                               <input
@@ -3591,34 +3604,47 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               <span className="text-[10px] text-gray-300 uppercase tracking-wider font-bold">Add 15% VAT</span>
                             </label>
                           </div>
-                          <input
-                            id="field-client-price"
-                            type="text"
-                            required
-                            disabled={isVatAdded}
-                            value={priceInput}
-                            onChange={(e) => {
-                              const v = cleanLeadingZeros(e.target.value);
-                              setPriceInput(v);
-                              setUnitPrice(parseFractionOrExpression(v));
-                              if (!isVatAdded) {
-                                setBaseUnitPriceInput(v);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const res = parseFractionOrExpression(priceInput);
-                                setPriceInput(res.toString());
-                                setUnitPrice(res);
-                              }
-                            }}
-                            className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed"
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              id="field-client-price"
+                              type="text"
+                              required
+                              disabled={isVatAdded}
+                              value={priceInput}
+                              onChange={(e) => {
+                                const v = cleanLeadingZeros(e.target.value);
+                                setPriceInput(v);
+                                setUnitPrice(parseFractionOrExpression(v));
+                                if (!isVatAdded) {
+                                  setBaseUnitPriceInput(v);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const res = parseFractionOrExpression(priceInput);
+                                  setPriceInput(res.toString());
+                                  setUnitPrice(res);
+                                }
+                              }}
+                              className="flex-1 px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                            <select
+                              value={orderCurrency}
+                              onChange={(e) => setOrderCurrency(e.target.value)}
+                              className="bg-[#121212] border border-[#262626] text-white px-2.5 py-1.5 text-xs rounded-md outline-none focus:border-[#ee317b] w-20 font-bold font-sans cursor-pointer"
+                            >
+                              {availableCurrencies.map(curr => (
+                                <option key={curr} value={curr}>
+                                  {curr}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance (ETB)</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-advance">Advance</label>
                           <input
                             id="field-client-advance"
                             type="text"

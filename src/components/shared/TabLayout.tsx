@@ -236,10 +236,12 @@ export function DataTable({
   children,
   className = "",
   id,
+  disableResizing,
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
+  disableResizing?: boolean;
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
 

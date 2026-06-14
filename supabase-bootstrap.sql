@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS public.bank_accounts (
   id text PRIMARY KEY,
   name text NOT NULL,
   "accountNumber" text,
-  "initialBalance" numeric DEFAULT 0
+  "initialBalance" numeric DEFAULT 0,
+  currency text DEFAULT 'ETB'
 );
 
 CREATE TABLE IF NOT EXISTS public.expense_categories (
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   "itemOrService" text,
   quantity numeric DEFAULT 0,
   "unitPrice" numeric DEFAULT 0,
+  "currency" text DEFAULT 'ETB',
   "purchaseDate" text,
   "paymentMethodId" text,
   "totalPrice" numeric DEFAULT 0,
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "productType" text,
   quantity numeric DEFAULT 0,
   "unitPrice" numeric DEFAULT 0,
+  "currency" text DEFAULT 'ETB',
   "advancePayment" numeric DEFAULT 0,
   "paymentMethodId" text,
   "paperType1" text,
@@ -114,6 +117,8 @@ ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType2Id" t
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
+ALTER TABLE IF EXISTS public.purchases ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
 
 INSERT INTO public.lead_channels (id, name)
 VALUES

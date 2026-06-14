@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+import SearchableSelect from './SearchableSelect';
+import { TableToolbar } from './shared/TabLayout';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -21,7 +23,14 @@ import {
   Calendar,
   Filter,
   RefreshCw,
-  Download
+  Download,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  ArrowUpDown,
+  FileText,
+  ShoppingBag,
+  Activity
 } from 'lucide-react';
 
 interface PerformanceTabProps {
@@ -45,11 +54,20 @@ export default function PerformanceTab({
   categories = [],
   paperStocks = []
 }: PerformanceTabProps) {
+  const formatMockupValue = (val: number) => {
+    if (val === 0) return '0';
+    if (val % 1 !== 0) {
+      return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return val.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  };
+
   // New Bank dynamic form states
   const [bankName, setBankName] = useState('');
   const [bankNumber, setBankNumber] = useState('');
   const [bankInitial, setBankInitial] = useState<string>('');
   const [bankCurrency, setBankCurrency] = useState('ETB');
+  const [customCurrencies, setCustomCurrencies] = useState<string[]>([]);
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [bankError, setBankError] = useState('');
 
@@ -67,34 +85,44 @@ export default function PerformanceTab({
   const [selectedBankIds, setSelectedBankIds] = useState<string[]>([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-  // Expense Period & Category Filter States
-  const [expenseStartDate, setExpenseStartDate] = useState('');
-  const [expenseEndDate, setExpenseEndDate] = useState('');
-  const [deselectedCategories, setDeselectedCategories] = useState<string[]>([]);
+  // Redesign States
+  const [selectedCurrency, setSelectedCurrency] = useState('ETB');
+  const [showAllCurrencies, setShowAllCurrencies] = useState(false);
+  const [showAllAccounts, setShowAllAccounts] = useState(false);
+  const [activeMenuBankId, setActiveMenuBankId] = useState<string | null>(null);
 
-  // Get all unique categories present either in setup configuration or active purchases
-  const uniqueCategories = Array.from(new Set([
-    ...(categories || []).map(cat => cat.name),
-    ...purchases.map(p => p.expenseCategory || 'Uncategorized'),
-    'Raw Paper Stocks',
-    'Machinery & Tooling',
-    'Consumption Supplies'
-  ].filter(Boolean))).sort();
+  // Filter States (previously missing)
+  const [summarySearch, setSummarySearch] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [summaryStartDate, setSummaryStartDate] = useState('');
+  const [summaryEndDate, setSummaryEndDate] = useState('');
+  const [summaryCurrency, setSummaryCurrency] = useState('All');
+  const [summaryAccount, setSummaryAccount] = useState('All');
+  const [summaryEmployee, setSummaryEmployee] = useState('All');
+  const [collapsedCurrencies, setCollapsedCurrencies] = useState<Record<string, boolean>>({});
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
 
-  const toggleCategory = (cat: string) => {
-    setDeselectedCategories(prev => 
-      prev.includes(cat) 
-        ? prev.filter(c => c !== cat) 
-        : [...prev, cat]
-    );
-  };
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        if (!summarySearch) {
+          setIsSearchExpanded(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchExpanded, summarySearch]);
 
-  const selectAllCategories = () => {
-    setDeselectedCategories([]);
-  };
-
-  const deselectAllCategories = () => {
-    setDeselectedCategories(uniqueCategories);
+  // Helper to resolve currency of a BankAccount ID
+  const getBankCurrency = (id?: string) => {
+    if (!id) return 'ETB';
+    const found = bankAccounts.find(b => b.id === id);
+    return found?.currency || 'ETB';
   };
 
   const applyDatePreset = (preset: 'all' | 'thisMonth' | 'last30' | 'thisYear') => {
@@ -102,8 +130,8 @@ export default function PerformanceTab({
     const todayStr = today.toISOString().split('T')[0];
     
     if (preset === 'all') {
-      setExpenseStartDate('');
-      setExpenseEndDate('');
+      setSummaryStartDate('');
+      setSummaryEndDate('');
     } else if (preset === 'thisMonth') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -112,8 +140,8 @@ export default function PerformanceTab({
       const firstDayLocal = new Date(firstDay.getTime() - tzOffset).toISOString().split('T')[0];
       const lastDayLocal = new Date(lastDay.getTime() - tzOffset).toISOString().split('T')[0];
       
-      setExpenseStartDate(firstDayLocal);
-      setExpenseEndDate(lastDayLocal);
+      setSummaryStartDate(firstDayLocal);
+      setSummaryEndDate(lastDayLocal);
     } else if (preset === 'last30') {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -121,8 +149,8 @@ export default function PerformanceTab({
       const tzOffset = thirtyDaysAgo.getTimezoneOffset() * 60000;
       const thirtyDaysAgoStr = new Date(thirtyDaysAgo.getTime() - tzOffset).toISOString().split('T')[0];
       
-      setExpenseStartDate(thirtyDaysAgoStr);
-      setExpenseEndDate(todayStr);
+      setSummaryStartDate(thirtyDaysAgoStr);
+      setSummaryEndDate(todayStr);
     } else if (preset === 'thisYear') {
       const firstDay = new Date(today.getFullYear(), 0, 1);
       const lastDay = new Date(today.getFullYear(), 11, 31);
@@ -131,17 +159,27 @@ export default function PerformanceTab({
       const firstDayLocal = new Date(firstDay.getTime() - tzOffset).toISOString().split('T')[0];
       const lastDayLocal = new Date(lastDay.getTime() - tzOffset).toISOString().split('T')[0];
       
-      setExpenseStartDate(firstDayLocal);
-      setExpenseEndDate(lastDayLocal);
+      setSummaryStartDate(firstDayLocal);
+      setSummaryEndDate(lastDayLocal);
     }
   };
 
   // Dynamic filtering of purchases for aggregate analysis
   const filteredPurchasesForInterval = purchases.filter(p => {
-    const cat = p.expenseCategory || 'Uncategorized';
-    if (deselectedCategories.includes(cat)) return false;
-    if (expenseStartDate && p.purchaseDate < expenseStartDate) return false;
-    if (expenseEndDate && p.purchaseDate > expenseEndDate) return false;
+    const pCurr = getBankCurrency(p.paymentMethodId);
+    if (summaryCurrency !== 'All' && pCurr !== summaryCurrency) return false;
+    if (summaryAccount !== 'All' && p.paymentMethodId !== summaryAccount) return false;
+    if (summaryEmployee !== 'All' && p.recordedBy !== summaryEmployee && p.purchasedBy !== summaryEmployee) return false;
+    if (summaryStartDate && p.purchaseDate < summaryStartDate) return false;
+    if (summaryEndDate && p.purchaseDate > summaryEndDate) return false;
+    if (summarySearch) {
+      const searchLower = summarySearch.toLowerCase();
+      const itemMatch = p.itemOrService?.toLowerCase().includes(searchLower);
+      const catMatch = p.expenseCategory?.toLowerCase().includes(searchLower);
+      const noteMatch = p.notesOrDescription?.toLowerCase().includes(searchLower);
+      const recordedMatch = p.recordedBy?.toLowerCase().includes(searchLower);
+      if (!itemMatch && !catMatch && !noteMatch && !recordedMatch) return false;
+    }
     return true;
   });
 
@@ -238,18 +276,23 @@ export default function PerformanceTab({
 
   // Dynamic filtering of customers for interval analysis
   const filteredCustomersForInterval = customers.filter(c => {
+    const cCurr = getBankCurrency(c.paymentMethodId || c.bankRemainingId);
+    if (summaryCurrency !== 'All' && cCurr !== summaryCurrency) return false;
+    if (summaryAccount !== 'All' && c.paymentMethodId !== summaryAccount && c.bankRemainingId !== summaryAccount) return false;
+    if (summaryEmployee !== 'All' && c.orderTakenBy !== summaryEmployee) return false;
+    
     const orderDate = c.advancePaymentDate || c.deliveryDate || '';
-    if (expenseStartDate && (!orderDate || orderDate < expenseStartDate)) return false;
-    if (expenseEndDate && (!orderDate || orderDate > expenseEndDate)) return false;
+    if (summaryStartDate && (!orderDate || orderDate < summaryStartDate)) return false;
+    if (summaryEndDate && (!orderDate || orderDate > summaryEndDate)) return false;
+    if (summarySearch) {
+      const searchLower = summarySearch.toLowerCase();
+      const nameMatch = c.name?.toLowerCase().includes(searchLower);
+      const productMatch = c.productName?.toLowerCase().includes(searchLower);
+      const empMatch = c.orderTakenBy?.toLowerCase().includes(searchLower);
+      if (!nameMatch && !productMatch && !empMatch) return false;
+    }
     return true;
   });
-
-  // Helper to resolve currency of a BankAccount ID
-  const getBankCurrency = (id?: string) => {
-    if (!id) return 'ETB';
-    const found = bankAccounts.find(b => b.id === id);
-    return found?.currency || 'ETB';
-  };
 
   // 1. Total Gross Orders grouped by currency (Customer products are estimated in currency of Advance Payment Account, falling back to ETB)
   const grossByCurrency: Record<string, number> = {};
@@ -293,6 +336,12 @@ export default function PerformanceTab({
     ...Object.keys(spentByCurrency),
     ...Object.keys(inflowByCurrency),
     'ETB'
+  ]));
+
+  const newAccountCurrencies = Array.from(new Set([
+    'ETB', 'USD', 'EUR', 'GBP', 'AED',
+    ...allCurrencies,
+    ...customCurrencies
   ]));
 
   const formatGroupedAmounts = (grouped: Record<string, number>) => {
@@ -345,6 +394,8 @@ export default function PerformanceTab({
     totalGross: data.gross
   })).sort((a, b) => b.totalGross - a.totalGross);
 
+  const allEmployees = Array.from(new Set(customers.map(c => c.orderTakenBy).filter(Boolean))).sort();
+
   // --- MARKETING PERFORMANCE (QUERY D) ---
   // GROUP BY D (Acquisition Source) ORDER BY SUM(X) DESC
   const marketingDataMap: Record<string, { count: number; revenue: number }> = {};
@@ -368,420 +419,387 @@ export default function PerformanceTab({
   const maxEmployeeGross = Math.max(...employeeLeaderboard.map(e => e.totalGross), 1);
 
   return (
-    <div className="space-y-8 " id="performance-tab-pnl">
+    <div className="space-y-5 " id="performance-tab-pnl">
 
-      {/* 📅 EXPENSE PERIOD INTERVAL & CATEGORY ANALYTICS DESK */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-none space-y-4" id="expense-analytics-filter-desk">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#262626] pb-3 gap-3">
-          <div>
-            <h3 className="font-sans font-bold text-white flex items-center gap-2 uppercase tracking-wider text-sm">
-              <TrendingUp className="w-5 h-5 text-[#ee317b]" />
-              📊 Expense Category &amp; Interval Analysis Engine
-            </h3>
-
+      {/* Custom Redesigned Financial Toolbar to match mockup */}
+      <div className="performance-sticky-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-6">
+          {/* Dropdown for selecting main currency, styled as a tab/badge in mockup */}
+          <div className="w-44 bg-[#181818] border border-[#262626] rounded-md overflow-hidden">
+            <SearchableSelect
+              value={selectedCurrency}
+              onChange={(e) => {
+                setSelectedCurrency(e.target.value);
+                setShowAllCurrencies(false);
+              }}
+              placeholder="Select Currency..."
+              inputClassName="font-bold font-sans text-xs uppercase tracking-wider text-white"
+            >
+              {newAccountCurrencies.map(curr => (
+                <option key={curr} value={curr}>
+                  {curr}
+                </option>
+              ))}
+            </SearchableSelect>
           </div>
-          {(expenseStartDate || expenseEndDate || deselectedCategories.length > 0) && (
+
+          {/* Toggle link to view all currencies, aligned and visually styled */}
+          <button
+            type="button"
+            onClick={() => setShowAllCurrencies(!showAllCurrencies)}
+            className="text-xs font-sans text-gray-500 hover:text-white transition-colors cursor-pointer"
+          >
+            {showAllCurrencies ? `Collapse to ${selectedCurrency}` : `View all currencies (${newAccountCurrencies.length})`}
+          </button>
+        </div>
+
+        {/* Search and filter controls pairing visually with Customer Management tab toolbar style */}
+        <div className="flex items-center gap-3">
+          {/* Search bar button style to match mockup */}
+          <div ref={searchWrapperRef} className="relative z-10 flex items-center">
+            <AnimatePresence initial={false}>
+              {!(isSearchExpanded || summarySearch) ? (
+                <motion.button
+                  key="search-btn"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.1 }}
+                  type="button"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer"
+                  title="Search accounts"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="search-input-wrapper"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                  className="relative flex items-center bg-transparent overflow-hidden"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                    <Search className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Type to search..."
+                    value={summarySearch}
+                    onChange={(e) => setSummarySearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchExpanded(false);
+                      }
+                    }}
+                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                  />
+                  {summarySearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSummarySearch('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                      title="Clear search"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="relative z-40">
             <button
               type="button"
-              onClick={() => {
-                setExpenseStartDate('');
-                setExpenseEndDate('');
-                setDeselectedCategories([]);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#2E181D] hover:bg-rose-900/40 border border-rose-900/40 text-rose-400 text-xs font-sans transition-all cursor-pointer rounded-md"
+              onClick={() => setShowFilterPopover(!showFilterPopover)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                (summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All')
+                  ? 'text-[#ee317b] bg-[#ee317b]/10'
+                  : ''
+              }`}
             >
-              <RefreshCw className="w-3 h-3" />
-              Reset
+              <Filter className="w-3.5 h-3.5" />
+              {[summaryStartDate, summaryEndDate, summaryAccount, summaryEmployee].filter(f => f && f !== 'All').length > 0 && (
+                <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                  {[summaryStartDate, summaryEndDate, summaryAccount, summaryEmployee].filter(f => f && f !== 'All').length}
+                </span>
+              )}
             </button>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-          {/* Calendar boundaries */}
-          <div className="lg:col-span-5 space-y-3">
-            <h4 className="text-[11px] font-sans font-bold uppercase tracking-widest text-[#ee317b] flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              Calendar Interval Boundaries
-            </h4>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-gray-400 font-sans uppercase mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={expenseStartDate}
-                  onChange={(e) => setExpenseStartDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#181815] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
+            {showFilterPopover && (
+              <>
+                <div
+                  className="fixed inset-0 z-30 cursor-default"
+                  onClick={() => setShowFilterPopover(false)}
                 />
-              </div>
-              <div>
-                <label className="block text-[10px] text-gray-400 font-sans uppercase mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={expenseEndDate}
-                  onChange={(e) => setExpenseEndDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#181815] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#ee317b]"
-                />
-              </div>
-            </div>
-
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-gray-500 font-sans mr-1">Presets:</span>
-              <button
-                type="button"
-                onClick={() => applyDatePreset('all')}
-                className={`px-2.5 py-1 text-[10px] font-sans border rounded-md cursor-pointer transition-all ${
-                  !expenseStartDate && !expenseEndDate
-                    ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/45'
-                    : 'bg-[#181818] text-gray-400 border-[#262626] hover:border-gray-500'
-                }`}
-              >
-                All Time
-              </button>
-              <button
-                type="button"
-                onClick={() => applyDatePreset('thisMonth')}
-                className="px-2.5 py-1 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded-md cursor-pointer"
-              >
-                This Month
-              </button>
-              <button
-                type="button"
-                onClick={() => applyDatePreset('last30')}
-                className="px-2.5 py-1 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded-md cursor-pointer"
-              >
-                Last 30 Days
-              </button>
-              <button
-                type="button"
-                onClick={() => applyDatePreset('thisYear')}
-                className="px-2.5 py-1 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded-md cursor-pointer"
-              >
-                This Year
-              </button>
-            </div>
-          </div>
-
-          {/* Category toggles */}
-          <div className="lg:col-span-7 space-y-3 border-t lg:border-t-0 lg:border-l border-[#262626] pt-4 lg:pt-0 lg:pl-6">
-            <div className="flex items-center justify-between">
-              <h4 className="text-[11px] font-sans font-bold uppercase tracking-widest text-[#71b536] flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5" />
-                Operational Expense Categories
-              </h4>
-              <div className="flex items-center gap-2 text-[10px] font-sans">
-                <button
-                  type="button"
-                  onClick={selectAllCategories}
-                  className="text-[#71b536] hover:underline cursor-pointer"
+                <div
+                  className="absolute right-0 mt-1.5 w-[320px] bg-[#181818] border border-[#262626] rounded shadow-xl z-40 p-3 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Select All
-                </button>
-                <span className="text-gray-600">|</span>
-                <button
-                  type="button"
-                  onClick={deselectAllCategories}
-                  className="text-gray-400 hover:underline cursor-pointer"
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Database Filter</span>
+                    {(summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSummaryStartDate('');
+                          setSummaryEndDate('');
+                          setSummaryAccount('All');
+                          setSummaryEmployee('All');
+                        }}
+                        className="text-[#ee317b] hover:text-[#ee317b]/80 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="h-px bg-[#262626] my-0.5"></div>
 
-            <div className="flex flex-wrap gap-2 pt-1.5">
-              {uniqueCategories.map(cat => {
-                const isSelected = !deselectedCategories.includes(cat);
-                const countOfItem = purchases.filter(p => (p.expenseCategory || 'Uncategorized') === cat).length;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => toggleCategory(cat)}
-                    className={`px-3 py-1.5 text-xs font-sans font-medium border flex items-center gap-1.5 transition-all rounded-md cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#182314] text-[#71b536] border-[#3e601d]'
-                        : 'bg-[#181818] text-zinc-500 border-zinc-900 hover:border-zinc-700'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-md flex-shrink-0 ${isSelected ? 'bg-[#71b536]' : 'bg-transparent border border-zinc-700'}`}></span>
-                    <span>{cat}</span>
-                    <span className="text-[10px] text-zinc-500">({countOfItem})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+                  <div className="flex flex-col gap-2.5">
+                    {/* User / Employee filter */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-24 flex-shrink-0 select-none">
+                        <UserCheck className="w-3.5 h-3.5 text-gray-400" />
+                        <span>User</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626]">
+                        <SearchableSelect
+                          value={summaryEmployee}
+                          onChange={(e) => setSummaryEmployee(e.target.value)}
+                        >
+                          <option value="All">All Users</option>
+                          {allEmployees.map(emp => (
+                            <option key={emp} value={emp}>{emp}</option>
+                          ))}
+                        </SearchableSelect>
+                      </div>
+                    </div>
 
-        {/* Dynamic status banner */}
-        <div className="bg-[#181818] border border-[#262626] p-3 text-xs font-sans flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="text-gray-400">
-            <span>Interval boundary: </span>
-            <strong className="text-white">
-              {expenseStartDate || 'All history'}
-            </strong>
-            <span> to </span>
-            <strong className="text-white">
-              {expenseEndDate || 'All history'}
-            </strong>
-            <span className="mx-2">|</span>
-            <span>Including </span>
-            <strong className="text-white">
-              {uniqueCategories.length - deselectedCategories.length} of {uniqueCategories.length}
-            </strong>
-            <span> categories</span>
-          </div>
-          <div className="flex items-center gap-1.5 self-end sm:self-auto text-stone-300">
-            <span>Interval Sum of Expenses:</span>
-            <span className="text-[#ee317b] font-bold font-sans">
-              {filteredExpenseSum.toLocaleString(undefined, { minimumFractionDigits: 1 })} ETB
-            </span>
+                    {/* Account filter */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-24 flex-shrink-0 select-none">
+                        <Building className="w-3.5 h-3.5 text-gray-400" />
+                        <span>Account</span>
+                      </div>
+                      <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626]">
+                        <SearchableSelect
+                          value={summaryAccount}
+                          onChange={(e) => setSummaryAccount(e.target.value)}
+                        >
+                          <option value="All">All Accounts</option>
+                          {bankAccounts
+                            .filter(b => b.currency === selectedCurrency)
+                            .map(b => (
+                              <option key={b.id} value={b.id}>{b.name} ({b.currency})</option>
+                            ))}
+                        </SearchableSelect>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                      <div className="flex items-center gap-1.5 text-gray-400 w-24 flex-shrink-0 select-none">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        <span>Dates</span>
+                      </div>
+                      <div className="flex-1 grid grid-cols-2 gap-1.5">
+                        <input
+                          type="date"
+                          value={summaryStartDate}
+                          onChange={(e) => setSummaryStartDate(e.target.value)}
+                          className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1"
+                          title="From date"
+                        />
+                        <input
+                          type="date"
+                          value={summaryEndDate}
+                          onChange={(e) => setSummaryEndDate(e.target.value)}
+                          className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1"
+                          title="To date"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 px-1">
+                      <span className="text-[10px] text-gray-500 font-sans mr-1">Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => applyDatePreset('all')}
+                        className={`px-2 py-0.5 text-[10px] font-sans border rounded cursor-pointer transition-all ${
+                          !summaryStartDate && !summaryEndDate
+                            ? 'bg-[#31111E] text-[#ee317b] border-[#ee317b]/45'
+                            : 'bg-[#181818] text-gray-400 border-[#262626] hover:border-gray-500'
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDatePreset('thisMonth')}
+                        className="px-2 py-0.5 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded cursor-pointer"
+                      >
+                        This Month
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDatePreset('last30')}
+                        className="px-2 py-0.5 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded cursor-pointer"
+                      >
+                        Last 30
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDatePreset('thisYear')}
+                        className="px-2 py-0.5 text-[10px] font-sans bg-[#181818] text-gray-400 border border-[#262626] hover:border-gray-500 rounded cursor-pointer"
+                      >
+                        This Year
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
-      
-      {/* Premium Scorecards representing precise calculations */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* Total Gross Orders */}
-        <div className="relative overflow-hidden bg-[#121212] text-white border border-[#262626] rounded-md p-6 shadow-none">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Gross Orders</span>
-            <span className="text-[10px] bg-[#31111E] text-[#ee317b] font-sans px-2 py-0.5 rounded-md border border-[#ee317b]/20">Sum of order values</span>
-          </div>
-          <div className="mt-3">
-            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-white whitespace-pre-wrap break-words">
-              {formatGroupedAmounts(grossByCurrency)}
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-405 font-sans">
-            <span>Aggregated Order Values</span>
-            <span>{customers.length} total sales entries</span>
-          </div>
-        </div>
 
-        {/* Total Spent (Expenses) Scorecard */}
-        <div className="relative overflow-hidden bg-[#121212] text-white border border-[#262626] rounded-md p-6 shadow-none">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Spent (Expenses)</span>
-            {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? (
-              <span className="text-[10px] bg-[#3B1E11] text-[#E07A5F] font-sans px-2 py-0.5 rounded-md border border-[#E07A5F]/20">Selected interval</span>
-            ) : (
-              <span className="text-[10px] bg-[#1A1A40] text-[#7096FF] font-sans px-2 py-0.5 rounded-md border border-[#7096FF]/20">All-time sum</span>
-            )}
-          </div>
-          <div className="mt-3">
-            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-[#f87171] whitespace-pre-wrap break-words">
-              {formatGroupedAmounts(spentByCurrency)}
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-450 font-sans">
-            <span>
-              {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? 'Selected Costs' : 'All Registered Costs'}
-            </span>
-            <span>
-              {filteredPurchasesForInterval.length === purchases.length
-                ? `${purchases.length} total entries`
-                : `${filteredPurchasesForInterval.length} of ${purchases.length} entries`
-              }
-            </span>
-          </div>
-        </div>
+      {/* Portfolio summaries loop */}
+      {isSummaryExpanded && newAccountCurrencies
+        .filter(curr => showAllCurrencies || curr === selectedCurrency)
+        .map(curr => {
+          const gross = grossByCurrency[curr] || 0;
+          const spent = spentByCurrency[curr] || 0;
+          const inflow = inflowByCurrency[curr] || 0;
+          const cash = inflow - spent;
+          const debt = debtByCurrency[curr] || 0;
+          const isCollapsed = !!collapsedCurrencies[curr];
 
-        {/* Collected Cash In Hand */}
-        <div className="relative overflow-hidden bg-[#121212] text-white border border-[#262626] rounded-md p-6 shadow-none">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Collected Cash In-Hand</span>
-            {deselectedCategories.length > 0 || expenseStartDate || expenseEndDate ? (
-              <span className="text-[10px] bg-[#31111E] text-[#ee317b] font-sans px-2 py-0.5 rounded-md border border-[#ee317b]/20">Post-interval spent</span>
-            ) : (
-              <span className="text-[10px] bg-[#112918] text-[#71b536] font-sans px-2 py-0.5 rounded-md border border-[#71b536]/20">All-time net</span>
-            )}
-          </div>
-          
-          <div className="mt-3">
-            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-[#71b536] whitespace-pre-wrap break-words">
-              {formatGroupedCollectedCash()}
-            </p>
-            <span className="text-[10px] text-zinc-500 font-sans block mt-1">
-              (Total Intake minus Selected Expense)
-            </span>
-          </div>
+          // Skip if zero values across the board unless it is ETB or selected
+          if (gross === 0 && spent === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+            return null;
+          }
 
-          <div className="mt-4 pt-3 border-t border-[#262626] space-y-1 font-sans text-[11px] text-gray-400">
-            <div className="flex justify-between">
-              <span>Total Client Inflow:</span>
-              <span className="text-emerald-500 font-bold whitespace-pre-wrap text-right">{formatGroupedAmounts(inflowByCurrency)}</span>
+          return (
+            <div key={curr} className="space-y-3">
+              <div className="flex items-center justify-between border-b border-[#262626] pb-2">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-white font-sans">
+                  {curr} FINANCIAL SUMMARY FROM ORDERS
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setCollapsedCurrencies(prev => ({ ...prev, [curr]: !prev[curr] }))}
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
+                  title={isCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {!isCollapsed && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Total Outstanding Debt */}
+                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Outstanding Debt</span>
+                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#a28031]">
+                        {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-md bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
+                      <FileText className="w-5 h-5 text-[#a28031]" />
+                    </div>
+                  </div>
+
+                  {/* Total Gross Orders */}
+                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Gross Orders</span>
+                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-white">
+                        {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
+                      <ShoppingBag className="w-5 h-5 text-[#71b536]" />
+                    </div>
+                  </div>
+
+                  {/* Total Spent (Expenses) */}
+                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Spent (Expenses)</span>
+                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
+                        {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
+                      <CreditCard className="w-5 h-5 text-[#ee317b]" />
+                    </div>
+                  </div>
+
+                  {/* Net Cash Position */}
+                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Net Cash Position</span>
+                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
+                        {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
+                      <Activity className="w-5 h-5 text-[#ee317b]" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span>Selected Expense:</span>
-              <span className="text-[#f87171] font-bold whitespace-pre-wrap text-right">-{formatGroupedAmounts(spentByCurrency)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Outstanding Debt */}
-        <div className="relative overflow-hidden bg-[#121212] text-[#E2E8F0] border border-[#262626] rounded-md p-6 shadow-none">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400 text-xs font-sans tracking-wider uppercase">Total Outstanding Debt</span>
-            <span className="text-[10px] bg-[#2E181D] text-[#F87171] font-sans px-2 py-0.5 rounded-md border border-rose-550/20">Outstanding Balances</span>
-          </div>
-          <div className="mt-3">
-            <p className="text-lg font-sans font-bold leading-normal tracking-tight text-white whitespace-pre-wrap break-words">
-              {formatGroupedAmounts(debtByCurrency)}
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[#262626] flex justify-between text-xs text-gray-405 font-sans">
-            <span>Uncollected Account Balances</span>
-            <span>Requires active customer collection</span>
-          </div>
-        </div>
-
-      </div>
-
-
+          );
+        })}
 
       {/* --- TREASURY DEPARTMENT & BANK ACCOUNTS MANAGER --- */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-none space-y-6" id="treasury-desk-pnl">
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-sm space-y-4" id="treasury-desk-pnl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#262626] pb-4 gap-4">
           <div>
-            <h3 className="font-sans font-bold text-white flex items-center gap-2 uppercase tracking-wider text-sm">
-              <Building className="w-5 h-5 text-[#71b536]" />
-              🏛️ Corporate Treasury &amp; Payment Accounts ledger
+            <h3 className="font-sans font-bold text-black dark:text-white uppercase tracking-wider text-sm">
+              Payment Accounts
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5 font-sans">
-              Live balances showing (Initial Stockpile + Collected Client Payments) per bank account.
-            </p>
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            {bankAccounts.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedBankIds.length === bankAccounts.length) {
-                    setSelectedBankIds([]);
-                  } else {
-                    setSelectedBankIds(bankAccounts.map(b => b.id));
-                  }
-                }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[#181818] border border-[#262626] text-gray-300 font-sans text-xs cursor-pointer hover:border-gray-500 transition-all "
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedBankIds.length === bankAccounts.length && bankAccounts.length > 0}
-                  ref={el => {
-                    if (el) {
-                      el.indeterminate = selectedBankIds.length > 0 && selectedBankIds.length < bankAccounts.length;
-                    }
-                  }}
-                  readOnly
-                  className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer rounded-md pointer-events-none"
-                />
-                <span>{selectedBankIds.length === bankAccounts.length ? 'Deselect All' : 'Select All'}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowAllAccounts(!showAllAccounts)}
+              className="px-4 py-2 bg-[#f5f4ee] hover:bg-[#eae9e2] dark:bg-[#181818] dark:hover:bg-[#222] border border-[#dfdccf] dark:border-[#262626] text-black dark:text-white font-sans text-xs font-semibold rounded-md cursor-pointer transition-colors"
+            >
+              {showAllAccounts ? 'Show Selected Currency Only' : 'View All Accounts'}
+            </button>
             <button
               type="button"
               onClick={() => setIsAddingBank(!isAddingBank)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#181818] border border-[#262626] hover:border-[#71b536] text-[#71b536] font-sans text-xs cursor-pointer transition-all duration-200"
+              className="bg-[#ee317b] hover:bg-[#ee317b]/90 text-white font-bold px-4 py-2 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
             >
               {isAddingBank ? (
                 <>
                   <X className="w-3.5 h-3.5" />
-                  Cancel Form
+                  <span>Cancel Form</span>
                 </>
               ) : (
                 <>
                   <Plus className="w-3.5 h-3.5" />
-                  Add Bank Account / Payment Method
+                  <span>Add Account / Payment Method</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Dynamic Bank Creator Mini Dropdown Drawer */}
-        {isAddingBank && (
-          <form onSubmit={handleAddSubmit} className="bg-[#181818] border border-[#262626] p-4 space-y-4 animate-none">
-            <h4 className="text-xs font-sans font-bold text-gray-300 uppercase tracking-wider border-b border-[#262626] pb-1">
-              Add New Treasury Account / Payment Variant
-            </h4>
-            
-            {bankError && (
-              <p className="text-xs text-[#F87171] font-sans bg-[#2E181D]/30 p-2 border border-rose-500/25">{bankError}</p>
-            )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Account &amp; Bank Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Awash Bank, Telebirr, cash"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Account Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 10002938495"
-                  value={bankNumber}
-                  onChange={(e) => setBankNumber(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Currency</label>
-                <select
-                  value={bankCurrency}
-                  onChange={(e) => setBankCurrency(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
-                >
-                  <option value="ETB">ETB</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                  <option value="AED">AED</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-sans font-medium text-gray-400 uppercase mb-1">Initial / Purchased Stockpile (expression enabled)</label>
-                <input
-                  type="text"
-                  value={bankInitial}
-                  onChange={(e) => setBankInitial(cleanLeadingZeros(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      setBankInitial(parseFractionOrExpression(bankInitial).toString());
-                    }
-                  }}
-                  className="w-full px-2.5 py-1.5 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
-                />
-                <div className="text-[10px] text-gray-500 mt-1 font-sans">
-                  Parsed: {parseFractionOrExpression(bankInitial)} {bankCurrency}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                className="px-4 py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-black font-semibold font-sans text-xs cursor-pointer tracking-wider"
-              >
-                Register &amp; Activate Account
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* Selected payment methods bulk action banner */}
         {selectedBankIds.length > 0 && (
@@ -811,161 +829,209 @@ export default function PerformanceTab({
 
         {/* Breathtaking Grid list of Accounts */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
-          {bankAccounts.map((b) => {
-            // Advances inflow to this bank account
-            const advancesForBank = customers
-              .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
-              .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
+          {bankAccounts
+            .filter(b => {
+              if (summarySearch.trim()) {
+                const query = summarySearch.trim().toLowerCase();
+                return b.name.toLowerCase().includes(query) || (b.accountNumber && b.accountNumber.toLowerCase().includes(query));
+              }
+              return showAllAccounts || b.currency === selectedCurrency;
+            })
+            .map((b) => {
+              // Advances inflow to this bank account
+              const advancesForBank = customers
+                .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
+                .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
 
-            // Completed remaining payments inflow to this bank account
-            const completedRemainingForBank = customers
-              .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
-              .reduce((sum, c) => {
-                const base = c.quantity * c.unitPrice;
-                const vat = c.isVatAdded ? base * 0.15 : 0;
-                const totalInvoice = base + vat;
-                const remaining = totalInvoice - c.advancePayment;
-                return sum + Math.max(0, remaining);
-              }, 0);
+              // Completed remaining payments inflow to this bank account
+              const completedRemainingForBank = customers
+                .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
+                .reduce((sum, c) => {
+                  const base = c.quantity * c.unitPrice;
+                  const vat = c.isVatAdded ? base * 0.15 : 0;
+                  const totalInvoice = base + vat;
+                  const remaining = totalInvoice - c.advancePayment;
+                  return sum + Math.max(0, remaining);
+                }, 0);
 
-            // Expenses/Materials purchased out of this bank account
-            const purchasesOutOfBank = purchases
-              .filter(p => p.paymentMethodId === b.id)
-              .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
-            
-            const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
-            const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
-            const isEditing = editingBankId === b.id;
+              // Expenses/Materials purchased out of this bank account
+              const purchasesOutOfBank = purchases
+                .filter(p => p.paymentMethodId === b.id)
+                .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
+              
+              const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+              const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
+              const isEditing = editingBankId === b.id;
 
-            return (
-              <div 
-                key={b.id} 
-                className={`relative bg-[#181812] border rounded-md p-4 hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between ${
-                  selectedBankIds.includes(b.id) ? 'border-[#71b536] bg-[#121912]/25' : 'border-[#262626]'
-                }`}
-              >
-                {/* Account Details Header */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={selectedBankIds.includes(b.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedBankIds(prev => [...prev, b.id]);
-                          } else {
-                            setSelectedBankIds(prev => prev.filter(id => id !== b.id));
-                          }
-                        }}
-                        className="accent-[#71b536] w-3.5 h-3.5 cursor-pointer rounded-md flex-shrink-0"
-                        title="Select payment method"
-                      />
+              // Hide or collapse zero-value currencies if requested (when viewing all, but hide zero-value accounts if not default and have zero balance)
+              if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
+                return null;
+              }
+
+              return (
+                <div 
+                  key={b.id} 
+                  className="relative bg-[#181818] border border-[#262626] rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between"
+                >
+                  {/* Account Details Header */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs font-semibold rounded-md outline-none w-full min-w-0"
+                          />
+                        ) : (
+                          <h4 className="font-bold text-white text-[13px] tracking-tight uppercase break-words min-w-0" title={b.name}>
+                            {b.name}
+                          </h4>
+                        )}
+                      </div>
+
+                      {/* Three-dot dropdown menu trigger */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setActiveMenuBankId(activeMenuBankId === b.id ? null : b.id)}
+                          className="text-gray-500 hover:text-white p-1 rounded transition-colors"
+                          title="Menu"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                          </svg>
+                        </button>
+
+                        {activeMenuBankId === b.id && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setActiveMenuBankId(null)} />
+                            <div className="absolute right-0 mt-1 w-28 bg-[#181818] border border-[#262626] rounded shadow-lg z-50 py-1 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuBankId(null);
+                                  startEditing(b);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#202020] text-white flex items-center gap-1.5"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                Edit Account
+                              </button>
+                              {!isSystemDefault ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuBankId(null);
+                                    setDeletingBankId(b.id);
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 hover:bg-[#202020] text-rose-500 font-semibold flex items-center gap-1.5"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Delete
+                                </button>
+                              ) : (
+                                <div className="px-3 py-1.5 text-gray-500 flex items-center gap-1.5 cursor-not-allowed select-none">
+                                  <Lock className="w-3 h-3" />
+                                  System Lock
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500 font-sans flex flex-col gap-1">
+                      {isEditing ? (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="A/C: optional"
+                            value={editNumber}
+                            onChange={(e) => setEditNumber(e.target.value)}
+                            className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
+                          />
+                          <div className="w-full bg-[#121212] border border-[#71b536] rounded-md outline-none font-sans mt-1 overflow-hidden flex items-center min-h-[24px]">
+                            <SearchableSelect
+                              value={editCurrency}
+                              onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
+                              onCreateOption={(newVal) => {
+                                const cleanVal = newVal.trim().toUpperCase();
+                                if (cleanVal && !newAccountCurrencies.includes(cleanVal)) {
+                                  setCustomCurrencies(prev => [...prev, cleanVal]);
+                                  setEditCurrency(cleanVal);
+                                }
+                              }}
+                              createOptionLabel="Add currency"
+                              placeholder="Search/add..."
+                              className="w-full h-full text-white text-[11px] bg-transparent"
+                              inputClassName="text-white text-[11px] uppercase bg-transparent pl-1"
+                            >
+                              {newAccountCurrencies.map(curr => (
+                                <option key={curr} value={curr}>
+                                  {curr}
+                                </option>
+                              ))}
+                            </SearchableSelect>
+                          </div>
+                        </>
+                      ) : b.accountNumber ? (
+                        <span className="text-[11px]">
+                          A/C: {b.accountNumber} ({b.currency || 'ETB'})
+                        </span>
+                      ) : (
+                        <span className="text-[10px] tracking-wider uppercase">Cash Account ({b.currency || 'ETB'})</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Account Balance Calculations */}
+                  <div className="mt-4 pt-3 border-t border-[#262626] space-y-2.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-sans">Opening Balance</span>
                       {isEditing ? (
                         <input
                           type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs font-semibold rounded-md outline-none w-full min-w-0"
+                          value={editInitial}
+                          onChange={(e) => setEditInitial(cleanLeadingZeros(e.target.value))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              setEditInitial(parseFractionOrExpression(editInitial).toString());
+                            }
+                          }}
+                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs text-right rounded-md outline-none w-24 font-sans font-bold"
                         />
                       ) : (
-                        <span className="font-bold text-white text-[13px] tracking-tight flex items-center gap-1 uppercase keep-text-white break-words min-w-0 flex-1" title={b.name}>
-                          <Building className="w-3.5 h-3.5 text-[#71b536] flex-shrink-0" />
-                          <span className="break-all">{b.name}</span>
-                        </span>
+                        <span className="text-white font-bold">{formatMockupValue(b.initialBalance)} {b.currency || 'ETB'}</span>
                       )}
                     </div>
 
-                    {/* Badge Indicator */}
-                    <span className="text-[9px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 uppercase font-sans">
-                      {isSystemDefault ? 'System Core' : 'Custom'}
-                    </span>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-sans">Received</span>
+                      <span className="text-[#71b536] font-bold">+{formatMockupValue(advancesForBank + completedRemainingForBank)} {b.currency || 'ETB'}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-sans">Spent</span>
+                      <span className="text-[#ee317b] font-bold">-{formatMockupValue(purchasesOutOfBank)} {b.currency || 'ETB'}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 border-t border-[#262626]">
+                      <span className="text-gray-500 font-sans text-xs">Available Balance</span>
+                      <span className="text-white font-bold text-base tracking-tight">{formatMockupValue(currentBalance)} {b.currency || 'ETB'}</span>
+                    </div>
                   </div>
 
-                  <div className="text-xs text-gray-400 font-sans flex flex-col gap-1">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="text"
-                          placeholder="A/C: optional"
-                          value={editNumber}
-                          onChange={(e) => setEditNumber(e.target.value)}
-                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
-                        />
-                        <select
-                          value={editCurrency}
-                          onChange={(e) => setEditCurrency(e.target.value)}
-                          className="px-1.5 py-0.5 mt-1 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
-                        >
-                          <option value="ETB">ETB</option>
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                          <option value="AED">AED</option>
-                        </select>
-                      </>
-                    ) : b.accountNumber ? (
-                      <span className="flex items-center gap-1 text-[11px]">
-                        <CreditCard className="w-3.5 h-3.5 text-zinc-500" />
-                        A/C: {b.accountNumber} ({b.currency || 'ETB'})
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-zinc-500 tracking-wider">NO ACCOUNT LISTED ({b.currency || 'ETB'})</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Account Balance Calculations */}
-                <div className="mt-4 pt-3 border-t border-[#262626] space-y-1.5">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Initial Stockpiled:</span>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editInitial}
-                        onChange={(e) => setEditInitial(cleanLeadingZeros(e.target.value))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            setEditInitial(parseFractionOrExpression(editInitial).toString());
-                          }
-                        }}
-                        className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs text-right rounded-md outline-none w-24 font-sans"
-                      />
-                    ) : (
-                      <span className="text-stone-300 font-bold">{b.initialBalance.toLocaleString()} {b.currency || 'ETB'}</span>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Advances Deposited:</span>
-                    <span className="text-[#ee317b] font-bold">+{advancesForBank.toLocaleString()} {b.currency || 'ETB'}</span>
-                  </div>
-
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Completes Deposited:</span>
-                    <span className="text-emerald-500 font-bold">+{completedRemainingForBank.toLocaleString()} {b.currency || 'ETB'}</span>
-                  </div>
-
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[9px]">Purchases Deducted:</span>
-                    <span className="text-red-400 font-bold">-{purchasesOutOfBank.toLocaleString()} {b.currency || 'ETB'}</span>
-                  </div>
-
-                  <div className="flex justify-between pt-2 border-t border-[#262626]/50 text-xs">
-                    <span className="text-gray-400 font-sans font-medium uppercase tracking-wider">Net Available:</span>
-                    <span className="text-[#71b536] font-bold text-sm tracking-tight">{currentBalance.toLocaleString()} {b.currency || 'ETB'}</span>
-                  </div>
-                </div>
-
-                {/* Admin Management Actions */}
-                <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#262626]/50">
-                  {isEditing ? (
-                    <>
+                  {/* Inline Editing Controls */}
+                  {isEditing && (
+                    <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#262626]">
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(b.id)}
-                        className="p-1 text-[#71b536] hover:bg-[#71b536]/10 border border-[#71b536]/20 bg-emerald-990/10 cursor-pointer"
+                        className="p-1 text-[#71b536] hover:bg-[#71b536]/10 border border-[#71b536]/20 bg-emerald-990/10 cursor-pointer rounded"
                         title="Save Changes"
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -973,47 +1039,18 @@ export default function PerformanceTab({
                       <button
                         type="button"
                         onClick={() => setEditingBankId(null)}
-                        className="p-1 text-gray-400 hover:bg-gray-800 border border-[#262626] cursor-pointer"
+                        className="p-1 text-gray-500 hover:bg-[#202020] border border-[#262626] cursor-pointer rounded"
                         title="Cancel"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startEditing(b)}
-                        className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-850 cursor-pointer"
-                        title="Edit Details"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      
-                      {!isSystemDefault ? (
-                        <button
-                          type="button"
-                          onClick={() => setDeletingBankId(b.id)}
-                          className="p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-900/20 border border-rose-900/30 cursor-pointer"
-                          title="Trash Account"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
-                        <span className="p-1 text-zinc-650 cursor-not-allowed" title="System accounts are locked for continuity">
-                          <Lock className="w-3.5 h-3.5 text-zinc-700" />
-                        </span>
-                      )}
-                    </>
+                    </div>
                   )}
                 </div>
-
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
-
       {/* Leaderboard and Marketing Side-by-Side Panels - Responsive grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
@@ -1271,6 +1308,122 @@ export default function PerformanceTab({
                   Delete Selected
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pop-up Modal Form for Adding Account / Payment Method */}
+      <AnimatePresence>
+        {isAddingBank && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#121212] border border-[#262626] max-w-xl w-full p-6 text-left space-y-5 rounded-md shadow-2xl"
+            >
+              <h3 className="font-sans font-bold text-white uppercase tracking-wider text-sm border-b border-[#262626] pb-3">
+                Add New Treasury Account / Payment Variant
+              </h3>
+              
+              {bankError && (
+                <p className="text-xs text-[#F87171] font-sans bg-[#2E181D]/30 p-2 border border-rose-500/25 rounded">{bankError}</p>
+              )}
+
+              <form onSubmit={handleAddSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-sans font-medium text-gray-500 uppercase tracking-wider mb-1">Account &amp; Bank Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Awash Bank, Telebirr, cash"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans font-medium text-gray-500 uppercase tracking-wider mb-1">Account Number (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 10002938495"
+                      value={bankNumber}
+                      onChange={(e) => setBankNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans font-medium text-gray-500 uppercase tracking-wider mb-1">Currency</label>
+                    <div className="w-full bg-[#121212] border border-[#262626] rounded-md outline-none font-sans focus-within:border-[#71b536] overflow-hidden min-h-[34px] flex items-center">
+                      <SearchableSelect
+                        value={bankCurrency}
+                        onChange={(e) => setBankCurrency(e.target.value.toUpperCase())}
+                        onCreateOption={(newVal) => {
+                          const cleanVal = newVal.trim().toUpperCase();
+                          if (cleanVal && !newAccountCurrencies.includes(cleanVal)) {
+                            setCustomCurrencies(prev => [...prev, cleanVal]);
+                            setBankCurrency(cleanVal);
+                          }
+                        }}
+                        createOptionLabel="Add currency"
+                        placeholder="Search or add currency..."
+                        className="w-full h-full text-white text-xs bg-transparent"
+                        inputClassName="font-bold text-white text-xs uppercase bg-transparent"
+                      >
+                        {newAccountCurrencies.map(curr => (
+                          <option key={curr} value={curr}>
+                            {curr}
+                          </option>
+                        ))}
+                      </SearchableSelect>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans font-medium text-gray-500 uppercase tracking-wider mb-1">Initial Balance (expression enabled)</label>
+                    <input
+                      type="text"
+                      value={bankInitial}
+                      onChange={(e) => setBankInitial(cleanLeadingZeros(e.target.value))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setBankInitial(parseFractionOrExpression(bankInitial).toString());
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-[#121212] border border-[#262626] text-white rounded-md outline-none font-sans focus:border-[#71b536]"
+                    />
+                    <div className="text-[10px] text-gray-500 mt-1.5 font-sans">
+                      Parsed: {parseFractionOrExpression(bankInitial)} {bankCurrency}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#262626] mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingBank(false)}
+                    className="px-4 py-2 text-xs bg-[#181818] border border-[#262626] text-white font-semibold uppercase tracking-wider cursor-pointer rounded-md hover:bg-[#222]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs bg-[#71b536] hover:bg-[#5a932a] text-white font-semibold uppercase tracking-wider cursor-pointer rounded-md"
+                  >
+                    Register Account
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

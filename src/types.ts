@@ -40,6 +40,7 @@ export interface Customer {
   unitPrice: number;
   advancePayment: number;
   paymentMethodId?: string; // references a BankAccount id (e.g. 'b1', 'b2', etc.)
+  currency?: string;
   
   // Paper specs
   paperType1: string;
@@ -127,6 +128,7 @@ export interface Purchase {
   itemOrService: string;
   quantity: number;
   unitPrice: number;
+  currency?: string;
   purchaseDate: string;
   paymentMethodId: string; // references a BankAccount id
   totalPrice: number; // calculated according to VAT/Withholding or quantity * unitPrice
