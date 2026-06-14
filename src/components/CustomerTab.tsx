@@ -539,7 +539,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [proformaIssuerPosition, setProformaIssuerPosition] = useState('');
   const [proformaVerificationNote, setProformaVerificationNote] = useState('Secure conversion ledger validation active.');
   const [proformaColNo, setProformaColNo] = useState('No.');
-  const [proformaColDesc, setProformaColDesc] = useState('Description of Product Line');
+  const [proformaColDesc, setProformaColDesc] = useState('Description of Product');
   const [proformaColQty, setProformaColQty] = useState('Qty (pcs)');
   const [proformaColPrice, setProformaColPrice] = useState('Unit Price (ETB)');
   const [proformaColTotal, setProformaColTotal] = useState('Subtotal (ETB)');
@@ -2073,7 +2073,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       setProformaIssuerPosition(currentUser?.role || 'Staff Operator');
       setProformaVerificationNote('Secure conversion ledger validation active.');
       setProformaColNo('No.');
-      setProformaColDesc('Description of Product Line');
+      setProformaColDesc('Description of Product');
       setProformaColQty('Qty (pcs)');
       setProformaColPrice(`Unit Price (${initialCurrency})`);
       setProformaColTotal(`Subtotal (${initialCurrency})`);
@@ -5170,9 +5170,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 <div className="relative z-10 border border-gray-300 overflow-hidden mb-1 rounded-sm ml-4">
                   <table className="w-full text-left border-collapse text-[10px] table-fixed">
                     <thead>
-                      <tr className="bg-gray-100 border-b border-gray-300 text-gray-705 font-sans uppercase text-[9px] tracking-wider text-center">
+                      <tr className="bg-gray-100 border-b border-gray-300 text-black font-sans uppercase text-[9px] tracking-wider text-center">
                         <th className="py-2 px-3 border-r border-gray-300 font-bold w-12 text-center bg-gray-100">No.</th>
-                        <th className="py-2 px-3 border-r border-gray-300 font-bold text-left bg-gray-100">Description of Product Line</th>
+                        <th className="py-2 px-3 border-r border-gray-300 font-bold text-left bg-gray-100">{proformaColDesc}</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-20 bg-gray-100">Qty (pcs)</th>
                         <th className="py-2 px-3 border-r border-gray-300 font-bold text-right w-28 bg-gray-100">{proformaColPrice}</th>
                         <th className="py-2 px-3 font-bold text-right w-32 bg-gray-100">{proformaColTotal}</th>
