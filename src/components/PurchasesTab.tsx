@@ -1670,7 +1670,7 @@ export default function PurchasesTab({
 
           {/* Bulk Action Ribbon */}
           {selectedPurchaseIds.length > 0 && (
-            <div className="bg-[#121212] border border-[#ee317b]/35 p-3 rounded-md flex items-center justify-between text-xs font-sans animate-fadeIn shadow-[0_0_18px_rgba(238,49,123,0.08)]">
+            <div className="hidden md:flex bg-[#121212] border border-[#ee317b]/35 p-3 rounded-md items-center justify-between text-xs font-sans animate-fadeIn shadow-[0_0_18px_rgba(238,49,123,0.08)]">
               <span className="text-white font-bold inline-flex items-center gap-2">
                 <Check className="w-3.5 h-3.5 text-[#ee317b]" />
                 {selectedPurchaseIds.length} purchase logs selected
@@ -2366,33 +2366,31 @@ export default function PurchasesTab({
       <AnimatePresence>
         {selectedPurchaseIds.length > 0 && (
           <motion.div
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
             className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
           >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-bold font-sans inline-flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#ee317b]" />
-                {selectedPurchaseIds.length} selected
-              </span>
+            <div className="flex justify-between items-center text-xs font-bold text-[#ee317b] mb-1 px-1">
+              <span>{selectedPurchaseIds.length} Selected Purchases</span>
               <button
                 type="button"
                 onClick={() => setSelectedPurchaseIds([])}
-                className="text-[10px] uppercase tracking-wider text-gray-400 hover:text-white font-bold"
+                className="text-gray-400 font-normal underline"
               >
-                Clear
+                Clear Selection
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowBulkDeleteConfirm(true)}
-              className="w-full h-9 rounded-md bg-[#ee317b] text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected
-            </button>
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                className="bg-[#2E181D] border border-red-900/40 text-red-400 py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
