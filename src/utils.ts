@@ -325,6 +325,10 @@ export function createSmsUrl(phoneE164: string): string {
   return `sms:${phoneE164}`;
 }
 
+export function createSmsMessageUrl(phoneE164: string, message: string): string {
+  return `sms:${phoneE164}?&body=${encodeURIComponent(message)}`;
+}
+
 export function createWhatsAppUrl(contact: string): string {
   const normalized = normalizePhoneNumber(contact);
   if (normalized.type === 'phone') {
@@ -333,8 +337,21 @@ export function createWhatsAppUrl(contact: string): string {
   return `https://wa.me/${contact.replace(/^@/, '')}`;
 }
 
+export function createWhatsAppMessageUrl(contact: string, message: string): string {
+  return `${createWhatsAppUrl(contact)}?text=${encodeURIComponent(message)}`;
+}
+
 export function createTelegramUrl(username: string): string {
   return `https://t.me/${username.replace(/^@/, '')}`;
+}
+
+export function createTelegramPhoneUrl(phoneE164: string): string {
+  const digits = phoneE164.replace(/[^\d]/g, '');
+  return `https://t.me/+${digits}`;
+}
+
+export function createTelegramShareUrl(message: string): string {
+  return `https://t.me/share/url?text=${encodeURIComponent(message)}`;
 }
 
 export function createLinkUrl(link: string): string {

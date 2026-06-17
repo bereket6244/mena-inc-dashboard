@@ -54,9 +54,13 @@ import {
   cleanLeadingZeros,
   computeStockConsumed,
   createLinkUrl,
+  createSmsMessageUrl,
   createSmsUrl,
+  createTelegramPhoneUrl,
+  createTelegramShareUrl,
   createTelegramUrl,
   createTelUrl,
+  createWhatsAppMessageUrl,
   createWhatsAppUrl,
   detectContactType,
   formatContactDisplay,
@@ -249,10 +253,38 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const rowLongPressTimerRef = useRef<number | null>(null);
+
+  const clearRowLongPressTimer = () => {
+    if (rowLongPressTimerRef.current !== null) {
+      window.clearTimeout(rowLongPressTimerRef.current);
+      rowLongPressTimerRef.current = null;
+    }
+  };
+
+  const toggleCustomerSelection = (customerId: string) => {
+    setSelectedCustomerIds(prev => (
+      prev.includes(customerId)
+        ? prev.filter(id => id !== customerId)
+        : [...prev, customerId]
+    ));
+  };
+
+  const startCustomerRowLongPress = (customerId: string, event: React.TouchEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    clearRowLongPressTimer();
+    rowLongPressTimerRef.current = window.setTimeout(() => {
+      toggleCustomerSelection(customerId);
+      rowLongPressTimerRef.current = null;
+    }, 520);
+  };
+
+  useEffect(() => clearRowLongPressTimer, []);
   const [copiedOrderMessageIds, setCopiedOrderMessageIds] = useState<string[]>([]);
   const copiedOrderMessageTimerRef = useRef<number | null>(null);
 
-  const copyCustomerOrderMessage = (c: Customer) => {
+  const buildCustomerOrderMessage = (c: Customer) => {
     const totalAmount = c.quantity * c.unitPrice;
     const advancePaid = c.advancePayment || 0;
     const remainingBalance = Math.max(0, totalAmount - advancePaid);
@@ -302,7 +334,11 @@ Payment Date: ${paymentDate}
 
 The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
-    navigator.clipboard.writeText(message);
+    return message;
+  };
+
+  const copyCustomerOrderMessage = async (c: Customer) => {
+    await copyContactToClipboard(buildCustomerOrderMessage(c));
     
     if (copiedOrderMessageTimerRef.current) {
       window.clearTimeout(copiedOrderMessageTimerRef.current);
@@ -410,7 +446,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [activeContactMenuId, setActiveContactMenuId] = useState<string | null>(null);
   const [contactMenuPosition, setContactMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
+  const [activeOrderMessageMenuId, setActiveOrderMessageMenuId] = useState<string | null>(null);
+  const [orderMessageMenuPosition, setOrderMessageMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const contactMenuRef = useRef<HTMLDivElement>(null);
+  const orderMessageMenuRef = useRef<HTMLDivElement>(null);
   const copiedContactTimerRef = useRef<number | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
@@ -419,7 +458,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
-  const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: number | ''; unitPrice: number | ''; advancePayment: number | ''; }>>([]);
+  const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: string; unitPrice: string; advancePayment: string; }>>([]);
 
   // Proforma VAT State variables inside modal scope integration
   const [proformaIncludeVat, setProformaIncludeVat] = useState(true);
@@ -471,6 +510,20 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     document.addEventListener('mousedown', handleOutsideContactMenu);
     return () => document.removeEventListener('mousedown', handleOutsideContactMenu);
   }, [activeContactMenuId]);
+
+  useEffect(() => {
+    if (!activeOrderMessageMenuId) return;
+
+    const handleOutsideOrderMessageMenu = (event: MouseEvent) => {
+      if (orderMessageMenuRef.current && !orderMessageMenuRef.current.contains(event.target as Node)) {
+        setActiveOrderMessageMenuId(null);
+        setOrderMessageMenuPosition(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideOrderMessageMenu);
+    return () => document.removeEventListener('mousedown', handleOutsideOrderMessageMenu);
+  }, [activeOrderMessageMenuId]);
 
   useEffect(() => {
     return () => {
@@ -2166,6 +2219,31 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     });
     setActiveContactMenuId(activeContactMenuId === customer.id ? null : customer.id);
   };
+  const handleCustomerNameClick = async (customer: Customer, trigger: HTMLElement) => {
+    await copyCustomerOrderMessage(customer);
+    const rect = trigger.getBoundingClientRect();
+    setOrderMessageMenuPosition({
+      top: Math.min(rect.bottom + 6, window.innerHeight - 12),
+      left: Math.min(rect.left, window.innerWidth - 206),
+    });
+    setActiveOrderMessageMenuId(activeOrderMessageMenuId === customer.id ? null : customer.id);
+  };
+  const handleOrderMessageShare = (customer: Customer, channel: 'whatsapp' | 'telegram' | 'sms') => {
+    const message = buildCustomerOrderMessage(customer);
+    const contact = formatContactDisplay(customer.phone || '');
+    setActiveOrderMessageMenuId(null);
+    setOrderMessageMenuPosition(null);
+
+    if (channel === 'whatsapp') {
+      openExternalContactUrl(createWhatsAppMessageUrl(contact.normalized || contact.raw || customer.phone || '', message));
+      return;
+    }
+    if (channel === 'sms' && contact.type === 'phone') {
+      openExternalContactUrl(createSmsMessageUrl(contact.normalized, message));
+      return;
+    }
+    openExternalContactUrl(createTelegramShareUrl(message));
+  };
   const miniLabel = (label: string, value: React.ReactNode, className = '', valueClass = 'text-gray-300') => (
     <div className={`min-w-0 ${className}`}>
       <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">{label}</span>
@@ -2220,6 +2298,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 <button type="button" onClick={() => openExternalContactUrl(createTelUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Phone className="w-3 h-3" /> Call</button>
                 <button type="button" onClick={() => openExternalContactUrl(createSmsUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
                 <button type="button" onClick={() => openExternalContactUrl(createWhatsAppUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                <button type="button" onClick={() => openExternalContactUrl(createTelegramPhoneUrl(contact.normalized))} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
               </>
             ) : (
               <>
@@ -2805,14 +2884,20 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     <tr 
                       key={c.id} 
                       className={`transition-colors ${
+                        isSelected
+                          ? 'selected-row'
+                          : ''
+                      } ${
                         isCompleted 
                           ? 'completed-order-row' 
                           : c.incompletionReason 
                             ? 'incomplete-order-row' 
-                            : isSelected
-                              ? 'selected-row'
-                              : 'hover:bg-[#1a1a1a]'
+                            : 'hover:bg-[#1a1a1a]'
                       }`}
+                      onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
+                      onTouchMove={clearRowLongPressTimer}
+                      onTouchEnd={clearRowLongPressTimer}
+                      onTouchCancel={clearRowLongPressTimer}
                     >
                       {/* Grid Row Index */}
                       <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
@@ -2840,8 +2925,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           <div className="flex items-baseline gap-1.5 min-w-0">
                             <span 
                               className="truncate text-[14px] font-bold leading-tight text-white hover:text-[#ee317b] hover:underline cursor-pointer transition-colors" 
-                              title="Click to copy order message details"
-                              onClick={() => copyCustomerOrderMessage(c)}
+                              title="Click to copy and share order message details"
+                              onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
                             >
                               {c.clientName}
                             </span>
@@ -2853,6 +2938,24 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               <span className="shrink-0 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500" title={c.clientType || 'Client'}>
                                 {c.clientType || 'Client'}
                               </span>
+                            )}
+                            {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
+                              <div
+                                ref={orderMessageMenuRef}
+                                className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
+                                style={{
+                                  top: Math.max(8, orderMessageMenuPosition.top),
+                                  left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
+                                }}
+                              >
+                                <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
+                                <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                                <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
+                                {formatContactDisplay(c.phone || '').type === 'phone' && (
+                                  <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
+                                )}
+                              </div>,
+                              document.body
                             )}
                           </div>
                           <ContactInfoControl customer={c} />
@@ -3005,7 +3108,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </DataTableWrapper>
 
       {/* RESPONSIVE CARDS VIEW */}
-      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0`}>
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0`}>
         {filteredCustomers.map((c) => {
             const fullVal = c.quantity * c.unitPrice;
             const remainingVal = fullVal - c.advancePayment;
@@ -3024,6 +3127,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         ? 'bg-sky-950/20 border-sky-600/60 shadow-[inset_0_1px_0_0_rgba(56,189,248,0.15)] text-sky-300'
                         : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]'
                 }`}
+                onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
+                onTouchMove={clearRowLongPressTimer}
+                onTouchEnd={clearRowLongPressTimer}
+                onTouchCancel={clearRowLongPressTimer}
               >
                 <div className="space-y-2.5">
                   
@@ -3061,7 +3168,31 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             AGENT: {c.orderTakenBy.toUpperCase()}
                           </span>
                         </div>
-                        <h3 className="font-sans font-bold text-white mt-2.5 text-base">{c.clientName}</h3>
+                        <h3
+                          className="font-sans font-bold text-white mt-2.5 text-base cursor-pointer hover:text-[#ee317b] transition-colors"
+                          title="Click to copy and share order message details"
+                          onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
+                        >
+                          {c.clientName}
+                        </h3>
+                        {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
+                          <div
+                            ref={orderMessageMenuRef}
+                            className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
+                            style={{
+                              top: Math.max(8, orderMessageMenuPosition.top),
+                              left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
+                            }}
+                          >
+                            <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
+                            <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                            <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
+                            {formatContactDisplay(c.phone || '').type === 'phone' && (
+                              <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
+                            )}
+                          </div>,
+                          document.body
+                        )}
                       </div>
                     </div>
                     
@@ -3827,8 +3958,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount1) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
-                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 bg-[#2E181D]/60 text-red-100 focus:border-red-400';
+                              if (newRemaining < 50) return 'border-2 border-yellow-500 bg-[#2D210F]/60 text-yellow-100 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_0_16px_rgba(250,204,21,0.28)] focus:border-yellow-400 focus:shadow-[0_0_0_1px_rgba(250,204,21,0.45),0_0_20px_rgba(250,204,21,0.36)]';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/4 or 0.5"
@@ -3889,8 +4020,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount2) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
-                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 bg-[#2E181D]/60 text-red-100 focus:border-red-400';
+                              if (newRemaining < 50) return 'border-2 border-yellow-500 bg-[#2D210F]/60 text-yellow-100 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_0_16px_rgba(250,204,21,0.28)] focus:border-yellow-400 focus:shadow-[0_0_0_1px_rgba(250,204,21,0.45),0_0_20px_rgba(250,204,21,0.36)]';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/2"
@@ -3951,8 +4082,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount3) * quantity);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
-                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 bg-[#2E181D]/60 text-red-100 focus:border-red-400';
+                              if (newRemaining < 50) return 'border-2 border-yellow-500 bg-[#2D210F]/60 text-yellow-100 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_0_16px_rgba(250,204,21,0.28)] focus:border-yellow-400 focus:shadow-[0_0_0_1px_rgba(250,204,21,0.45),0_0_20px_rgba(250,204,21,0.36)]';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 1/4"
@@ -4020,8 +4151,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount16) / 16);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
-                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 bg-[#2E181D]/60 text-red-100 focus:border-red-400';
+                              if (newRemaining < 50) return 'border-2 border-yellow-500 bg-[#2D210F]/60 text-yellow-100 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_0_16px_rgba(250,204,21,0.28)] focus:border-yellow-400 focus:shadow-[0_0_0_1px_rgba(250,204,21,0.45),0_0_20px_rgba(250,204,21,0.36)]';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 160 or 16 * 10"
@@ -4084,8 +4215,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               if (!stock) return 'border-[#262626] focus:border-[#3a3a3a]';
                               const consumed = Math.ceil(parseFractionOrExpression(amount9) / 9);
                               const newRemaining = stock.initialStock - computeTotalConsumed(stock.id) - consumed;
-                              if (newRemaining <= 0) return 'border-2 border-red-500 focus:border-red-400';
-                              if (newRemaining <= 50) return 'border-2 border-yellow-500 focus:border-yellow-400';
+                              if (newRemaining <= 0) return 'border-2 border-red-500 bg-[#2E181D]/60 text-red-100 focus:border-red-400';
+                              if (newRemaining < 50) return 'border-2 border-yellow-500 bg-[#2D210F]/60 text-yellow-100 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_0_16px_rgba(250,204,21,0.28)] focus:border-yellow-400 focus:shadow-[0_0_0_1px_rgba(250,204,21,0.45),0_0_20px_rgba(250,204,21,0.36)]';
                               return 'border-[#262626] focus:border-[#3a3a3a]';
                             })()}`}
                             placeholder="e.g. 90 or 9 * 10"
@@ -4652,12 +4783,19 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                     <div className="flex-1">
                                       <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Qty</label>
                                       <input
-                                        type="number"
+                                        type="text"
                                         placeholder="0"
                                         value={item.quantity}
                                         onChange={(e) => {
-                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          const val = cleanLeadingZeros(e.target.value);
                                           setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const val = parseFractionOrExpression(item.quantity).toString();
+                                            setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, quantity: val } : p));
+                                          }
                                         }}
                                         className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b]"
                                       />
@@ -4665,12 +4803,19 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                     <div className="flex-1">
                                       <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Unit Price</label>
                                       <input
-                                        type="number"
+                                        type="text"
                                         placeholder="0.00"
                                         value={item.unitPrice}
                                         onChange={(e) => {
-                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          const val = cleanLeadingZeros(e.target.value);
                                           setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const val = parseFractionOrExpression(item.unitPrice).toString();
+                                            setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, unitPrice: val } : p));
+                                          }
                                         }}
                                         className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b]"
                                       />
@@ -4678,12 +4823,19 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                     <div className="flex-1">
                                       <label className="block text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">Advance</label>
                                       <input
-                                        type="number"
+                                        type="text"
                                         placeholder="0.00"
                                         value={item.advancePayment}
                                         onChange={(e) => {
-                                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                                          const val = cleanLeadingZeros(e.target.value);
                                           setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const val = parseFractionOrExpression(item.advancePayment).toString();
+                                            setStandaloneProformaItems(prev => prev.map(p => p.id === item.id ? { ...p, advancePayment: val } : p));
+                                          }
                                         }}
                                         className="w-full bg-[#1a1a1a] text-white border border-[#2d2226] px-1.5 py-1 text-[10px] rounded-sm outline-none focus:border-[#ee317b] text-[#71b536]"
                                       />
@@ -4758,10 +4910,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
                     {/* Live Totals Section */}
                     {(() => {
-                      const totalSub = standaloneProformaItems.reduce((acc, curr) => acc + (Number(curr.quantity || 0) * Number(curr.unitPrice || 0)), 0);
+                      const totalSub = standaloneProformaItems.reduce((acc, curr) => acc + (parseFractionOrExpression(curr.quantity || 0) * parseFractionOrExpression(curr.unitPrice || 0)), 0);
                       const vatAmt = proformaIncludeVat ? totalSub * 0.15 : 0;
                       const grandTotal = totalSub + vatAmt;
-                      const totalAdv = standaloneProformaItems.reduce((acc, curr) => acc + Number(curr.advancePayment || 0), 0);
+                      const totalAdv = standaloneProformaItems.reduce((acc, curr) => acc + parseFractionOrExpression(curr.advancePayment || 0), 0);
                       const bal = grandTotal - totalAdv;
                       return (
                         <div className="bg-[#181818] border border-[#2d2024] p-4 rounded-md shadow-sm space-y-2 text-[11px] shrink-0">
@@ -5182,8 +5334,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-800 text-center">
                       {pageItems.map((item, idx) => {
-                        const q = Number(item.quantity) || 0;
-                        const p = Number(item.unitPrice) || 0;
+                        const q = parseFractionOrExpression(item.quantity) || 0;
+                        const p = parseFractionOrExpression(item.unitPrice) || 0;
                         const rowTotal = q * p;
                         return (
                           <tr key={item.id} className="hover:bg-gray-55/50">
@@ -5215,14 +5367,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       <div className="flex justify-between text-gray-600">
                         <span>Itemized Sub-Total:</span>
                         <span className="font-bold text-gray-900">
-                          {proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0).toFixed(2)} {proformaCurrency}
+                          {proformaItemsToRender.reduce((acc, c) => acc + ((parseFractionOrExpression(c.quantity) || 0) * (parseFractionOrExpression(c.unitPrice) || 0)), 0).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                       {proformaIncludeVat && (
                         <div className="flex justify-between text-gray-600">
                           <span>VAT (15.00%):</span>
                           <span className="font-bold text-gray-900">
-                            {(proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 0.15).toFixed(2)} {proformaCurrency}
+                            {(proformaItemsToRender.reduce((acc, c) => acc + ((parseFractionOrExpression(c.quantity) || 0) * (parseFractionOrExpression(c.unitPrice) || 0)), 0) * 0.15).toFixed(2)} {proformaCurrency}
                           </span>
                         </div>
                       )}
@@ -5230,7 +5382,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <span>Grand Total:</span>
                         <span>
                           {(
-                            proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * 
+                            proformaItemsToRender.reduce((acc, c) => acc + ((parseFractionOrExpression(c.quantity) || 0) * (parseFractionOrExpression(c.unitPrice) || 0)), 0) * 
                             (proformaIncludeVat ? 1.15 : 1)
                           ).toFixed(2)} {proformaCurrency}
                         </span>
@@ -5238,15 +5390,15 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       <div className="flex justify-between pt-1 text-gray-600 text-[10px] border-b pb-1.5 border-dashed">
                         <span className="text-green-700 font-bold">Total Recorded Paid (Adv):</span>
                         <span className="font-bold text-green-700">
-                          -{proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0).toFixed(2)} {proformaCurrency}
+                          -{proformaItemsToRender.reduce((acc, c) => acc + (parseFractionOrExpression(c.advancePayment) || 0), 0).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>
                       <div className="flex justify-between pt-1.5 text-[11.5px] font-black text-red-700">
                         <span>Outstanding Balance Due:</span>
                         <span>
                           {Math.max(0, 
-                            (proformaItemsToRender.reduce((acc, c) => acc + ((Number(c.quantity) || 0) * (Number(c.unitPrice) || 0)), 0) * (proformaIncludeVat ? 1.15 : 1)) - 
-                            proformaItemsToRender.reduce((acc, c) => acc + (Number(c.advancePayment) || 0), 0)
+                            (proformaItemsToRender.reduce((acc, c) => acc + ((parseFractionOrExpression(c.quantity) || 0) * (parseFractionOrExpression(c.unitPrice) || 0)), 0) * (proformaIncludeVat ? 1.15 : 1)) - 
+                            proformaItemsToRender.reduce((acc, c) => acc + (parseFractionOrExpression(c.advancePayment) || 0), 0)
                           ).toFixed(2)} {proformaCurrency}
                         </span>
                       </div>

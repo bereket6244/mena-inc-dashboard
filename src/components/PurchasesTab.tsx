@@ -183,7 +183,8 @@ export default function PurchasesTab({
   const [itemOrServiceInput, setItemOrServiceInput] = useState('');
   const [qtyInput, setQtyInput] = useState('');
   const quantity = Math.max(0, parseFractionOrExpression(qtyInput));
-  const [unitPrice, setUnitPrice] = useState(0);
+  const [unitPriceInput, setUnitPriceInput] = useState('');
+  const unitPrice = Math.max(0, parseFractionOrExpression(unitPriceInput));
   const [purchaseCurrency, setPurchaseCurrency] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [paymentMethodId, setPaymentMethodId] = useState('');
@@ -245,6 +246,7 @@ export default function PurchasesTab({
 
   // Selection for bulk actions
   const [selectedPurchaseIds, setSelectedPurchaseIds] = useState<string[]>([]);
+  const rowLongPressTimerRef = useRef<number | null>(null);
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<ExpenseCategory | null>(null);
@@ -252,6 +254,33 @@ export default function PurchasesTab({
 
   const isAdmin = currentUser?.role === 'admin';
   const showWarning = (message: string) => setWarningMessage(message);
+
+  const clearRowLongPressTimer = () => {
+    if (rowLongPressTimerRef.current !== null) {
+      window.clearTimeout(rowLongPressTimerRef.current);
+      rowLongPressTimerRef.current = null;
+    }
+  };
+
+  const togglePurchaseSelection = (purchaseId: string) => {
+    setSelectedPurchaseIds(prev => (
+      prev.includes(purchaseId)
+        ? prev.filter(id => id !== purchaseId)
+        : [...prev, purchaseId]
+    ));
+  };
+
+  const startPurchaseRowLongPress = (purchaseId: string, event: React.TouchEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    clearRowLongPressTimer();
+    rowLongPressTimerRef.current = window.setTimeout(() => {
+      togglePurchaseSelection(purchaseId);
+      rowLongPressTimerRef.current = null;
+    }, 520);
+  };
+
+  useEffect(() => clearRowLongPressTimer, []);
 
   // Listen for clicks outside suggestions box to close it
   useEffect(() => {
@@ -346,7 +375,7 @@ export default function PurchasesTab({
     setExpenseCategory('');
     setItemOrServiceInput('');
     setQtyInput('');
-    setUnitPrice(0);
+    setUnitPriceInput('');
     setPurchaseCurrency('');
     setHasVat(false);
     setHasWithholding(false);
@@ -365,7 +394,7 @@ export default function PurchasesTab({
     setExpenseCategory(p.expenseCategory);
     setItemOrServiceInput(p.itemOrService);
     setQtyInput(p.quantity.toString());
-    setUnitPrice(p.unitPrice);
+    setUnitPriceInput(p.unitPrice.toString());
     setPurchaseCurrency(p.currency || '');
     
     // Support pre-populating historical custom tax items
@@ -519,8 +548,7 @@ export default function PurchasesTab({
     // Reset item level form inputs for next catalog item
     setItemOrServiceInput('');
     setQtyInput('');
-    setUnitPrice(0);
-    setPurchaseCurrency('');
+    setUnitPriceInput('');
     setHasVat(false);
     setHasWithholding(false);
     setNotesOrDescription('');
@@ -1642,16 +1670,18 @@ export default function PurchasesTab({
 
           {/* Bulk Action Ribbon */}
           {selectedPurchaseIds.length > 0 && (
-            <div className="bg-[#112918] border border-[#71b536]/30 p-3 rounded-md flex items-center justify-between text-xs font-sans animate-fadeIn">
-              <span className="text-[#a7f3d0] font-bold">
-                ✓ {selectedPurchaseIds.length} purchase logs selected
+            <div className="bg-[#121212] border border-[#ee317b]/35 p-3 rounded-md flex items-center justify-between text-xs font-sans animate-fadeIn shadow-[0_0_18px_rgba(238,49,123,0.08)]">
+              <span className="text-white font-bold inline-flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#ee317b]" />
+                {selectedPurchaseIds.length} purchase logs selected
               </span>
               <button
                 type="button"
                 onClick={() => setShowBulkDeleteConfirm(true)}
-                className="px-3 py-1 bg-[#421A1D] hover:bg-[#5a1c21] border border-rose-950 text-rose-400 font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-400 hover:text-[#F87171] hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
               >
-                🗑️ Delete Selected Purchases
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
               </button>
             </div>
           )}
@@ -2184,7 +2214,7 @@ export default function PurchasesTab({
                             setSelectedPurchaseIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
                           }
                         }}
-                        className="accent-[#71b536] cursor-pointer"
+                        className="accent-[#ee317b] cursor-pointer"
                         title="Select all page purchases"
                       />
                     </th>
@@ -2218,6 +2248,10 @@ export default function PurchasesTab({
                           className={`transition-colors ${
                             isSelected ? 'selected-row' : 'hover:bg-[#181818]'
                           }`}
+                          onTouchStart={(e) => startPurchaseRowLongPress(p.id, e)}
+                          onTouchMove={clearRowLongPressTimer}
+                          onTouchEnd={clearRowLongPressTimer}
+                          onTouchCancel={clearRowLongPressTimer}
                         >
                           <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
                           {/* Checkbox selector */}
@@ -2232,7 +2266,7 @@ export default function PurchasesTab({
                                   setSelectedPurchaseIds(prev => prev.filter(id => id !== p.id));
                                 }
                               }}
-                              className="accent-[#71b536] cursor-pointer"
+                              className="accent-[#ee317b] cursor-pointer"
                             />
                           </td>
 
@@ -2329,18 +2363,52 @@ export default function PurchasesTab({
         </div>
       </div>
 
+      <AnimatePresence>
+        {selectedPurchaseIds.length > 0 && (
+          <motion.div
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+            className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-bold font-sans inline-flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#ee317b]" />
+                {selectedPurchaseIds.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedPurchaseIds([])}
+                className="text-[10px] uppercase tracking-wider text-gray-400 hover:text-white font-bold"
+              >
+                Clear
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="w-full h-9 rounded-md bg-[#ee317b] text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Confirmation Modal for Single Delete */}
       <AnimatePresence>
         {deletingPurchaseId && (() => {
           const target = purchases.find(p => p.id === deletingPurchaseId);
           if (!target) return null;
           return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4">
               <motion.div 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
+                initial={{ y: 36, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 36, opacity: 0 }}
+                className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
               >
                 <div className="space-y-2">
                   <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Discards Specific Expense</h3>
@@ -2373,12 +2441,12 @@ export default function PurchasesTab({
       {/* Non-blocking bulk delete confirmation modal for Purchases */}
       <AnimatePresence>
         {showBulkDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/85 backdrop-blur-sm ">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
+              initial={{ y: 36, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 36, opacity: 0 }}
+              className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
             >
               <div className="space-y-2">
                 <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Discards Highlighted Purchases</h3>
@@ -2416,12 +2484,12 @@ export default function PurchasesTab({
       {/* Confirmation modal for deleting a category item template */}
       <AnimatePresence>
         {deletingCategoryItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/85 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
+              initial={{ y: 36, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 36, opacity: 0 }}
+              className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
             >
               <div className="space-y-2">
                 <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Remove Category Item</h3>
@@ -2458,12 +2526,12 @@ export default function PurchasesTab({
         {deletingCategory && (() => {
           const isBound = purchases.some(p => p.expenseCategory === deletingCategory.name);
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/85 backdrop-blur-sm ">
               <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#121212] border border-[#ee317b]/40 max-w-md w-full p-6 text-left space-y-4"
+                initial={{ y: 36, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 36, opacity: 0 }}
+                className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
               >
                 <div className="space-y-2">
                   <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Remove Expense Category</h3>
@@ -2570,11 +2638,9 @@ export default function PurchasesTab({
                         onChange={(e) => {
                           const val = e.target.value;
                           setPaymentMethodId(val);
-                          if (val) {
-                            const bank = bankAccounts.find(b => b.id === val);
-                            if (bank) {
-                              setPurchaseCurrency(bank.currency || '');
-                            }
+                          const bank = bankAccounts.find(b => b.id === val);
+                          if (bank) {
+                            setPurchaseCurrency(bank.currency || 'ETB');
                           }
                         }}
                         className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-md outline-none font-sans transition-colors purchase-ledger-bank-select cursor-pointer"
@@ -2583,7 +2649,6 @@ export default function PurchasesTab({
                       >
                         <option value="">Select bank/cash...</option>
                         {bankAccounts
-                          .filter(b => !purchaseCurrency || (b.currency || 'ETB') === purchaseCurrency)
                           .map((b) => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
@@ -2720,20 +2785,23 @@ export default function PurchasesTab({
                       <div className="flex -space-x-px">
                         <input
                           id="unit-price-input"
-                          type="number"
-                          min="0"
-                          step="any"
+                          type="text"
                           required
-                          value={unitPrice || ''}
-                          onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                          value={unitPriceInput}
+                          onChange={(e) => setUnitPriceInput(cleanLeadingZeros(e.target.value))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              setUnitPriceInput(parseFractionOrExpression(unitPriceInput).toString());
+                            }
+                          }}
                           className="w-full h-10 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] rounded-l-md rounded-r-none outline-none font-sans transition-colors flex-1 min-w-0"
-                          placeholder="0.00"
+                          placeholder="0.00 or 250 * 4"
                         />
                         <select
                           value={purchaseCurrency}
-                          disabled={!!paymentMethodId}
                           onChange={(e) => setPurchaseCurrency(e.target.value)}
-                          className="bg-[#121212] border border-[#262626] text-white px-3 h-10 text-xs rounded-r-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] font-bold font-sans disabled:opacity-60 disabled:cursor-not-allowed border-l-0 cursor-pointer"
+                          className="bg-[#121212] border border-[#262626] text-white px-3 h-10 text-xs rounded-r-md outline-none focus:border-[#ee317b] focus:ring-1 focus:ring-[#ee317b] font-bold font-sans border-l-0 cursor-pointer"
                         >
                           <option value="">Select...</option>
                           {availableCurrencies.map(curr => (

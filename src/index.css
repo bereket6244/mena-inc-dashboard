@@ -2571,6 +2571,17 @@ textarea:disabled {
 }
 
 @media (max-width: 768px) {
+  .shared-gallery-scroll,
+  .customer-gallery-scroll {
+    height: calc(100dvh - var(--mobile-bottom-nav-height) - 7.5rem) !important;
+    max-height: calc(100dvh - var(--mobile-bottom-nav-height) - 7.5rem) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-bottom: 1rem !important;
+  }
+
   /* Standardize section-to-section spacing to 10px on mobile */
   #performance-tab-pnl {
     gap: 10px !important;
@@ -2687,6 +2698,114 @@ tr.selected-row.out-of-stock-row td,
 .light-theme .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #e3ecfc !important;
+}
+
+tr.selected-row td,
+tr.selected-row th {
+  position: relative;
+}
+
+tr.selected-row td::before,
+tr.selected-row th::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-color: rgba(96, 145, 255, 0.46);
+  mix-blend-mode: multiply;
+}
+
+:root:not(.light-theme) tr.selected-row td::before,
+:root:not(.light-theme) tr.selected-row th::before {
+  background-color: rgba(166, 196, 255, 0.55);
+  mix-blend-mode: multiply;
+}
+
+tr.selected-row td > *,
+tr.selected-row th > * {
+  position: relative;
+  z-index: 1;
+}
+
+.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td {
+  background-color: #1b2b17 !important;
+}
+
+.alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(odd) td {
+  background-color: #34191a !important;
+}
+
+.alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(odd) td {
+  background-color: #2f2512 !important;
+}
+
+.alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(odd) td {
+  background-color: #311516 !important;
+}
+
+.light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td {
+  background-color: var(--brand-green-soft) !important;
+}
+
+.light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(odd) td {
+  background-color: var(--danger-soft) !important;
+}
+
+.light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(odd) td {
+  background-color: var(--warning-soft) !important;
+}
+
+.light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(odd) td {
+  background-color: var(--danger-soft) !important;
+}
+
+@media (max-width: 768px) {
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden {
+    color: var(--dark-text-body) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .bg-white,
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .bg-\[\#FAF8F2\],
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .bg-\[\#f5f4ee\] {
+    background-color: var(--dark-card) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .border-\[\#E7E3D4\],
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .border-\[\#dfdccf\],
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .border-stone-100 {
+    border-color: var(--dark-border-soft) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .text-black,
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .text-stone-700,
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .text-stone-600 {
+    color: var(--dark-text-strong) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .text-stone-500,
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .text-stone-400 {
+    color: var(--dark-text-muted) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden .hover\:text-black:hover {
+    color: var(--dark-text-strong) !important;
+  }
+
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden input,
+  :root:not(.light-theme) #performance-tab-pnl > .block.md\:hidden select {
+    background-color: var(--dark-control) !important;
+    color: var(--dark-text-strong) !important;
+    border-color: var(--dark-border-medium) !important;
+  }
 }
 
 /* ======================================================== */

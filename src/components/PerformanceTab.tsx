@@ -62,6 +62,65 @@ export default function PerformanceTab({
     return val.toLocaleString(undefined, { maximumFractionDigits: 0 });
   };
 
+  const copyTextToClipboard = async (value: string) => {
+    try {
+      await navigator.clipboard?.writeText(value);
+    } catch (_) {
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  };
+
+  const CopyableAmount = ({
+    value,
+    className = '',
+    currency,
+    displayValue,
+    copyValue,
+    copyId,
+    minimumFractionDigits = 1,
+    maximumFractionDigits = 2,
+  }: {
+    value: number;
+    className?: string;
+    currency?: string;
+    displayValue?: string;
+    copyValue?: string;
+    copyId?: string;
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  }) => {
+    const formatted = value.toLocaleString(undefined, { minimumFractionDigits, maximumFractionDigits });
+    const visibleValue = displayValue || formatted;
+    const resolvedCopyId = copyId || `${visibleValue}-${currency || 'amount'}`;
+    return (
+      <span className="inline-flex items-center gap-1 align-baseline">
+        <button
+          type="button"
+          onClick={() => {
+            copyTextToClipboard(copyValue || visibleValue);
+            showCopiedAmountIndicator(resolvedCopyId);
+          }}
+          className={`text-left rounded-sm focus:outline-none ${className}`}
+          title="Copy number"
+        >
+          {visibleValue}{currency ? <span className="text-[10px] font-semibold"> {currency}</span> : null}
+        </button>
+        {copiedAmountId === resolvedCopyId && (
+          <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+            Copied
+          </span>
+        )}
+      </span>
+    );
+  };
+
   // New Bank dynamic form states
   const [bankName, setBankName] = useState('');
   const [bankNumber, setBankNumber] = useState('');
@@ -90,6 +149,19 @@ export default function PerformanceTab({
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const [activeMenuBankId, setActiveMenuBankId] = useState<string | null>(null);
+  const [copiedAmountId, setCopiedAmountId] = useState<string | null>(null);
+  const copiedAmountTimerRef = useRef<number | null>(null);
+
+  function showCopiedAmountIndicator(copyId: string) {
+    setCopiedAmountId(copyId);
+    if (copiedAmountTimerRef.current) {
+      window.clearTimeout(copiedAmountTimerRef.current);
+    }
+    copiedAmountTimerRef.current = window.setTimeout(() => {
+      setCopiedAmountId(null);
+      copiedAmountTimerRef.current = null;
+    }, 1200);
+  }
 
   // Filter States (previously missing)
   const [summarySearch, setSummarySearch] = useState('');
@@ -103,7 +175,24 @@ export default function PerformanceTab({
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearchExpanded) {
+      searchInputRef.current?.focus();
+      mobileSearchInputRef.current?.focus();
+    }
+  }, [isSearchExpanded]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedAmountTimerRef.current) {
+        window.clearTimeout(copiedAmountTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -469,8 +558,8 @@ export default function PerformanceTab({
                     <button
                       type="button"
                       onClick={() => setIsSearchExpanded(true)}
-                      className="flex items-center justify-center p-1.5 rounded text-stone-600 hover:bg-[#dfdccf]/35 hover:text-black transition-colors cursor-pointer"
-                      title="Search"
+                      className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                      title="Search database"
                     >
                       <Search className="w-3.5 h-3.5" />
                     </button>
@@ -592,24 +681,28 @@ export default function PerformanceTab({
                   </motion.div>
                 ) : (
                   <motion.div
-                    key="search-active"
+                    key="search-input-wrapper"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 130, opacity: 1 }}
+                    animate={{ width: 280, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
-                    transition={{ type: "spring", damping: 20, stiffness: 200 }}
-                    className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] px-2 py-1 h-8"
+                    transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                    className="relative flex items-center bg-transparent overflow-hidden"
                   >
-                    <Search className="h-3.5 w-3.5 text-stone-400 mr-1 flex-shrink-0" />
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                      <Search className="h-3.5 w-3.5" />
+                    </div>
                     <input
+                      ref={mobileSearchInputRef}
                       type="text"
-                      placeholder="Search"
+                      placeholder="Type to search..."
                       value={summarySearch}
                       onChange={(e) => setSummarySearch(e.target.value)}
-                      onBlur={() => {
-                        if (!summarySearch) setIsSearchExpanded(false);
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setIsSearchExpanded(false);
+                        }
                       }}
-                      autoFocus
-                      className="bg-transparent text-xs text-black border-none outline-none focus:ring-0 w-full p-0 font-sans"
+                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
                     />
                     {summarySearch && (
                       <button
@@ -618,9 +711,10 @@ export default function PerformanceTab({
                           setSummarySearch('');
                           setIsSearchExpanded(false);
                         }}
-                        className="text-stone-400 hover:text-black ml-1 flex-shrink-0"
+                        className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                        title="Clear search"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
                     )}
                   </motion.div>
@@ -655,11 +749,12 @@ export default function PerformanceTab({
               const gross = grossByCurrency[curr] || 0;
               const spent = spentByCurrency[curr] || 0;
               const inflow = inflowByCurrency[curr] || 0;
+              const income = inflow;
               const cash = inflow - spent;
               const debt = debtByCurrency[curr] || 0;
               const isCollapsed = !!collapsedCurrencies[curr];
 
-              if (gross === 0 && spent === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+              if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
                 return null;
               }
 
@@ -690,7 +785,7 @@ export default function PerformanceTab({
                         </div>
                         <div className="mt-1">
                           <p className="text-[15px] font-sans font-bold leading-tight text-[#a28031] break-all">
-                            {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
+                            <CopyableAmount value={debt} currency={curr} className="text-[#a28031]" />
                           </p>
                         </div>
                       </div>
@@ -705,7 +800,7 @@ export default function PerformanceTab({
                         </div>
                         <div className="mt-1">
                           <p className="text-[15px] font-sans font-bold leading-tight text-[#71b536] break-all">
-                            {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
+                            <CopyableAmount value={gross} currency={curr} className="text-[#71b536]" />
                           </p>
                         </div>
                       </div>
@@ -720,12 +815,27 @@ export default function PerformanceTab({
                         </div>
                         <div className="mt-1">
                           <p className="text-[15px] font-sans font-bold leading-tight text-[#ee317b] break-all">
-                            {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
+                            <CopyableAmount value={spent} currency={curr} className="text-[#ee317b]" />
                           </p>
                         </div>
                       </div>
 
-                      {/* KPI Card 4: Net Cash */}
+                      {/* KPI Card 4: Income */}
+                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Income</span>
+                          <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
+                            <DollarSign className="w-3 h-3 text-[#71b536]" />
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className="text-[15px] font-sans font-bold leading-tight text-[#71b536] break-all">
+                            <CopyableAmount value={income} currency={curr} className="text-[#71b536]" />
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* KPI Card 5: Net Cash */}
                       <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
@@ -735,7 +845,7 @@ export default function PerformanceTab({
                         </div>
                         <div className="mt-1">
                           <p className={`text-[15px] font-sans font-bold leading-tight break-all ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`}>
-                            {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-[10px] font-semibold">{curr}</span>
+                            <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'} />
                           </p>
                         </div>
                       </div>
@@ -924,23 +1034,23 @@ export default function PerformanceTab({
                             className="px-2 py-0.5 bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs text-right rounded-md outline-none w-20 font-bold"
                           />
                         ) : (
-                          <span className="text-black font-semibold">{formatMockupValue(b.initialBalance)} {b.currency || 'ETB'}</span>
+                          <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-black font-semibold" />
                         )}
                       </div>
 
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-stone-500 font-sans">Received</span>
-                        <span className="text-[#71b536] font-bold">+{formatMockupValue(advancesForBank + completedRemainingForBank)} {b.currency || 'ETB'}</span>
+                        <span className="text-[#71b536] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#71b536] font-bold" /></span>
                       </div>
 
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-stone-500 font-sans">Spent</span>
-                        <span className="text-[#ee317b] font-bold">-{formatMockupValue(purchasesOutOfBank)} {b.currency || 'ETB'}</span>
+                        <span className="text-[#ee317b] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#ee317b] font-bold" /></span>
                       </div>
 
                       <div className="flex justify-between items-center pt-2.5 border-t border-stone-100">
                         <span className="text-stone-600 font-sans text-xs font-semibold">Available Balance</span>
-                        <span className="text-black font-extrabold text-[15px] tracking-tight">{formatMockupValue(currentBalance)} {b.currency || 'ETB'}</span>
+                        <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-black font-extrabold text-[15px] tracking-tight" />
                       </div>
                     </div>
 
@@ -986,7 +1096,7 @@ export default function PerformanceTab({
                   <div key={emp.name} className="space-y-1 font-sans">
                     <div className="flex justify-between text-xs">
                       <span className="font-medium text-stone-700">{idx + 1}. {emp.name}</span>
-                      <span className="text-[#ee317b] font-bold">{emp.totalGross.toLocaleString()} ETB ({emp.completed} ord)</span>
+                      <span className="text-[#ee317b] font-bold"><CopyableAmount value={emp.totalGross} displayValue={emp.totalGross.toLocaleString()} copyValue={emp.totalGross.toLocaleString()} currency="ETB" className="text-[#ee317b] font-bold" /> ({emp.completed} ord)</span>
                     </div>
                     <div className="w-full bg-[#FAF8F2] border border-stone-100 rounded-full h-2 overflow-hidden">
                       <div 
@@ -1019,7 +1129,7 @@ export default function PerformanceTab({
                   <div key={lead.channel} className="space-y-1 font-sans">
                     <div className="flex justify-between text-xs">
                       <span className="font-medium text-stone-700">{lead.channel}</span>
-                      <span className="text-[#71b536] font-bold">{lead.totalRevenue.toLocaleString()} ETB ({lead.totalLeads} leads)</span>
+                      <span className="text-[#71b536] font-bold"><CopyableAmount value={lead.totalRevenue} displayValue={lead.totalRevenue.toLocaleString()} copyValue={lead.totalRevenue.toLocaleString()} currency="ETB" className="text-[#71b536] font-bold" /> ({lead.totalLeads} leads)</span>
                     </div>
                     <div className="w-full bg-[#FAF8F2] border border-stone-100 rounded-full h-2 overflow-hidden">
                       <div 
@@ -1107,6 +1217,7 @@ export default function PerformanceTab({
                     <Search className="h-3.5 w-3.5" />
                   </div>
                   <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="Type to search..."
                     value={summarySearch}
@@ -1300,12 +1411,13 @@ export default function PerformanceTab({
           const gross = grossByCurrency[curr] || 0;
           const spent = spentByCurrency[curr] || 0;
           const inflow = inflowByCurrency[curr] || 0;
+          const income = inflow;
           const cash = inflow - spent;
           const debt = debtByCurrency[curr] || 0;
           const isCollapsed = !!collapsedCurrencies[curr];
 
           // Skip if zero values across the board unless it is ETB or selected
-          if (gross === 0 && spent === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+          if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
             return null;
           }
 
@@ -1326,13 +1438,13 @@ export default function PerformanceTab({
               </div>
 
               {!isCollapsed && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                   {/* Total Outstanding Debt */}
                   <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Outstanding Debt</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#a28031]">
-                        {debt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                        <CopyableAmount value={debt} currency={curr} className="text-[#a28031]" />
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-md bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
@@ -1345,7 +1457,7 @@ export default function PerformanceTab({
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Gross Orders</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-white">
-                        {gross.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                        <CopyableAmount value={gross} currency={curr} className="text-white" />
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
@@ -1358,11 +1470,24 @@ export default function PerformanceTab({
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Spent (Expenses)</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
-                        {spent.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                        <CopyableAmount value={spent} currency={curr} className="text-[#ee317b]" />
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
                       <CreditCard className="w-5 h-5 text-[#ee317b]" />
+                    </div>
+                  </div>
+
+                  {/* Income */}
+                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Income</span>
+                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#71b536]">
+                        <CopyableAmount value={income} currency={curr} className="text-[#71b536]" />
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
+                      <DollarSign className="w-5 h-5 text-[#71b536]" />
                     </div>
                   </div>
 
@@ -1371,7 +1496,7 @@ export default function PerformanceTab({
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Net Cash Position</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
-                        {cash.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} {curr}
+                        <CopyableAmount value={cash} currency={curr} className="text-[#ee317b]" />
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
@@ -1627,23 +1752,23 @@ export default function PerformanceTab({
                           className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs text-right rounded-md outline-none w-24 font-sans font-bold"
                         />
                       ) : (
-                        <span className="text-white font-bold">{formatMockupValue(b.initialBalance)} {b.currency || 'ETB'}</span>
+                        <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-white font-bold" />
                       )}
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500 font-sans">Received</span>
-                      <span className="text-[#71b536] font-bold">+{formatMockupValue(advancesForBank + completedRemainingForBank)} {b.currency || 'ETB'}</span>
+                      <span className="text-[#71b536] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#71b536] font-bold" /></span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500 font-sans">Spent</span>
-                      <span className="text-[#ee317b] font-bold">-{formatMockupValue(purchasesOutOfBank)} {b.currency || 'ETB'}</span>
+                      <span className="text-[#ee317b] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#ee317b] font-bold" /></span>
                     </div>
 
                     <div className="flex justify-between items-center pt-3 border-t border-[#262626]">
                       <span className="text-gray-500 font-sans text-xs">Available Balance</span>
-                      <span className="text-white font-bold text-base tracking-tight">{formatMockupValue(currentBalance)} {b.currency || 'ETB'}</span>
+                      <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-white font-bold text-base tracking-tight" />
                     </div>
                   </div>
 
@@ -1716,7 +1841,7 @@ export default function PerformanceTab({
                       {emp.name}
                     </td>
                     <td className="py-2 px-3 border-r border-[#262626] text-center font-sans text-gray-400">{emp.completed}</td>
-                    <td className="py-2 px-3 text-right font-sans font-medium text-white">{emp.totalGross.toLocaleString()} ETB</td>
+                    <td className="py-2 px-3 text-right font-sans font-medium text-white"><CopyableAmount value={emp.totalGross} displayValue={emp.totalGross.toLocaleString()} copyValue={emp.totalGross.toLocaleString()} currency="ETB" className="text-white font-medium" /></td>
                   </tr>
                 ))}
                 {employeeLeaderboard.length === 0 && (
@@ -1742,7 +1867,7 @@ export default function PerformanceTab({
                   <div key={emp.name} className="space-y-1 font-sans">
                     <div className="flex justify-between text-xs">
                       <span className="font-medium text-gray-300">{emp.name}</span>
-                      <span className="text-[#ee317b] font-semibold">{emp.totalGross.toLocaleString()} ETB</span>
+                      <CopyableAmount value={emp.totalGross} displayValue={emp.totalGross.toLocaleString()} copyValue={emp.totalGross.toLocaleString()} currency="ETB" className="text-[#ee317b] font-semibold" />
                     </div>
                     <div className="w-full bg-[#262626] rounded-md h-2.5 overflow-hidden">
                       <div 
@@ -1791,7 +1916,7 @@ export default function PerformanceTab({
                       {lead.channel}
                     </td>
                     <td className="py-2 px-3 border-r border-[#262626] text-center font-sans text-gray-400">{lead.totalLeads}</td>
-                    <td className="py-2 px-3 text-right font-sans font-medium text-white">{lead.totalRevenue.toLocaleString()} ETB</td>
+                    <td className="py-2 px-3 text-right font-sans font-medium text-white"><CopyableAmount value={lead.totalRevenue} displayValue={lead.totalRevenue.toLocaleString()} copyValue={lead.totalRevenue.toLocaleString()} currency="ETB" className="text-white font-medium" /></td>
                   </tr>
                 ))}
                 {marketingPerformance.length === 0 && (
@@ -1816,7 +1941,7 @@ export default function PerformanceTab({
                   <div key={lead.channel} className="space-y-1 font-sans">
                     <div className="flex justify-between text-xs">
                       <span className="font-medium text-gray-300">{lead.channel}</span>
-                      <span className="text-[#71b536] font-semibold">{lead.totalRevenue.toLocaleString()} ETB</span>
+                      <CopyableAmount value={lead.totalRevenue} displayValue={lead.totalRevenue.toLocaleString()} copyValue={lead.totalRevenue.toLocaleString()} currency="ETB" className="text-[#71b536] font-semibold" />
                     </div>
                     <div className="w-full bg-[#262626] rounded-md h-2.5 overflow-hidden">
                       <div 

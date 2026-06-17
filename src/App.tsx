@@ -62,6 +62,9 @@ const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
 const LOCAL_STORAGE_PRODUCT_TYPES_KEY = 'mena_inc_product_types_v3';
 const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
+const TAB_SCROLL_STORAGE_KEY = 'mena_inc_tab_scroll_positions_v1';
+const TAB_SCROLL_TTL_MS = 5 * 60 * 1000;
+type AppTab = 'customers' | 'inventory' | 'performance' | 'purchases';
 
 export default function App() {
   // Theme state
@@ -103,10 +106,88 @@ export default function App() {
     localStorage.setItem('mena_inc_theme_v3', theme);
   }, [theme]);
 
-
-
   // 1. "i want the customer management to be first" -> tab defaults to 'customers'
-  const [activeTab, setActiveTab] = useState<'customers' | 'inventory' | 'performance' | 'purchases'>('customers');
+  const [activeTab, setActiveTab] = useState<AppTab>('customers');
+  const activeTabRef = useRef<AppTab>('customers');
+
+  const getTabScrollElement = (tab: AppTab): HTMLElement | null => {
+    const selectors: Record<AppTab, string[]> = {
+      customers: [
+        '#customers-tab-pnl .customer-gallery-scroll:not(.hidden)',
+        '#customers-tab-pnl .data-table-scroll',
+        '#customers-tab-pnl',
+      ],
+      inventory: [
+        '#inventory-tab-pnl .shared-gallery-scroll:not(.hidden)',
+        '#inventory-tab-pnl .data-table-scroll',
+        '#inventory-tab-pnl',
+      ],
+      purchases: [
+        '#purchases-tab-pnl .data-table-scroll',
+        '#purchases-tab-pnl',
+      ],
+      performance: [
+        '#performance-tab-pnl',
+      ],
+    };
+
+    for (const selector of selectors[tab]) {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (element) return element;
+    }
+    return null;
+  };
+
+  const readSavedTabScroll = () => {
+    try {
+      return JSON.parse(localStorage.getItem(TAB_SCROLL_STORAGE_KEY) || '{}') as Record<AppTab, { top: number; left: number; savedAt: number }>;
+    } catch (_) {
+      return {} as Record<AppTab, { top: number; left: number; savedAt: number }>;
+    }
+  };
+
+  const saveTabScroll = (tab: AppTab) => {
+    const element = getTabScrollElement(tab);
+    if (!element) return;
+    const saved = readSavedTabScroll();
+    saved[tab] = {
+      top: element.scrollTop,
+      left: element.scrollLeft,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(TAB_SCROLL_STORAGE_KEY, JSON.stringify(saved));
+  };
+
+  const changeTab = (tab: AppTab) => {
+    if (tab === activeTabRef.current) return;
+    saveTabScroll(activeTabRef.current);
+    setActiveTab(tab);
+  };
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    const saved = readSavedTabScroll()[activeTab];
+    if (!saved || Date.now() - saved.savedAt > TAB_SCROLL_TTL_MS) return;
+
+    const restore = () => {
+      const element = getTabScrollElement(activeTab);
+      if (!element) return;
+      element.scrollTo({ top: saved.top, left: saved.left, behavior: 'auto' });
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      restore();
+      window.setTimeout(restore, 80);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handlePageHide = () => saveTabScroll(activeTabRef.current);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, []);
+
   const [showGlobalProforma, setShowGlobalProforma] = useState(false);
   const [paperStocks, setPaperStocks] = useState<PaperStock[]>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_STOCKS_KEY);
@@ -185,7 +266,7 @@ export default function App() {
   const [installGuideTab, setInstallGuideTab] = useState<'ios' | 'android'>('android');
   const [dbValidationError, setDbValidationError] = useState<string | null>(null);
 
-  const hasTabAccess = (tab: 'customers' | 'inventory' | 'performance' | 'purchases') => {
+  const hasTabAccess = (tab: AppTab) => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
     if (!currentUser.allowedTabs) return true; // legacy support
@@ -195,7 +276,7 @@ export default function App() {
   useEffect(() => {
     if (currentUser && !hasTabAccess(activeTab)) {
       const allowed = (['customers', 'inventory', 'purchases', 'performance'] as const).find(t => hasTabAccess(t));
-      if (allowed) setActiveTab(allowed);
+      if (allowed) changeTab(allowed);
     }
   }, [currentUser, activeTab]);
   useEffect(() => {
@@ -1758,7 +1839,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             {hasTabAccess('customers') && (
             <button
               id="tab-cust-trigger"
-              onClick={() => setActiveTab('customers')}
+              onClick={() => changeTab('customers')}
               className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'customers'
                   ? 'border-[#ee317b] text-white'
@@ -1777,7 +1858,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             {hasTabAccess('inventory') && (
             <button
               id="tab-inv-trigger"
-              onClick={() => setActiveTab('inventory')}
+              onClick={() => changeTab('inventory')}
               className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'inventory'
                   ? 'border-[#ee317b] text-white'
@@ -1796,7 +1877,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             {hasTabAccess('purchases') && (
             <button
               id="tab-purchases-trigger"
-              onClick={() => setActiveTab('purchases')}
+              onClick={() => changeTab('purchases')}
               className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'purchases'
                   ? 'border-[#ee317b] text-white'
@@ -1815,7 +1896,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             {hasTabAccess('performance') && (
             <button
               id="tab-perf-trigger"
-              onClick={() => setActiveTab('performance')}
+              onClick={() => changeTab('performance')}
               className={`py-1.5 px-2.5 border-b-2 font-medium font-sans text-xs flex items-center gap-1.5 cursor-pointer transition-colors rounded-none ${
                 activeTab === 'performance'
                   ? 'border-[#ee317b] text-white'
@@ -2523,7 +2604,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
         <div className="flex justify-around items-center h-12">
           {hasTabAccess('customers') && (
             <button
-              onClick={() => setActiveTab('customers')}
+              onClick={() => changeTab('customers')}
               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'customers' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
               <Users className="w-4 h-4" />
@@ -2532,7 +2613,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
           )}
           {hasTabAccess('inventory') && (
             <button
-              onClick={() => setActiveTab('inventory')}
+              onClick={() => changeTab('inventory')}
               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'inventory' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
               <Package className="w-4 h-4" />
@@ -2541,7 +2622,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
           )}
           {hasTabAccess('purchases') && (
             <button
-              onClick={() => setActiveTab('purchases')}
+              onClick={() => changeTab('purchases')}
               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'purchases' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
               <Database className="w-4 h-4" />
@@ -2550,7 +2631,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
           )}
           {hasTabAccess('performance') && (
             <button
-              onClick={() => setActiveTab('performance')}
+              onClick={() => changeTab('performance')}
               className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 ${activeTab === 'performance' ? 'text-[#ee317b]' : 'text-gray-500 hover:text-gray-300'}`}
             >
               <TrendingUp className="w-4 h-4" />
