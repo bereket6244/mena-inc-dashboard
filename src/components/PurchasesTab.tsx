@@ -22,7 +22,6 @@ import {
   Download,
   Filter,
   RotateCcw,
-  AlertCircle,
   ArrowUpDown,
   ChevronDown,
   ChevronUp
@@ -33,6 +32,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
 import { FloatingAddButton, DataTable } from './shared/TabLayout';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
+import AppToast, { AppToastType } from './shared/AppToast';
 
 const PURCHASE_SORT_FIELDS = ['recordedOrder', 'lastAdded', 'itemOrService', 'expenseCategory', 'quantity', 'unitPrice', 'totalPrice', 'purchaseDate'] as const;
 type PurchaseColumnSortField = Exclude<typeof PURCHASE_SORT_FIELDS[number], 'recordedOrder' | 'lastAdded'>;
@@ -251,9 +251,15 @@ export default function PurchasesTab({
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<ExpenseCategory | null>(null);
   const [warningMessage, setWarningMessage] = useState('');
+  const [purchaseToastType, setPurchaseToastType] = useState<AppToastType>('info');
 
   const isAdmin = currentUser?.role === 'admin';
-  const showWarning = (message: string) => setWarningMessage(message);
+  const showPurchaseToast = (message: string, type: AppToastType = 'success') => {
+    setWarningMessage(message);
+    setPurchaseToastType(type);
+    window.setTimeout(() => setWarningMessage(''), 3000);
+  };
+  const showWarning = (message: string) => showPurchaseToast(message, 'error');
 
   const clearRowLongPressTimer = () => {
     if (rowLongPressTimerRef.current !== null) {
@@ -529,6 +535,7 @@ export default function PurchasesTab({
     };
 
     setPendingBatchItems(prev => [...prev, newBatchItem]);
+    showPurchaseToast('Purchase item added to batch.');
 
     // Track state of dynamic catalog addition safely if custom item typed
     const existingInCatalog = allCatalogItems.some(
@@ -658,6 +665,7 @@ export default function PurchasesTab({
           return p;
         });
         onUpdatePurchases(updated);
+        showPurchaseToast('Purchase updated successfully.');
       } else {
         // We are creating new purchases
         const newItemsToCommit: Purchase[] = allItemsToSave.map((item, idx) => ({
@@ -681,6 +689,7 @@ export default function PurchasesTab({
         }));
 
         onUpdatePurchases([...purchases, ...newItemsToCommit]);
+        showPurchaseToast(`${newItemsToCommit.length} purchase ${newItemsToCommit.length === 1 ? 'record' : 'records'} added successfully.`);
       }
       
       setPendingBatchItems([]);
@@ -770,6 +779,7 @@ export default function PurchasesTab({
     };
 
     onUpdateCategories([...categories, newCat]);
+    showPurchaseToast('Expense category added successfully.');
     setNewCategoryName('');
     setIsAddingCategory(false);
   };
@@ -793,6 +803,7 @@ export default function PurchasesTab({
     });
 
     onUpdateCategories(updated);
+    showPurchaseToast('Category item added successfully.');
     setNewItemName('');
     setActiveCategoryIdForNewItem(null);
   };
@@ -880,6 +891,7 @@ export default function PurchasesTab({
           return c;
         });
         onUpdateCategories(updated);
+        showPurchaseToast('Category item added successfully.');
       } else {
         const newCat: ExpenseCategory = {
           id: `cat-${Date.now()}`,
@@ -887,6 +899,7 @@ export default function PurchasesTab({
           items: [addingNewItemFromSearch]
         };
         onUpdateCategories([...categories, newCat]);
+        showPurchaseToast('Expense category and item added successfully.');
         finalCategoryName = trimmedCat;
       }
     } else {
@@ -906,6 +919,7 @@ export default function PurchasesTab({
         return c;
       });
       onUpdateCategories(updated);
+      showPurchaseToast('Category item added successfully.');
     }
 
     setItemOrServiceInput(addingNewItemFromSearch);
@@ -2395,6 +2409,8 @@ export default function PurchasesTab({
         )}
       </AnimatePresence>
 
+      <AppToast message={warningMessage} type={purchaseToastType} />
+
       {/* Confirmation Modal for Single Delete */}
       <AnimatePresence>
         {deletingPurchaseId && (() => {
@@ -2599,13 +2615,6 @@ export default function PurchasesTab({
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              {warningMessage && (
-                <div className="mx-6 mt-4 bg-rose-550 border border-rose-200 p-3 rounded-md text-rose-800 text-xs flex items-center gap-2 font-sans">
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  <span>{warningMessage}</span>
-                </div>
-              )}
- 
                       {/* Form Inputs Container */}
                <div className="flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto overscroll-contain pb-4">
                 

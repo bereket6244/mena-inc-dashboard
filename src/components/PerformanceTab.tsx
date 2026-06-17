@@ -4,6 +4,7 @@ import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock } from '..
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import SearchableSelect from './SearchableSelect';
 import { TableToolbar } from './shared/TabLayout';
+import AppToast, { AppToastType } from './shared/AppToast';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -129,6 +130,8 @@ export default function PerformanceTab({
   const [customCurrencies, setCustomCurrencies] = useState<string[]>([]);
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [bankError, setBankError] = useState('');
+  const [bankToastMessage, setBankToastMessage] = useState<string | null>(null);
+  const [bankToastType, setBankToastType] = useState<AppToastType>('success');
 
   // Inline editing variables
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
@@ -162,6 +165,12 @@ export default function PerformanceTab({
       copiedAmountTimerRef.current = null;
     }, 1200);
   }
+
+  const showBankToast = (message: string, type: AppToastType = 'success') => {
+    setBankToastMessage(message);
+    setBankToastType(type);
+    window.setTimeout(() => setBankToastMessage(null), 3000);
+  };
 
   // Filter States (previously missing)
   const [summarySearch, setSummarySearch] = useState('');
@@ -284,6 +293,7 @@ export default function PerformanceTab({
     e.preventDefault();
     if (!bankName.trim()) {
       setBankError('Account Name/Bank identifier is required.');
+      showBankToast('Account name is required.', 'error');
       return;
     }
     const cleanInitial = Math.max(0, parseFractionOrExpression(bankInitial));
@@ -303,6 +313,7 @@ export default function PerformanceTab({
     setBankCurrency('ETB');
     setIsAddingBank(false);
     setBankError('');
+    showBankToast('Bank account added successfully.');
   };
 
   const startEditing = (b: BankAccount) => {
@@ -325,6 +336,7 @@ export default function PerformanceTab({
       currency: editCurrency
     });
     setEditingBankId(null);
+    showBankToast('Bank account updated successfully.');
   };
 
   const handleConfirmBulkDelete = () => {
@@ -515,6 +527,7 @@ export default function PerformanceTab({
 
   return (
     <div className="space-y-5" id="performance-tab-pnl">
+      <AppToast message={bankToastMessage} type={bankToastType} />
 
       {/* ========================================== */}
       {/* MOBILE LAYOUT                              */}

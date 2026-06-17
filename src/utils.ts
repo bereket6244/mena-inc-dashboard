@@ -350,6 +350,14 @@ export function createTelegramPhoneUrl(phoneE164: string): string {
   return `https://t.me/+${digits}`;
 }
 
+export function createTelegramMessageUrl(contact: string, message: string): string {
+  const normalized = normalizePhoneNumber(contact);
+  const target = normalized.type === 'phone'
+    ? `+${normalized.normalized.replace(/[^\d]/g, '')}`
+    : contact.trim().replace(/^@/, '');
+  return `https://t.me/${target}?text=${encodeURIComponent(message)}`;
+}
+
 export function createTelegramShareUrl(message: string): string {
   return `https://t.me/share/url?text=${encodeURIComponent(message)}`;
 }

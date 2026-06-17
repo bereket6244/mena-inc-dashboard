@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SharedDataTableLayout, SharedTh, SharedTd, SharedTr } from './shared/SharedDataTableLayout';
 import { FloatingAddButton } from './shared/TabLayout';
+import AppToast, { AppToastType } from './shared/AppToast';
 import { 
   Plus, 
   Minus,
@@ -13,7 +14,6 @@ import {
   TrendingDown, 
   Package, 
   AlertTriangle, 
-  CheckCircle, 
   Search,
   X,
   RotateCcw,
@@ -66,6 +66,7 @@ export default function InventoryTab({
   const [editStockNameInput, setEditStockNameInput] = useState<string>('');
   const [editStockError, setEditStockError] = useState<string>('');
   const [inventoryMessage, setInventoryMessage] = useState<string>('');
+  const [inventoryToastType, setInventoryToastType] = useState<AppToastType>('success');
 
   // Non-blocking custom delete tracking ID for paper stocks
   const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
@@ -86,6 +87,12 @@ export default function InventoryTab({
   });
 
   const isAdmin = currentUser?.role === 'admin';
+
+  const showInventoryToast = (message: string, type: AppToastType = 'success') => {
+    setInventoryMessage(message);
+    setInventoryToastType(type);
+    window.setTimeout(() => setInventoryMessage(''), 3000);
+  };
 
   useEffect(() => {
     localStorage.setItem(INVENTORY_SORT_BY_STORAGE_KEY, sortBy);
@@ -159,8 +166,7 @@ export default function InventoryTab({
       updatedList[existingIndex] = updatedItem;
       
       onUpdateStocks(updatedList);
-      
-      alert(`Merged Stockpile: Added ${evaluatedInitial.toLocaleString()} to existing stock category "${existingItem.name}" (Updated Total: ${updatedItem.initialStock.toLocaleString()}).`);
+      showInventoryToast(`Merged stock: ${evaluatedInitial.toLocaleString()} added to ${existingItem.name}.`);
       
       setNewStockName('');
       setNewStockInitial('');
@@ -174,6 +180,7 @@ export default function InventoryTab({
     };
 
     onUpdateStocks([...paperStocks, newStock]);
+    showInventoryToast('Stock added successfully.');
     setNewStockName('');
     setNewStockInitial('');
   };
@@ -210,8 +217,7 @@ export default function InventoryTab({
       await updatePaperStockDoc(finalStockItem);
       setEditStockError('');
       setEditingStock(null);
-      setInventoryMessage('Inventory item updated successfully.');
-      window.setTimeout(() => setInventoryMessage(''), 3000);
+      showInventoryToast('Inventory item updated successfully.');
     } catch (error: any) {
       setEditStockError(`Saved locally, but the database update failed: ${error?.message || String(error)}`);
     }
@@ -238,8 +244,7 @@ export default function InventoryTab({
         };
       });
       onUpdateStocks(updatedList);
-      setInventoryMessage(stockAdjustmentMode === 'add' ? 'Stock amount added successfully.' : 'Stock amount subtracted successfully.');
-      window.setTimeout(() => setInventoryMessage(''), 3000);
+      showInventoryToast(stockAdjustmentMode === 'add' ? 'Stock amount added successfully.' : 'Stock amount subtracted successfully.');
       setAdjustingStockId(null);
       setStockAdjustmentAmount('');
     }
@@ -725,19 +730,6 @@ export default function InventoryTab({
       selectedItemsBar={
         <div className="relative z-30">
           <AnimatePresence>
-            {inventoryMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#71b536]/30 bg-[#112918] px-3 py-1.5 text-[11px] font-bold text-[#71b536]"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                {inventoryMessage}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <AnimatePresence>
             {selectedStockIds.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -918,6 +910,7 @@ export default function InventoryTab({
       }
       modals={
         <>
+          <AppToast message={inventoryMessage} type={inventoryToastType} />
           <AnimatePresence>
             {selectedStockIds.length > 0 && (
               <motion.div

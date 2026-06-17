@@ -56,6 +56,7 @@ import {
   createLinkUrl,
   createSmsMessageUrl,
   createSmsUrl,
+  createTelegramMessageUrl,
   createTelegramPhoneUrl,
   createTelegramShareUrl,
   createTelegramUrl,
@@ -74,6 +75,7 @@ import {
 import SearchableSelect from './SearchableSelect';
 import { DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
 import { SharedDataTableLayout } from './shared/SharedDataTableLayout';
+import AppToast, { AppToastType } from './shared/AppToast';
 
 const CUSTOMER_LAYOUT_STORAGE_KEY = 'ui.customer.layoutMode';
 const CUSTOMER_FILTERS_STORAGE_KEY = 'ui.customer.filters';
@@ -217,9 +219,9 @@ export default function CustomerTab({
     return savedLayout === 'cards' ? 'cards' : 'grid';
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+  const [toastType, setToastType] = useState<AppToastType>('info');
 
-  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+  const showToast = (message: string, type: AppToastType = 'info') => {
     setToastMessage(message);
     setToastType(type);
   };
@@ -496,6 +498,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       receipt: filterReceipt,
     }));
   }, [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt]);
+
+  const agentFilterOptions = Array.from(new Set([
+    ...AGENTS,
+    ...employees.map(emp => emp.name).filter(Boolean),
+    ...customers.map(customer => customer.orderTakenBy).filter(Boolean),
+  ]));
 
   useEffect(() => {
     if (!activeContactMenuId) return;
@@ -1231,6 +1239,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       await persistLeadChannels([...acquisitionChannels, cleaned]);
       setAcquisitionSource(cleaned);
       setFormError('');
+      showToast('Lead channel added successfully.', 'success');
     } catch (error) {
       console.error('Lead channel save failed:', error);
       setFormError('Lead channel saved locally, but the database update failed. Run the lead_channels SQL in Supabase and try again.');
@@ -1247,6 +1256,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         const newProd = { id: 'pt_' + Date.now(), name: cleaned };
         await onAddProductType(newProd);
         setProductType(cleaned);
+        showToast('Product type added successfully.', 'success');
       } else {
         setProductType(cleaned);
       }
@@ -1263,6 +1273,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         const newType = { id: 'ct_' + Date.now(), name: cleaned };
         onAddClientType(newType);
         setClientType(cleaned);
+        showToast('Client type added successfully.', 'success');
       } else {
         setClientType(cleaned);
       }
@@ -2012,7 +2023,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       (c.phone && (c.phone.includes(searchQuery) || matchesPhone)) ||
       c.productType.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesAgent = filterAgent === 'All' || c.orderTakenBy === filterAgent;
+    const normalizedFilterAgent = filterAgent.trim().toLowerCase();
+    const normalizedOrderAgent = String(c.orderTakenBy || '').trim().toLowerCase();
+    const matchesAgent = filterAgent === 'All' || normalizedOrderAgent === normalizedFilterAgent;
     const matchesSource = filterSource === 'All' || c.acquisitionSource === filterSource;
 
     const full = c.quantity * c.unitPrice;
@@ -2240,6 +2253,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     }
     if (channel === 'sms' && contact.type === 'phone') {
       openExternalContactUrl(createSmsMessageUrl(contact.normalized, message));
+      return;
+    }
+    if (channel === 'telegram' && (contact.type === 'phone' || contact.type === 'username')) {
+      openExternalContactUrl(createTelegramMessageUrl(contact.normalized, message));
       return;
     }
     openExternalContactUrl(createTelegramShareUrl(message));
@@ -2532,7 +2549,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             className="bg-transparent text-xs text-white"
                           >
                             <option value="All">All Agents</option>
-                            {AGENTS.map(agent => (
+                            {agentFilterOptions.map(agent => (
                               <option key={agent} value={agent}>{agent}</option>
                             ))}
                           </SearchableSelect>
@@ -5544,6 +5561,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
                             if (!existing) {
                               await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
+                              showToast('Product type added successfully.', 'success');
                             }
                             setNewManagerProductInput('');
                           }
@@ -5558,6 +5576,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
                           if (!existing) {
                             await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
+                            showToast('Product type added successfully.', 'success');
                           }
                           setNewManagerProductInput('');
                         }
@@ -5727,7 +5746,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
                   >
                     <option value="All">All Staff</option>
-                    {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(agent => (
+                    {agentFilterOptions.map(agent => (
                       <option key={agent} value={agent}>{agent}</option>
                     ))}
                   </select>
@@ -5868,33 +5887,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         )}
       </AnimatePresence>
 
-      {/* Toaster Notification */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-lg shadow-xl font-sans text-xs flex items-center gap-2 border ${
-              toastType === 'error'
-                ? 'bg-[#2E181D] border-red-500/30 text-[#F87171]'
-                : toastType === 'success'
-                ? 'bg-[#121912]/95 border-[#71b536]/30 text-[#71b536]'
-                : 'bg-[#121212]/95 border-[#ee317b]/30 text-white'
-            }`}
-          >
-            {toastType === 'error' ? (
-              <AlertCircle className="w-4 h-4 text-[#F87171] shrink-0" />
-            ) : toastType === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-[#71b536] shrink-0" />
-            ) : (
-              <div className="w-2 h-2 rounded-full bg-[#ee317b] shrink-0" />
-            )}
-            <span className="font-semibold">{toastMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AppToast message={toastMessage} type={toastType} />
 
     </SharedDataTableLayout>
   );
