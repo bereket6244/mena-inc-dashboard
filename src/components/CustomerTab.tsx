@@ -3168,31 +3168,38 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             AGENT: {c.orderTakenBy.toUpperCase()}
                           </span>
                         </div>
-                        <h3
-                          className="font-sans font-bold text-white mt-2.5 text-base cursor-pointer hover:text-[#ee317b] transition-colors"
-                          title="Click to copy and share order message details"
-                          onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
-                        >
-                          {c.clientName}
-                        </h3>
-                        {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
-                          <div
-                            ref={orderMessageMenuRef}
-                            className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
-                            style={{
-                              top: Math.max(8, orderMessageMenuPosition.top),
-                              left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
-                            }}
+                        <div className="mt-2.5 flex items-center gap-1.5 min-w-0">
+                          <h3
+                            className="min-w-0 truncate font-sans font-bold text-white text-base cursor-pointer hover:text-[#ee317b] hover:underline transition-colors"
+                            title="Click to copy and share order message details"
+                            onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
                           >
-                            <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
-                            <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
-                            <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
-                            {formatContactDisplay(c.phone || '').type === 'phone' && (
-                              <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
-                            )}
-                          </div>,
-                          document.body
-                        )}
+                            {c.clientName}
+                          </h3>
+                          {copiedOrderMessageIds.includes(c.id) && (
+                            <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+                              Copied
+                            </span>
+                          )}
+                          {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
+                            <div
+                              ref={orderMessageMenuRef}
+                              className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
+                              style={{
+                                top: Math.max(8, orderMessageMenuPosition.top),
+                                left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
+                              }}
+                            >
+                              <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
+                              <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                              <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
+                              {formatContactDisplay(c.phone || '').type === 'phone' && (
+                                <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
+                              )}
+                            </div>,
+                            document.body
+                          )}
+                        </div>
                       </div>
                     </div>
                     
