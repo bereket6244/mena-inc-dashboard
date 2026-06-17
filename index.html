@@ -8,15 +8,27 @@
     <!-- 📦 PROGRESSIVE WEB APP (PWA) ENHANCEMENTS FOR SYSTEM ACCESSIBILITY -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0A0A0A" />
-    <link rel="shortcut icon" type="image/png" href="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" />
-    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" />
+    <link id="app-favicon-shortcut" rel="shortcut icon" type="image/png" href="/mena-favicon-dark.png" />
+    <link id="app-favicon" rel="icon" type="image/png" href="/mena-favicon-dark.png" />
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('mena_inc_theme_v3') || 'dark';
+          var faviconHref = savedTheme === 'light' ? '/mena-favicon-light.png' : '/mena-favicon-dark.png';
+          var shortcutIcon = document.getElementById('app-favicon-shortcut');
+          var icon = document.getElementById('app-favicon');
+          if (shortcutIcon) shortcutIcon.setAttribute('href', faviconHref);
+          if (icon) icon.setAttribute('href', faviconHref);
+        } catch (_) {}
+      })();
+    </script>
 
     <!-- iOS Native Integration Features -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mena CRM" />
-    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" />
-    <link rel="apple-touch-startup-image" href="https://lh3.googleusercontent.com/d/1AGGeqHTdLb0glL2pF27eYLCEmXq0ease" />
+    <link rel="apple-touch-icon" href="/mena-favicon-light.png" />
+    <link rel="apple-touch-startup-image" href="/mena-favicon-light.png" />
 
     <script>
       // Global safety script to defend against read-only/getter-only fetch crashes in sandbox environments
@@ -95,4 +107,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

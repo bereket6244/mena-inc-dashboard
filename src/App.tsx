@@ -96,6 +96,14 @@ export default function App() {
   }, [density]);
 
   useEffect(() => {
+    const faviconHref = theme === 'light' ? '/mena-favicon-light.png' : '/mena-favicon-dark.png';
+    const themeColor = theme === 'light' ? '#f5f0e8' : '#0A0A0A';
+    const faviconLinks = document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="shortcut icon"]');
+    faviconLinks.forEach(link => {
+      link.href = faviconHref;
+    });
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', themeColor);
+
     if (theme === 'light') {
       document.body.classList.add('light-theme');
       document.documentElement.classList.add('light-theme');
