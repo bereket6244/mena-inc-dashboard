@@ -246,6 +246,7 @@ export default function PurchasesTab({
 
   // Selection for bulk actions
   const [selectedPurchaseIds, setSelectedPurchaseIds] = useState<string[]>([]);
+  const [lastSelectedPurchaseId, setLastSelectedPurchaseId] = useState<string | null>(null);
   const rowLongPressTimerRef = useRef<number | null>(null);
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -274,6 +275,7 @@ export default function PurchasesTab({
         ? prev.filter(id => id !== purchaseId)
         : [...prev, purchaseId]
     ));
+    setLastSelectedPurchaseId(purchaseId);
   };
 
   const startPurchaseRowLongPress = (purchaseId: string, event: React.TouchEvent) => {
@@ -290,6 +292,17 @@ export default function PurchasesTab({
     if (selectedPurchaseIds.length === 0) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    if (event.shiftKey && lastSelectedPurchaseId) {
+      const start = sortedPurchases.findIndex(purchase => purchase.id === lastSelectedPurchaseId);
+      const end = sortedPurchases.findIndex(purchase => purchase.id === purchaseId);
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start];
+        const rangeIds = sortedPurchases.slice(from, to + 1).map(purchase => purchase.id);
+        setSelectedPurchaseIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedPurchaseId(purchaseId);
+        return;
+      }
+    }
     togglePurchaseSelection(purchaseId);
   };
 
@@ -1070,6 +1083,32 @@ export default function PurchasesTab({
         cat.items.some(item => item.toLowerCase().includes(categorySearchLower))
       )
     : categories;
+
+  useEffect(() => {
+    const isPurchasesShortcut = (event: Event) => (event as CustomEvent)?.detail?.tab === 'purchases';
+    const shortcutsBlocked = Boolean(warningMessage || addingNewItemFromSearch !== null || isFormOpen || showMobileFilters || showFilterPopover || showBulkDeleteConfirm || deletingPurchaseId || deletingCategory);
+    const handleNewRecord = (event: Event) => {
+      if (!isPurchasesShortcut(event) || shortcutsBlocked) return;
+      handleOpenAddForm();
+    };
+    const handleSelectAllVisible = (event: Event) => {
+      if (!isPurchasesShortcut(event) || shortcutsBlocked) return;
+      setSelectedPurchaseIds(sortedPurchases.map(purchase => purchase.id));
+    };
+    const handleDeleteSelected = (event: Event) => {
+      if (!isPurchasesShortcut(event) || shortcutsBlocked || selectedPurchaseIds.length === 0) return;
+      setShowBulkDeleteConfirm(true);
+    };
+
+    window.addEventListener('mena:new-record', handleNewRecord);
+    window.addEventListener('mena:select-all-visible', handleSelectAllVisible);
+    window.addEventListener('mena:delete-selected', handleDeleteSelected);
+    return () => {
+      window.removeEventListener('mena:new-record', handleNewRecord);
+      window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
+      window.removeEventListener('mena:delete-selected', handleDeleteSelected);
+    };
+  }, [warningMessage, addingNewItemFromSearch, isFormOpen, showMobileFilters, showFilterPopover, showBulkDeleteConfirm, deletingPurchaseId, deletingCategory, sortedPurchases, selectedPurchaseIds]);
 
   return (
     <div

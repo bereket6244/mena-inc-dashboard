@@ -46,6 +46,28 @@ export function TableToolbar({
     }
   }, [isSearchExpanded]);
 
+  useEffect(() => {
+    const handleFocusSearch = (event: Event) => {
+      const requestedTab = (event as CustomEvent)?.detail?.tab;
+      const panel = (searchWrapperRef.current || mobileSearchWrapperRef.current)?.closest('[id$="-tab-pnl"]') as HTMLElement | null;
+      if (requestedTab && panel && panel.id !== `${requestedTab}-tab-pnl`) return;
+      const desktopToolbar = searchWrapperRef.current?.closest('.app-sticky-toolbar') as HTMLElement | null;
+      const mobileToolbar = mobileSearchWrapperRef.current?.closest('.app-mobile-sticky-toolbar') as HTMLElement | null;
+      const desktopVisible = !!desktopToolbar && window.getComputedStyle(desktopToolbar).display !== 'none';
+      const mobileVisible = !!mobileToolbar && window.getComputedStyle(mobileToolbar).display !== 'none';
+      setIsSearchExpanded(true);
+      window.setTimeout(() => {
+        if (desktopVisible) {
+          searchInputRef.current?.focus();
+        } else if (mobileVisible) {
+          mobileSearchInputRef.current?.focus();
+        }
+      }, 0);
+    };
+    window.addEventListener('mena:focus-search', handleFocusSearch);
+    return () => window.removeEventListener('mena:focus-search', handleFocusSearch);
+  }, []);
+
   // Click outside detection
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

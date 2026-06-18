@@ -21,6 +21,7 @@ import {
   Download,
   Smartphone,
   Share2,
+  Search,
   Menu,
   FolderDown,
   Type,
@@ -117,6 +118,9 @@ export default function App() {
   // 1. "i want the customer management to be first" -> tab defaults to 'customers'
   const [activeTab, setActiveTab] = useState<AppTab>('customers');
   const activeTabRef = useRef<AppTab>('customers');
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandSearch, setCommandSearch] = useState('');
+  const gShortcutTimerRef = useRef<number | null>(null);
 
   const getTabScrollElement = (tab: AppTab): HTMLElement | null => {
     const selectors: Record<AppTab, string[]> = {
@@ -170,6 +174,20 @@ export default function App() {
     if (tab === activeTabRef.current) return;
     saveTabScroll(activeTabRef.current);
     setActiveTab(tab);
+  };
+
+  const dispatchShortcut = (name: string) => {
+    window.dispatchEvent(new CustomEvent(`mena:${name}`, { detail: { tab: activeTabRef.current } }));
+  };
+
+  const focusCurrentTabSearch = () => {
+    window.dispatchEvent(new CustomEvent('mena:focus-search', { detail: { tab: activeTabRef.current } }));
+  };
+
+  const isEditableShortcutTarget = (target: EventTarget | null) => {
+    const element = target as HTMLElement | null;
+    if (!element) return false;
+    return Boolean(element.closest('input, textarea, select, [contenteditable="true"]'));
   };
 
   useEffect(() => {
@@ -391,6 +409,130 @@ export default function App() {
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
   const [pendingDeleteEmployee, setPendingDeleteEmployee] = useState<EmployeeUser | null>(null);
   const activeEmployees = employees.filter(emp => !emp.isDeleted);
+  const commandItems = currentUser ? [
+    { id: 'search', label: 'Focus search', hint: '/', action: () => focusCurrentTabSearch() },
+    { id: 'new', label: 'New record in current tab', hint: 'Ctrl N', action: () => dispatchShortcut('new-record') },
+    { id: 'customers', label: 'Go to Customers', hint: 'Ctrl 1', action: () => changeTab('customers'), disabled: !hasTabAccess('customers') },
+    { id: 'inventory', label: 'Go to Inventory', hint: 'Ctrl 2', action: () => changeTab('inventory'), disabled: !hasTabAccess('inventory') },
+    { id: 'performance', label: 'Go to Reports', hint: 'Ctrl 3', action: () => changeTab('performance'), disabled: !hasTabAccess('performance') },
+    { id: 'purchases', label: 'Go to Purchases', hint: 'Ctrl 4', action: () => changeTab('purchases'), disabled: !hasTabAccess('purchases') },
+    { id: 'theme', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, hint: '', action: () => setTheme(prev => prev === 'dark' ? 'light' : 'dark') },
+    { id: 'proforma', label: 'Open standalone proforma tool', hint: '', action: () => setShowGlobalProforma(true) },
+    { id: 'staff', label: 'Manage staff settings', hint: '', action: () => setShowStaffModal(true), disabled: currentUser.role !== 'admin' },
+    {
+      id: 'export',
+      label: 'Export all data',
+      hint: '',
+      action: () => {
+        const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
+        exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+      },
+      disabled: currentUser.role !== 'admin'
+    },
+    { id: 'install', label: 'Install app / open install guide', hint: '', action: triggerPwaInstall },
+  ].filter(item => !item.disabled && item.label.toLowerCase().includes(commandSearch.trim().toLowerCase())) : [];
+
+  const runCommand = (action: () => void) => {
+    setShowCommandPalette(false);
+    setCommandSearch('');
+    action();
+  };
+
+  useEffect(() => {
+    const tabByNumber: Record<string, AppTab> = {
+      '1': 'customers',
+      '2': 'inventory',
+      '3': 'performance',
+      '4': 'purchases',
+    };
+    const tabByGoKey: Record<string, AppTab> = {
+      c: 'customers',
+      i: 'inventory',
+      r: 'performance',
+      p: 'purchases',
+    };
+
+    const handleGlobalShortcuts = (event: KeyboardEvent) => {
+      if (!currentUser || event.defaultPrevented) return;
+      const key = event.key.toLowerCase();
+      const modifier = event.metaKey || event.ctrlKey;
+      const targetIsEditable = isEditableShortcutTarget(event.target);
+
+      if (modifier && key === 'k') {
+        event.preventDefault();
+        setCommandSearch('');
+        setShowCommandPalette(true);
+        return;
+      }
+
+      if (modifier && tabByNumber[event.key]) {
+        event.preventDefault();
+        const tab = tabByNumber[event.key];
+        if (hasTabAccess(tab)) changeTab(tab);
+        return;
+      }
+
+      if (!modifier && key === 'g' && !targetIsEditable) {
+        event.preventDefault();
+        if (gShortcutTimerRef.current) window.clearTimeout(gShortcutTimerRef.current);
+        gShortcutTimerRef.current = window.setTimeout(() => {
+          gShortcutTimerRef.current = null;
+        }, 900);
+        return;
+      }
+
+      if (!modifier && gShortcutTimerRef.current && tabByGoKey[key] && !targetIsEditable) {
+        event.preventDefault();
+        window.clearTimeout(gShortcutTimerRef.current);
+        gShortcutTimerRef.current = null;
+        const tab = tabByGoKey[key];
+        if (hasTabAccess(tab)) changeTab(tab);
+        return;
+      }
+
+      if ((key === '/' || (modifier && key === 'f')) && !targetIsEditable) {
+        event.preventDefault();
+        focusCurrentTabSearch();
+        return;
+      }
+
+      if (modifier && key === 'n' && !targetIsEditable) {
+        event.preventDefault();
+        dispatchShortcut('new-record');
+        return;
+      }
+
+      if (modifier && key === 'a' && !targetIsEditable) {
+        event.preventDefault();
+        dispatchShortcut('select-all-visible');
+        return;
+      }
+
+      if ((key === 'delete' || key === 'backspace') && !targetIsEditable) {
+        dispatchShortcut('delete-selected');
+        return;
+      }
+
+      if (modifier && key === 'c' && !targetIsEditable) {
+        event.preventDefault();
+        dispatchShortcut('copy-selected');
+        return;
+      }
+
+      if (modifier && key === 'enter' && !targetIsEditable) {
+        event.preventDefault();
+        dispatchShortcut('primary-selected-action');
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalShortcuts);
+      if (gShortcutTimerRef.current) {
+        window.clearTimeout(gShortcutTimerRef.current);
+      }
+    };
+  }, [currentUser, activeTab, employees]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -399,6 +541,9 @@ export default function App() {
       if (isMobileMenuOpen) {
         event.preventDefault();
         setIsMobileMenuOpen(false);
+      } else if (showCommandPalette) {
+        event.preventDefault();
+        setShowCommandPalette(false);
       } else if (showStaffModal) {
         event.preventDefault();
         setShowStaffModal(false);
@@ -414,7 +559,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isMobileMenuOpen, showStaffModal, showDbConfigModal, showInstallGuideModal]);
+  }, [isMobileMenuOpen, showCommandPalette, showStaffModal, showDbConfigModal, showInstallGuideModal]);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -1676,7 +1821,63 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans antialiased" style={{ lineSpacing: "1.15" }}>
-      
+      <AnimatePresence>
+        {showCommandPalette && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-start justify-center px-3 pt-[12vh] font-sans"
+            onMouseDown={() => setShowCommandPalette(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              className="w-full max-w-lg rounded-xl border border-[#262626] bg-[#121212] shadow-2xl overflow-hidden"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 border-b border-[#262626] px-3 py-2.5">
+                <Search className="h-4 w-4 text-[#ee317b]" />
+                <input
+                  autoFocus
+                  value={commandSearch}
+                  onChange={(event) => setCommandSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setShowCommandPalette(false);
+                    } else if (event.key === 'Enter' && commandItems[0]) {
+                      event.preventDefault();
+                      runCommand(commandItems[0].action);
+                    }
+                  }}
+                  placeholder="Search commands..."
+                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
+                />
+                <span className="rounded border border-[#262626] bg-[#181818] px-1.5 py-0.5 text-[10px] text-gray-500">Esc</span>
+              </div>
+              <div className="max-h-[320px] overflow-y-auto p-1.5">
+                {commandItems.length > 0 ? (
+                  commandItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => runCommand(item.action)}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#202020] hover:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {item.hint && <span className="text-[10px] uppercase tracking-wider text-gray-500">{item.hint}</span>}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-8 text-center text-xs text-gray-500">No matching commands</div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
       {/* Sticky Top Navigation Container */}

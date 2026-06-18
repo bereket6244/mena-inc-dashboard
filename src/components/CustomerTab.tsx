@@ -256,6 +256,7 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [lastSelectedCustomerId, setLastSelectedCustomerId] = useState<string | null>(null);
   const [showSelectedShareOptions, setShowSelectedShareOptions] = useState(false);
   const rowLongPressTimerRef = useRef<number | null>(null);
 
@@ -272,6 +273,7 @@ export default function CustomerTab({
         ? prev.filter(id => id !== customerId)
         : [...prev, customerId]
     ));
+    setLastSelectedCustomerId(customerId);
   };
 
   const startCustomerRowLongPress = (customerId: string, event: React.TouchEvent) => {
@@ -288,6 +290,17 @@ export default function CustomerTab({
     if (selectedCustomerIds.length === 0) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"], [data-row-action]')) return;
+    if (event.shiftKey && lastSelectedCustomerId) {
+      const start = filteredCustomers.findIndex(customer => customer.id === lastSelectedCustomerId);
+      const end = filteredCustomers.findIndex(customer => customer.id === customerId);
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start];
+        const rangeIds = filteredCustomers.slice(from, to + 1).map(customer => customer.id);
+        setSelectedCustomerIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedCustomerId(customerId);
+        return;
+      }
+    }
     toggleCustomerSelection(customerId);
   };
 
@@ -2152,6 +2165,57 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
     return String(valA || '').localeCompare(String(valB || '')) * direction;
   });
+
+  useEffect(() => {
+    const isCustomersShortcut = (event: Event) => (event as CustomEvent)?.detail?.tab === 'customers';
+    const shortcutsBlocked = showMobileFilters || showFilterPopover || showMobileSortPopover || showDesktopSortPopover || showProductManager || showProformaModal || showBulkDeleteConfirm || showBulkCompleteModal || !!deletingCustomerId || isFormOpen;
+    const handleNewRecord = (event: Event) => {
+      if (!isCustomersShortcut(event) || shortcutsBlocked) return;
+      handleOpenCreate();
+    };
+    const handleSelectAllVisible = (event: Event) => {
+      if (!isCustomersShortcut(event) || shortcutsBlocked) return;
+      setSelectedCustomerIds(filteredCustomers.map(customer => customer.id));
+    };
+    const handleDeleteSelected = (event: Event) => {
+      if (!isCustomersShortcut(event) || shortcutsBlocked || selectedCustomerIds.length === 0) return;
+      setShowBulkDeleteConfirm(true);
+    };
+    const handleCopySelected = (event: Event) => {
+      if (!isCustomersShortcut(event) || shortcutsBlocked || selectedCustomerIds.length === 0) return;
+      void handleCopySelectedOrdersMessages();
+    };
+    const handlePrimarySelectedAction = (event: Event) => {
+      if (!isCustomersShortcut(event) || shortcutsBlocked || selectedCustomerIds.length === 0) return;
+      handleBulkComplete();
+    };
+
+    window.addEventListener('mena:new-record', handleNewRecord);
+    window.addEventListener('mena:select-all-visible', handleSelectAllVisible);
+    window.addEventListener('mena:delete-selected', handleDeleteSelected);
+    window.addEventListener('mena:copy-selected', handleCopySelected);
+    window.addEventListener('mena:primary-selected-action', handlePrimarySelectedAction);
+    return () => {
+      window.removeEventListener('mena:new-record', handleNewRecord);
+      window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
+      window.removeEventListener('mena:delete-selected', handleDeleteSelected);
+      window.removeEventListener('mena:copy-selected', handleCopySelected);
+      window.removeEventListener('mena:primary-selected-action', handlePrimarySelectedAction);
+    };
+  }, [
+    showMobileFilters,
+    showFilterPopover,
+    showMobileSortPopover,
+    showDesktopSortPopover,
+    showProductManager,
+    showProformaModal,
+    showBulkDeleteConfirm,
+    showBulkCompleteModal,
+    deletingCustomerId,
+    isFormOpen,
+    filteredCustomers,
+    selectedCustomerIds,
+  ]);
 
   const proformaItemsToRender = isStandaloneProformaMode 
     ? standaloneProformaItems 

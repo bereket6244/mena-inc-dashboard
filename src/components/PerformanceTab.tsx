@@ -441,6 +441,34 @@ export default function PerformanceTab({
   };
 
   useEffect(() => {
+    const isPerformanceShortcut = (event: Event) => (event as CustomEvent)?.detail?.tab === 'performance';
+    const shortcutsBlocked = Boolean(showBulkDeleteConfirm || adjustingBank || deletingBankId || editingBankId || isAddingBank);
+    const handleNewRecord = (event: Event) => {
+      if (!isPerformanceShortcut(event) || shortcutsBlocked) return;
+      setIsAddingBank(true);
+    };
+    const handleSelectAllVisible = (event: Event) => {
+      if (!isPerformanceShortcut(event) || shortcutsBlocked) return;
+      setSelectedBankIds(bankAccounts
+        .filter(bank => !bank.isDeleted && (showAllAccounts || (bank.currency || 'ETB') === selectedCurrency))
+        .map(bank => bank.id));
+    };
+    const handleDeleteSelected = (event: Event) => {
+      if (!isPerformanceShortcut(event) || shortcutsBlocked || selectedBankIds.length === 0) return;
+      setShowBulkDeleteConfirm(true);
+    };
+
+    window.addEventListener('mena:new-record', handleNewRecord);
+    window.addEventListener('mena:select-all-visible', handleSelectAllVisible);
+    window.addEventListener('mena:delete-selected', handleDeleteSelected);
+    return () => {
+      window.removeEventListener('mena:new-record', handleNewRecord);
+      window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
+      window.removeEventListener('mena:delete-selected', handleDeleteSelected);
+    };
+  }, [showBulkDeleteConfirm, adjustingBank, deletingBankId, editingBankId, isAddingBank, bankAccounts, showAllAccounts, selectedCurrency, selectedBankIds]);
+
+  useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
 

@@ -73,6 +73,7 @@ export default function InventoryTab({
 
   // Multi-selection state for paper stocks
   const [selectedStockIds, setSelectedStockIds] = useState<string[]>([]);
+  const [lastSelectedStockId, setLastSelectedStockId] = useState<string | null>(null);
   const rowLongPressTimerRef = React.useRef<number | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   // Quick stock adjustment state
@@ -102,6 +103,7 @@ export default function InventoryTab({
         ? prev.filter(id => id !== stockId)
         : [...prev, stockId]
     ));
+    setLastSelectedStockId(stockId);
   };
 
   const startStockLongPress = (stockId: string, event: React.TouchEvent) => {
@@ -118,6 +120,17 @@ export default function InventoryTab({
     if (selectedStockIds.length === 0) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    if (event.shiftKey && lastSelectedStockId) {
+      const start = filteredStocks.findIndex(stock => stock.id === lastSelectedStockId);
+      const end = filteredStocks.findIndex(stock => stock.id === stockId);
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start];
+        const rangeIds = filteredStocks.slice(from, to + 1).map(stock => stock.id);
+        setSelectedStockIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedStockId(stockId);
+        return;
+      }
+    }
     toggleStockSelection(stockId);
   };
 
@@ -354,6 +367,32 @@ export default function InventoryTab({
       }
       return ((a[sortBy] as number) - (b[sortBy] as number)) * direction;
     });
+
+  useEffect(() => {
+    const isInventoryShortcut = (event: Event) => (event as CustomEvent)?.detail?.tab === 'inventory';
+    const shortcutsBlocked = showBulkDeleteConfirm || !!deletingStockId || !!adjustingStockId || !!editingStock || showAddForm;
+    const handleNewRecord = (event: Event) => {
+      if (!isInventoryShortcut(event) || shortcutsBlocked || !isAdmin) return;
+      setShowAddForm(true);
+    };
+    const handleSelectAllVisible = (event: Event) => {
+      if (!isInventoryShortcut(event) || shortcutsBlocked) return;
+      setSelectedStockIds(filteredStocks.map(stock => stock.id));
+    };
+    const handleDeleteSelected = (event: Event) => {
+      if (!isInventoryShortcut(event) || shortcutsBlocked || selectedStockIds.length === 0 || !isAdmin) return;
+      setShowBulkDeleteConfirm(true);
+    };
+
+    window.addEventListener('mena:new-record', handleNewRecord);
+    window.addEventListener('mena:select-all-visible', handleSelectAllVisible);
+    window.addEventListener('mena:delete-selected', handleDeleteSelected);
+    return () => {
+      window.removeEventListener('mena:new-record', handleNewRecord);
+      window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
+      window.removeEventListener('mena:delete-selected', handleDeleteSelected);
+    };
+  }, [showBulkDeleteConfirm, deletingStockId, adjustingStockId, editingStock, showAddForm, isAdmin, filteredStocks, selectedStockIds]);
 
   return (
     <SharedDataTableLayout
