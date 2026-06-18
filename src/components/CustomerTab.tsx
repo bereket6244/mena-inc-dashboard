@@ -184,6 +184,7 @@ interface CustomerTabProps {
   employees: EmployeeUser[];
   showGlobalProforma?: boolean;
   setShowGlobalProforma?: (val: boolean) => void;
+  highlightedSearchResult?: { type: string; id: string } | null;
 }
 
 export default function CustomerTab({ 
@@ -206,7 +207,8 @@ export default function CustomerTab({
   currentUser,
   employees,
   showGlobalProforma,
-  setShowGlobalProforma
+  setShowGlobalProforma,
+  highlightedSearchResult = null
 }: CustomerTabProps) {
   
   const availableCurrencies = Array.from(new Set([
@@ -287,7 +289,7 @@ export default function CustomerTab({
   };
 
   const handleCustomerRowClick = (customerId: string, event: React.MouseEvent) => {
-    if (selectedCustomerIds.length === 0) return;
+    if (selectedCustomerIds.length === 0 && !event.shiftKey) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"], [data-row-action]')) return;
     if (event.shiftKey && lastSelectedCustomerId) {
@@ -3072,11 +3074,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   const remainingVal = isCompleted ? 0 : rawRemainingVal;
                   
                   const isSelected = selectedCustomerIds.includes(c.id);
+                  const isSearchHighlighted = highlightedSearchResult?.id === c.id;
                   
                   return (
                     <tr 
                       key={c.id} 
-                      className={`transition-colors ${
+                      data-global-search-id={`customer-${c.id}`}
+                      className={`transition-colors ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
                         isSelected
                           ? 'selected-row'
                           : ''
@@ -3102,6 +3106,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) => {
+                            setLastSelectedCustomerId(c.id);
                             if (e.target.checked) {
                               setSelectedCustomerIds(prev => [...prev, c.id]);
                             } else {
@@ -3310,11 +3315,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
             const remainingVal = isCompleted ? 0 : rawRemainingVal;
             const isSelected = selectedCustomerIds.includes(c.id);
+            const isSearchHighlighted = highlightedSearchResult?.id === c.id;
 
             return (
               <div 
                 key={c.id} 
-                className={`border rounded-md p-3 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 ${
+                data-global-search-id={`customer-${c.id}`}
+                className={`border rounded-md p-3 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
                   isCompleted 
                     ? 'bg-[#112918]/25 border-green-800/60 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.15)] text-green-300' 
                     : c.incompletionReason
@@ -3338,6 +3345,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => {
+                          setLastSelectedCustomerId(c.id);
                           if (e.target.checked) {
                             setSelectedCustomerIds(prev => [...prev, c.id]);
                           } else {

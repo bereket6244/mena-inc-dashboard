@@ -42,13 +42,15 @@ interface InventoryTabProps {
   customers: Customer[];
   onUpdateStocks: (stocks: PaperStock[]) => void | Promise<void>;
   currentUser: EmployeeUser | null;
+  highlightedSearchResult?: { type: string; id: string } | null;
 }
 
 export default function InventoryTab({ 
   paperStocks, 
   customers, 
   onUpdateStocks,
-  currentUser
+  currentUser,
+  highlightedSearchResult = null
 }: InventoryTabProps) {
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +119,7 @@ export default function InventoryTab({
   };
 
   const handleStockRowClick = (stockId: string, event: React.MouseEvent) => {
-    if (selectedStockIds.length === 0) return;
+    if (selectedStockIds.length === 0 && !event.shiftKey) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
     if (event.shiftKey && lastSelectedStockId) {
@@ -410,11 +412,13 @@ export default function InventoryTab({
             const isLowStock = stock.remaining < 50 && stock.remaining > 0;
             const status = getStatus(stock.remaining);
             const isSelected = selectedStockIds.includes(stock.id);
+            const isSearchHighlighted = highlightedSearchResult?.id === stock.id;
 
             return (
               <div
                 key={stock.id}
-                className={`border rounded-lg p-2 flex flex-col justify-between font-sans transition-all relative ${
+                data-global-search-id={`stock-${stock.id}`}
+                className={`border rounded-lg p-2 flex flex-col justify-between font-sans transition-all relative ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
                   isSelected
                     ? 'bg-[#121912]/40 border-[#71b536] shadow-[0_0_10px_rgba(113,181,54,0.1)]'
                     : isOutOfStock
@@ -436,6 +440,7 @@ export default function InventoryTab({
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => {
+                        setLastSelectedStockId(stock.id);
                         if (e.target.checked) {
                           setSelectedStockIds(prev => [...prev, stock.id]);
                         } else {
@@ -880,6 +885,7 @@ export default function InventoryTab({
               const isSelected = selectedStockIds.includes(stock.id);
               const isOutOfStock = stock.remaining <= 0;
               const isLowStock = stock.remaining < 50 && stock.remaining > 0;
+              const isSearchHighlighted = highlightedSearchResult?.id === stock.id;
 
               let rowClass = '';
               if (isOutOfStock) {
@@ -892,7 +898,8 @@ export default function InventoryTab({
                 <React.Fragment key={stock.id}>
                 <SharedTr
                   isSelected={isSelected}
-                  className={rowClass}
+                  data-global-search-id={`stock-${stock.id}`}
+                  className={`${rowClass} ${isSearchHighlighted ? 'global-search-highlight' : ''}`}
                   onClick={(e) => handleStockRowClick(stock.id, e)}
                   onTouchStart={(e) => startStockLongPress(stock.id, e)}
                   onTouchMove={clearRowLongPressTimer}
@@ -905,6 +912,7 @@ export default function InventoryTab({
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => {
+                        setLastSelectedStockId(stock.id);
                         if (e.target.checked) {
                           setSelectedStockIds(prev => [...prev, stock.id]);
                         } else {

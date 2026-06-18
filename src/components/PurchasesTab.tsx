@@ -49,6 +49,7 @@ interface PurchasesTabProps {
   onUpdateCategories: (updated: ExpenseCategory[]) => void;
   bankAccounts: BankAccount[];
   currentUser: EmployeeUser | null;
+  highlightedSearchResult?: { type: string; id: string } | null;
 }
 
 export default function PurchasesTab({
@@ -57,7 +58,8 @@ export default function PurchasesTab({
   categories,
   onUpdateCategories,
   bankAccounts,
-  currentUser
+  currentUser,
+  highlightedSearchResult = null
 }: PurchasesTabProps) {
   
   // Search & Filters
@@ -289,7 +291,7 @@ export default function PurchasesTab({
   };
 
   const handlePurchaseRowClick = (purchaseId: string, event: React.MouseEvent) => {
-    if (selectedPurchaseIds.length === 0) return;
+    if (selectedPurchaseIds.length === 0 && !event.shiftKey) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
     if (event.shiftKey && lastSelectedPurchaseId) {
@@ -1731,18 +1733,27 @@ export default function PurchasesTab({
           {/* Bulk Action Ribbon */}
           {selectedPurchaseIds.length > 0 && (
             <div className="hidden md:flex bg-[#121212] border border-[#ee317b]/35 p-3 rounded-md items-center justify-between text-xs font-sans animate-fadeIn shadow-[0_0_18px_rgba(238,49,123,0.08)]">
-              <span className="text-white font-bold inline-flex items-center gap-2">
+              <div className="text-white font-bold inline-flex items-center gap-2">
                 <Check className="w-3.5 h-3.5 text-[#ee317b]" />
-                {selectedPurchaseIds.length} purchase logs selected
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowBulkDeleteConfirm(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-400 hover:text-[#F87171] hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </button>
+                <span>{selectedPurchaseIds.length} purchase logs selected</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPurchaseIds([])}
+                  className="ml-1 inline-flex items-center justify-center px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
+                >
+                  Deselect All
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-400 hover:text-[#F87171] hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
+              </div>
             </div>
           )}
 
@@ -2300,12 +2311,14 @@ export default function PurchasesTab({
                   ) : (
                     sortedPurchases.map((p, index) => {
                       const isSelected = selectedPurchaseIds.includes(p.id);
+                      const isSearchHighlighted = highlightedSearchResult?.id === p.id;
                       const matchedBank = bankAccounts.find(b => b.id === p.paymentMethodId);
                       
                       return (
                         <tr 
                           key={p.id}
-                          className={`transition-colors ${
+                          data-global-search-id={`purchase-${p.id}`}
+                          className={`transition-colors ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
                             isSelected ? 'selected-row' : 'hover:bg-[#181818]'
                           }`}
                           onClick={(e) => handlePurchaseRowClick(p.id, e)}
@@ -2321,6 +2334,7 @@ export default function PurchasesTab({
                               type="checkbox"
                               checked={isSelected}
                               onChange={(e) => {
+                                setLastSelectedPurchaseId(p.id);
                                 if (e.target.checked) {
                                   setSelectedPurchaseIds(prev => [...prev, p.id]);
                                 } else {

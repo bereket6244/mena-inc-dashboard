@@ -66,6 +66,21 @@ const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
 const TAB_SCROLL_STORAGE_KEY = 'mena_inc_tab_scroll_positions_v1';
 const TAB_SCROLL_TTL_MS = 5 * 60 * 1000;
 type AppTab = 'customers' | 'inventory' | 'performance' | 'purchases';
+type GlobalSearchTarget = {
+  type: 'customer' | 'stock' | 'purchase' | 'bank';
+  id: string;
+  nonce: number;
+};
+type GlobalSearchItem = {
+  id: string;
+  title: string;
+  source: string;
+  destination?: string;
+  detail?: string;
+  hint?: string;
+  disabled?: boolean;
+  action: () => void;
+};
 
 export default function App() {
   // Theme state
@@ -120,7 +135,9 @@ export default function App() {
   const activeTabRef = useRef<AppTab>('customers');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandSearch, setCommandSearch] = useState('');
+  const [globalSearchTarget, setGlobalSearchTarget] = useState<GlobalSearchTarget | null>(null);
   const gShortcutTimerRef = useRef<number | null>(null);
+  const globalSearchHighlightFrameRef = useRef<number | null>(null);
 
   const getTabScrollElement = (tab: AppTab): HTMLElement | null => {
     const selectors: Record<AppTab, string[]> = {
@@ -176,6 +193,17 @@ export default function App() {
     setActiveTab(tab);
   };
 
+  const highlightGlobalSearchTarget = (target: Omit<GlobalSearchTarget, 'nonce'>) => {
+    if (globalSearchHighlightFrameRef.current) {
+      window.cancelAnimationFrame(globalSearchHighlightFrameRef.current);
+    }
+    setGlobalSearchTarget(null);
+    globalSearchHighlightFrameRef.current = window.requestAnimationFrame(() => {
+      setGlobalSearchTarget({ ...target, nonce: Date.now() });
+      globalSearchHighlightFrameRef.current = null;
+    });
+  };
+
   const dispatchShortcut = (name: string) => {
     window.dispatchEvent(new CustomEvent(`mena:${name}`, { detail: { tab: activeTabRef.current } }));
   };
@@ -209,9 +237,36 @@ export default function App() {
   }, [activeTab]);
 
   useEffect(() => {
+    if (!globalSearchTarget) return;
+
+    const scrollToTarget = () => {
+      const element = document.querySelector<HTMLElement>(`[data-global-search-id="${globalSearchTarget.type}-${globalSearchTarget.id}"]`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollToTarget();
+      window.setTimeout(scrollToTarget, 120);
+    });
+    const timeout = window.setTimeout(() => {
+      setGlobalSearchTarget(current => current?.nonce === globalSearchTarget.nonce ? null : current);
+    }, 3500);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [globalSearchTarget, activeTab]);
+
+  useEffect(() => {
     const handlePageHide = () => saveTabScroll(activeTabRef.current);
     window.addEventListener('pagehide', handlePageHide);
-    return () => window.removeEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      if (globalSearchHighlightFrameRef.current) {
+        window.cancelAnimationFrame(globalSearchHighlightFrameRef.current);
+      }
+    };
   }, []);
 
   const [showGlobalProforma, setShowGlobalProforma] = useState(false);
@@ -409,28 +464,155 @@ export default function App() {
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
   const [pendingDeleteEmployee, setPendingDeleteEmployee] = useState<EmployeeUser | null>(null);
   const activeEmployees = employees.filter(emp => !emp.isDeleted);
-  const commandItems = currentUser ? [
-    { id: 'search', label: 'Focus search', hint: '/', action: () => focusCurrentTabSearch() },
-    { id: 'new', label: 'New record in current tab', hint: 'Ctrl N', action: () => dispatchShortcut('new-record') },
-    { id: 'customers', label: 'Go to Customers', hint: 'Ctrl 1', action: () => changeTab('customers'), disabled: !hasTabAccess('customers') },
-    { id: 'inventory', label: 'Go to Inventory', hint: 'Ctrl 2', action: () => changeTab('inventory'), disabled: !hasTabAccess('inventory') },
-    { id: 'performance', label: 'Go to Reports', hint: 'Ctrl 3', action: () => changeTab('performance'), disabled: !hasTabAccess('performance') },
-    { id: 'purchases', label: 'Go to Purchases', hint: 'Ctrl 4', action: () => changeTab('purchases'), disabled: !hasTabAccess('purchases') },
-    { id: 'theme', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, hint: '', action: () => setTheme(prev => prev === 'dark' ? 'light' : 'dark') },
-    { id: 'proforma', label: 'Open standalone proforma tool', hint: '', action: () => setShowGlobalProforma(true) },
-    { id: 'staff', label: 'Manage staff settings', hint: '', action: () => setShowStaffModal(true), disabled: currentUser.role !== 'admin' },
+  const commandItems: GlobalSearchItem[] = currentUser ? [
+    { id: 'command-search', title: 'Focus search', source: 'Command', detail: 'Focus the search field inside the current tab', hint: '/', action: () => focusCurrentTabSearch() },
+    { id: 'command-new', title: 'New record in current tab', source: 'Command', detail: 'Open the create form for the active section', hint: 'Ctrl N', action: () => dispatchShortcut('new-record') },
+    { id: 'command-customers', title: 'Go to Customers', source: 'Command', destination: 'Customers', hint: 'Ctrl 1', action: () => changeTab('customers'), disabled: !hasTabAccess('customers') },
+    { id: 'command-inventory', title: 'Go to Inventory', source: 'Command', destination: 'Inventory', hint: 'Ctrl 2', action: () => changeTab('inventory'), disabled: !hasTabAccess('inventory') },
+    { id: 'command-purchases', title: 'Go to Purchases', source: 'Command', destination: 'Purchases', hint: 'Ctrl 3', action: () => changeTab('purchases'), disabled: !hasTabAccess('purchases') },
+    { id: 'command-performance', title: 'Go to Reports', source: 'Command', destination: 'Reports', hint: 'Ctrl 4', action: () => changeTab('performance'), disabled: !hasTabAccess('performance') },
+    { id: 'command-theme', title: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, source: 'Command', action: () => setTheme(prev => prev === 'dark' ? 'light' : 'dark') },
+    { id: 'command-proforma', title: 'Open standalone proforma tool', source: 'Command', detail: 'Open the proforma workspace', action: () => setShowGlobalProforma(true) },
+    { id: 'command-staff', title: 'Manage staff settings', source: 'Command', destination: 'Staff Settings', action: () => setShowStaffModal(true), disabled: currentUser.role !== 'admin' },
     {
-      id: 'export',
-      label: 'Export all data',
-      hint: '',
+      id: 'command-export',
+      title: 'Export all data',
+      source: 'Command',
+      detail: 'Download customers, purchases, banks, and inventory',
       action: () => {
         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
         exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
       },
       disabled: currentUser.role !== 'admin'
     },
-    { id: 'install', label: 'Install app / open install guide', hint: '', action: triggerPwaInstall },
-  ].filter(item => !item.disabled && item.label.toLowerCase().includes(commandSearch.trim().toLowerCase())) : [];
+    { id: 'command-install', title: 'Install app / open install guide', source: 'Command', detail: 'Show phone installation options', action: triggerPwaInstall },
+  ].filter(item => !item.disabled) : [];
+
+  const commandQuery = commandSearch.trim().toLowerCase();
+  const wordsMatch = (values: Array<string | number | undefined | null>) => {
+    if (!commandQuery) return true;
+    const haystack = values.filter(value => value !== undefined && value !== null).join(' ').toLowerCase();
+    return commandQuery.split(/\s+/).every(word => haystack.includes(word));
+  };
+  const openSearchResult = (tab: AppTab, target?: Omit<GlobalSearchTarget, 'nonce'>) => {
+    changeTab(tab);
+    if (target) {
+      highlightGlobalSearchTarget(target);
+    }
+  };
+  const getBankName = (id?: string) => bankAccounts.find(bank => bank.id === id)?.name || 'Unassigned account';
+  const globalDataItems: GlobalSearchItem[] = currentUser && commandQuery ? [
+    ...(hasTabAccess('customers') ? customers
+      .filter(customer => !customer.isDeleted && wordsMatch([
+        customer.clientName,
+        customer.phone,
+        customer.productType,
+        customer.clientType,
+        customer.acquisitionSource,
+        customer.orderTakenBy,
+        customer.paperType1,
+        customer.paperType2,
+        customer.paperType3,
+        customer.entrancePaper,
+        customer.ajabiPaper,
+        customer.currency,
+        customer.id,
+      ]))
+      .map(customer => ({
+        id: `customer-${customer.id}`,
+        title: customer.clientName || 'Unnamed customer',
+        source: 'Customer',
+        destination: 'Customers',
+        detail: `${customer.productType || 'Order'}${customer.phone ? ` · ${customer.phone}` : ''}${customer.orderTakenBy ? ` · ${customer.orderTakenBy}` : ''}`,
+        action: () => openSearchResult('customers', { type: 'customer', id: customer.id }),
+      })) : []),
+    ...(hasTabAccess('inventory') ? paperStocks
+      .filter(stock => !stock.isDeleted && wordsMatch([stock.name, stock.initialStock, stock.id]))
+      .map(stock => ({
+        id: `stock-${stock.id}`,
+        title: stock.name || 'Unnamed stock',
+        source: 'Inventory',
+        destination: 'Inventory',
+        detail: `Initial stock: ${stock.initialStock}`,
+        action: () => openSearchResult('inventory', { type: 'stock', id: stock.id }),
+      })) : []),
+    ...(hasTabAccess('purchases') ? purchases
+      .filter(purchase => !purchase.isDeleted && wordsMatch([
+        purchase.itemOrService,
+        purchase.expenseCategory,
+        purchase.purchasedBy,
+        purchase.recordedBy,
+        purchase.notesOrDescription,
+        purchase.purchaseDate,
+        purchase.currency,
+        purchase.totalPrice,
+        getBankName(purchase.paymentMethodId),
+        purchase.id,
+      ]))
+      .map(purchase => ({
+        id: `purchase-${purchase.id}`,
+        title: purchase.itemOrService || 'Unnamed purchase',
+        source: 'Purchase',
+        destination: 'Purchases',
+        detail: `${purchase.expenseCategory || 'Expense'} · ${purchase.totalPrice.toLocaleString()} ${purchase.currency || ''}${purchase.purchaseDate ? ` · ${purchase.purchaseDate}` : ''}`,
+        action: () => openSearchResult('purchases', { type: 'purchase', id: purchase.id }),
+      })) : []),
+    ...(hasTabAccess('performance') ? bankAccounts
+      .filter(bank => !bank.isDeleted && wordsMatch([bank.name, bank.accountNumber, bank.currency, bank.initialBalance, bank.id]))
+      .map(bank => ({
+        id: `bank-${bank.id}`,
+        title: bank.name || 'Unnamed bank account',
+        source: 'Bank Account',
+        destination: 'Reports',
+        detail: `${bank.currency || 'ETB'}${bank.accountNumber ? ` · ${bank.accountNumber}` : ''}`,
+        action: () => openSearchResult('performance', { type: 'bank', id: bank.id }),
+      })) : []),
+    ...(hasTabAccess('purchases') ? categories
+      .filter(category => !category.isDeleted && wordsMatch([category.name, ...(category.items || []), category.id]))
+      .map(category => ({
+        id: `category-${category.id}`,
+        title: category.name || 'Unnamed category',
+        source: 'Expense Category',
+        destination: 'Purchases',
+        detail: category.items?.length ? `${category.items.length} linked items` : 'Purchase category',
+        action: () => openSearchResult('purchases'),
+      })) : []),
+    ...(hasTabAccess('customers') ? productTypes
+      .filter(product => !product.isDeleted && wordsMatch([product.name, product.id]))
+      .map(product => ({
+        id: `product-${product.id}`,
+        title: product.name || 'Unnamed product type',
+        source: 'Product Type',
+        destination: 'Customers',
+        detail: 'Customer order product option',
+        action: () => openSearchResult('customers'),
+      })) : []),
+    ...(hasTabAccess('customers') ? clientTypes
+      .filter(clientType => !clientType.isDeleted && wordsMatch([clientType.name, clientType.id]))
+      .map(clientType => ({
+        id: `client-type-${clientType.id}`,
+        title: clientType.name || 'Unnamed client type',
+        source: 'Client Type',
+        destination: 'Customers',
+        detail: 'Customer classification option',
+        action: () => openSearchResult('customers'),
+      })) : []),
+    ...(currentUser.role === 'admin' ? activeEmployees
+      .filter(employee => wordsMatch([employee.name, employee.username, employee.role, ...(employee.allowedTabs || []), employee.id]))
+      .map(employee => ({
+        id: `employee-${employee.id || employee.username}`,
+        title: employee.name || employee.username,
+        source: 'Staff',
+        destination: 'Staff Settings',
+        detail: `@${employee.username} · ${employee.role}`,
+        action: () => setShowStaffModal(true),
+      })) : []),
+  ].slice(0, 60) : [];
+
+  const paletteItems: GlobalSearchItem[] = [
+    ...commandItems.filter(item => wordsMatch([item.title, item.source, item.destination, item.detail, item.hint])),
+    ...globalDataItems,
+  ];
 
   const runCommand = (action: () => void) => {
     setShowCommandPalette(false);
@@ -442,8 +624,8 @@ export default function App() {
     const tabByNumber: Record<string, AppTab> = {
       '1': 'customers',
       '2': 'inventory',
-      '3': 'performance',
-      '4': 'purchases',
+      '3': 'purchases',
+      '4': 'performance',
     };
     const tabByGoKey: Record<string, AppTab> = {
       c: 'customers',
@@ -496,7 +678,7 @@ export default function App() {
         return;
       }
 
-      if (modifier && key === 'n' && !targetIsEditable) {
+      if (modifier && key === 'n') {
         event.preventDefault();
         dispatchShortcut('new-record');
         return;
@@ -509,6 +691,7 @@ export default function App() {
       }
 
       if ((key === 'delete' || key === 'backspace') && !targetIsEditable) {
+        event.preventDefault();
         dispatchShortcut('delete-selected');
         return;
       }
@@ -1852,31 +2035,45 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                     if (event.key === 'Escape') {
                       event.preventDefault();
                       setShowCommandPalette(false);
-                    } else if (event.key === 'Enter' && commandItems[0]) {
+                    } else if (event.key === 'Enter' && paletteItems[0]) {
                       event.preventDefault();
-                      runCommand(commandItems[0].action);
+                      runCommand(paletteItems[0].action);
                     }
                   }}
-                  placeholder="Search commands..."
+                  placeholder="Search the whole app..."
                   className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
                 />
                 <span className="rounded border border-[#262626] bg-[#181818] px-1.5 py-0.5 text-[10px] text-gray-500">Esc</span>
               </div>
-              <div className="max-h-[320px] overflow-y-auto p-1.5">
-                {commandItems.length > 0 ? (
-                  commandItems.map((item) => (
+              <div className="max-h-[420px] overflow-y-auto p-1.5">
+                {paletteItems.length > 0 ? (
+                  paletteItems.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => runCommand(item.action)}
-                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#202020] hover:text-white"
+                      className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-xs text-gray-300 hover:bg-[#202020] hover:text-white"
                     >
-                      <span>{item.label}</span>
-                      {item.hint && <span className="text-[10px] uppercase tracking-wider text-gray-500">{item.hint}</span>}
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2">
+                          <span className="rounded border border-[#333] bg-[#181818] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ee317b]">
+                            {item.source}
+                          </span>
+                          <span className="truncate font-semibold text-white">{item.title}</span>
+                        </span>
+                        {(item.detail || item.destination) && (
+                          <span className="mt-1 block truncate text-[10px] text-gray-500">
+                            {item.detail}
+                            {item.detail && item.destination ? ' · ' : ''}
+                            {item.destination ? `Open ${item.destination}` : ''}
+                          </span>
+                        )}
+                      </span>
+                      {item.hint && <span className="shrink-0 text-[10px] uppercase tracking-wider text-gray-500">{item.hint}</span>}
                     </button>
                   ))
                 ) : (
-                  <div className="px-3 py-8 text-center text-xs text-gray-500">No matching commands</div>
+                  <div className="px-3 py-8 text-center text-xs text-gray-500">No matching app results</div>
                 )}
               </div>
             </motion.div>
@@ -2212,6 +2409,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               customers={customers}
               onUpdateStocks={handleUpdateStocks}
               currentUser={currentUser}
+              highlightedSearchResult={globalSearchTarget?.type === 'stock' ? globalSearchTarget : null}
             />
           )}
 
@@ -2226,6 +2424,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               categories={categories}
               paperStocks={paperStocks}
               currentUser={currentUser}
+              highlightedSearchResult={globalSearchTarget?.type === 'bank' ? globalSearchTarget : null}
             />
           )}
 
@@ -2251,6 +2450,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               employees={employees}
               showGlobalProforma={showGlobalProforma}
               setShowGlobalProforma={setShowGlobalProforma}
+              highlightedSearchResult={globalSearchTarget?.type === 'customer' ? globalSearchTarget : null}
             />
           </div>
 
@@ -2262,6 +2462,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               onUpdateCategories={handleUpdateCategories}
               bankAccounts={bankAccounts}
               currentUser={currentUser}
+              highlightedSearchResult={globalSearchTarget?.type === 'purchase' ? globalSearchTarget : null}
             />
           )}
         </div>

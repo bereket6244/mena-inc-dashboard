@@ -266,10 +266,52 @@ export function DataTable({
   disableResizing?: boolean;
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
+  const scrollOuterRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const [topScrollWidth, setTopScrollWidth] = useState(0);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+
+  useEffect(() => {
+    const table = tableRef.current;
+    const scrollOuter = scrollOuterRef.current;
+    if (!table || !scrollOuter) return;
+
+    const measure = () => {
+      setTopScrollWidth(table.scrollWidth);
+      setHasHorizontalOverflow(scrollOuter.scrollWidth > scrollOuter.clientWidth + 1);
+    };
+
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(table);
+    resizeObserver.observe(scrollOuter);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [children]);
+
+  const syncHorizontalScroll = (source: 'top' | 'table') => {
+    const scrollOuter = scrollOuterRef.current;
+    const topScroll = topScrollRef.current;
+    if (!scrollOuter || !topScroll) return;
+
+    if (source === 'top') {
+      scrollOuter.scrollLeft = topScroll.scrollLeft;
+    } else {
+      topScroll.scrollLeft = scrollOuter.scrollLeft;
+    }
+  };
 
   return (
     <div className="data-table-scroll app-main-table-scroll relative">
-      <div className="data-table-scroll-outer scrollbar-none-x relative">
+      <div
+        ref={scrollOuterRef}
+        className="data-table-scroll-outer scrollbar-none-x relative"
+        onScroll={() => syncHorizontalScroll('table')}
+      >
         <table
           ref={tableRef}
           id={id}
@@ -277,6 +319,14 @@ export function DataTable({
         >
           {children}
         </table>
+      </div>
+      <div
+        ref={topScrollRef}
+        className={`data-table-top-scroll hidden md:block ${hasHorizontalOverflow ? '' : 'opacity-0 pointer-events-none'}`}
+        onScroll={() => syncHorizontalScroll('top')}
+        aria-hidden="true"
+      >
+        <div style={{ width: topScrollWidth, height: 1 }} />
       </div>
     </div>
   );

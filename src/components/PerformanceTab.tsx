@@ -44,6 +44,7 @@ interface PerformanceTabProps {
   categories?: ExpenseCategory[];
   paperStocks?: PaperStock[];
   currentUser?: EmployeeUser | null;
+  highlightedSearchResult?: { type: string; id: string } | null;
 }
 
 export default function PerformanceTab({ 
@@ -55,7 +56,8 @@ export default function PerformanceTab({
   purchases = [],
   categories = [],
   paperStocks = [],
-  currentUser = null
+  currentUser = null,
+  highlightedSearchResult = null
 }: PerformanceTabProps) {
   const formatMockupValue = (val: number) => {
     if (val === 0) return '0';
@@ -208,6 +210,28 @@ export default function PerformanceTab({
     const target = event.target as HTMLElement;
     if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
     toggleBankSelection(bankId);
+  };
+
+  const getBankCurrentBalance = (bank: BankAccount) => {
+    const advancesForBank = customers
+      .filter(c => c.paymentMethodId === bank.id || (!c.paymentMethodId && bank.id === 'b1'))
+      .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
+
+    const completedRemainingForBank = customers
+      .filter(c => !!c.deliveryDate && (c.bankRemainingId === bank.id || (!c.bankRemainingId && bank.id === 'b1' && c.paymentMethodId === bank.id)))
+      .reduce((sum, c) => {
+        const base = c.quantity * c.unitPrice;
+        const vat = c.isVatAdded ? base * 0.15 : 0;
+        const totalInvoice = base + vat;
+        const remaining = totalInvoice - c.advancePayment;
+        return sum + Math.max(0, remaining);
+      }, 0);
+
+    const purchasesOutOfBank = purchases
+      .filter(p => p.paymentMethodId === bank.id)
+      .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
+
+    return bank.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
   };
 
   // Filter States (previously missing)
@@ -457,16 +481,27 @@ export default function PerformanceTab({
       if (!isPerformanceShortcut(event) || shortcutsBlocked || selectedBankIds.length === 0) return;
       setShowBulkDeleteConfirm(true);
     };
+    const handleCopySelected = async (event: Event) => {
+      if (!isPerformanceShortcut(event) || shortcutsBlocked || selectedBankIds.length === 0) return;
+      const selectedAmounts = bankAccounts
+        .filter(bank => selectedBankIds.includes(bank.id))
+        .map(bank => formatMockupValue(getBankCurrentBalance(bank)));
+      if (selectedAmounts.length === 0) return;
+      await copyTextToClipboard(selectedAmounts.join('\n'));
+      showBankToast(selectedAmounts.length === 1 ? 'Amount copied.' : 'Selected amounts copied.');
+    };
 
     window.addEventListener('mena:new-record', handleNewRecord);
     window.addEventListener('mena:select-all-visible', handleSelectAllVisible);
     window.addEventListener('mena:delete-selected', handleDeleteSelected);
+    window.addEventListener('mena:copy-selected', handleCopySelected);
     return () => {
       window.removeEventListener('mena:new-record', handleNewRecord);
       window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
       window.removeEventListener('mena:delete-selected', handleDeleteSelected);
+      window.removeEventListener('mena:copy-selected', handleCopySelected);
     };
-  }, [showBulkDeleteConfirm, adjustingBank, deletingBankId, editingBankId, isAddingBank, bankAccounts, showAllAccounts, selectedCurrency, selectedBankIds]);
+  }, [showBulkDeleteConfirm, adjustingBank, deletingBankId, editingBankId, isAddingBank, bankAccounts, customers, purchases, showAllAccounts, selectedCurrency, selectedBankIds]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -1057,6 +1092,7 @@ export default function PerformanceTab({
                 const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
                 const isEditing = editingBankId === b.id;
                 const isBankSelected = selectedBankIds.includes(b.id);
+                const isSearchHighlighted = highlightedSearchResult?.id === b.id;
 
                 if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
                   return null;
@@ -1065,7 +1101,8 @@ export default function PerformanceTab({
                 return (
                   <div 
                     key={b.id} 
-                    className={`relative bg-white border rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#E7E3D4]'}`}
+                    data-global-search-id={`bank-${b.id}`}
+                    className={`relative bg-white border rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#E7E3D4]'}`}
                     onClick={(e) => handleBankCardClick(b.id, e)}
                     onTouchStart={(e) => startBankLongPress(b.id, e)}
                     onTouchMove={clearBankLongPressTimer}
@@ -1758,6 +1795,7 @@ export default function PerformanceTab({
               const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
               const isEditing = editingBankId === b.id;
               const isBankSelected = selectedBankIds.includes(b.id);
+              const isSearchHighlighted = highlightedSearchResult?.id === b.id;
 
               // Hide or collapse zero-value currencies if requested (when viewing all, but hide zero-value accounts if not default and have zero balance)
               if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
@@ -1767,7 +1805,8 @@ export default function PerformanceTab({
               return (
                 <div 
                   key={b.id} 
-                  className={`relative bg-[#181818] border rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#262626]'}`}
+                  data-global-search-id={`bank-${b.id}`}
+                  className={`relative bg-[#181818] border rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#262626]'}`}
                   onClick={(e) => handleBankCardClick(b.id, e)}
                   onTouchStart={(e) => startBankLongPress(b.id, e)}
                   onTouchMove={clearBankLongPressTimer}
