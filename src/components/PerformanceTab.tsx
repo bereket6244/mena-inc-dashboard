@@ -988,7 +988,7 @@ export default function PerformanceTab({
                   {!isCollapsed && (
                     <div className="grid grid-cols-2 gap-3">
                       {/* KPI Card 1: Debt */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Debt</span>
                           <div className="w-5 h-5 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
@@ -1003,7 +1003,7 @@ export default function PerformanceTab({
                       </button>
 
                       {/* KPI Card 2: Gross */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Gross</span>
                           <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
@@ -1018,7 +1018,7 @@ export default function PerformanceTab({
                       </button>
 
                       {/* KPI Card 3: Spent */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Spent</span>
                           <div className="w-5 h-5 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
@@ -1033,7 +1033,7 @@ export default function PerformanceTab({
                       </button>
 
                       {/* KPI Card 4: Income */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Income</span>
                           <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
@@ -1045,10 +1045,10 @@ export default function PerformanceTab({
                             <CopyableAmount value={income} currency={curr} className="text-[#71b536]" />
                           </p>
                         </div>
-                      </div>
+                      </button>
 
                       {/* KPI Card 5: Net Cash */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
                           <div className={`w-5 h-5 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>

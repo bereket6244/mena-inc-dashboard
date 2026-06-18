@@ -24,7 +24,9 @@ import {
   RotateCcw,
   ArrowUpDown,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 
 import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
@@ -41,6 +43,7 @@ const PURCHASE_SORT_BY_STORAGE_KEY = 'ui.purchases.sortBy';
 const PURCHASE_SORT_ASC_STORAGE_KEY = 'ui.purchases.sortAsc';
 const PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY = 'ui.purchases.categoriesCollapsed';
 const PURCHASE_FILTERS_STORAGE_KEY = 'ui.purchases.filters';
+const PURCHASE_LAYOUT_STORAGE_KEY = 'ui.purchases.layoutMode';
 
 interface PurchasesTabProps {
   purchases: Purchase[];
@@ -94,6 +97,9 @@ export default function PurchasesTab({
   const [showMobileSortPopover, setShowMobileSortPopover] = useState(false);
   const [showDesktopSortPopover, setShowDesktopSortPopover] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>(() => {
+    return localStorage.getItem(PURCHASE_LAYOUT_STORAGE_KEY) === 'cards' ? 'cards' : 'grid';
+  });
   const [sortBy, setSortBy] = useState<PurchaseSortField>(() => {
     const savedSortBy = localStorage.getItem(PURCHASE_SORT_BY_STORAGE_KEY);
     return PURCHASE_SORT_FIELDS.includes(savedSortBy as PurchaseSortField) ? savedSortBy as PurchaseSortField : 'purchaseDate';
@@ -427,6 +433,10 @@ export default function PurchasesTab({
       intervalEnd: expenseIntervalEnd,
     }));
   }, [selectedCategoryFilter, selectedBankFilter, selectedRecordedByFilter, expenseIntervalStart, expenseIntervalEnd]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_LAYOUT_STORAGE_KEY, layoutMode);
+  }, [layoutMode]);
 
   // Open Form for addition
   const handleOpenAddForm = () => {
@@ -1802,7 +1812,30 @@ export default function PurchasesTab({
             </div>
           </div>
 
-          <div className="app-mobile-sticky-toolbar purchase-mobile-toolbar-sticky md:hidden flex items-center justify-end gap-1.5 pt-1 relative w-full h-8">
+          <div className="app-mobile-sticky-toolbar purchase-mobile-toolbar-sticky md:hidden flex items-center justify-between gap-1.5 pt-1 relative w-full h-8">
+            {!(isSearchExpanded || searchQuery) && (
+              <div className="flex items-center shrink-0">
+                <div className="flex items-center border border-[#262626] rounded bg-[#181818] overflow-hidden h-7">
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode('grid')}
+                    className={`p-1.5 transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+                    title="Table view"
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode('cards')}
+                    className={`p-1.5 transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+                    title="Gallery view"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-1.5 min-w-0 flex-1">
             <div ref={mobileSearchWrapperRef} className={`relative flex min-w-0 items-center h-8 select-none transition-all duration-200 ${isSearchExpanded ? 'w-full flex-1' : ''}`}>
               <AnimatePresence initial={false}>
                 {!(isSearchExpanded || searchQuery) ? (
@@ -1983,10 +2016,30 @@ export default function PurchasesTab({
                 </div>
               </>
             )}
+            </div>
           </div>
 
           <div className="app-sticky-toolbar purchase-toolbar-sticky hidden md:flex items-center justify-between gap-4 py-1.5 border-b border-[#262626] font-sans text-xs">
-            <div className="flex items-center text-gray-400 font-medium gap-2"></div>
+            <div className="flex items-center text-gray-400 font-medium gap-2">
+              <div className="flex items-center border border-[#262626] rounded bg-[#181818] overflow-hidden h-7">
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('grid')}
+                  className={`p-1.5 transition-colors ${layoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+                  title="Table view"
+                >
+                  <TableIcon className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('cards')}
+                  className={`p-1.5 transition-colors ${layoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`}
+                  title="Gallery view"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <div ref={searchWrapperRef} className="flex items-center">
                 {!(isSearchExpanded || searchQuery) ? (
@@ -2292,7 +2345,7 @@ export default function PurchasesTab({
           </div>
 
           {/* Table Spreadsheet View */}
-          <div className={`bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
+          <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
             <DataTable
               id="purchases-table"
               className="min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"
@@ -2467,6 +2520,133 @@ export default function PurchasesTab({
                   )}
                 </tbody>
             </DataTable>
+          </div>
+
+          <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
+            {sortedPurchases.length === 0 ? (
+              <div className="col-span-full border border-[#262626] bg-[#121212] rounded-md p-8 text-center text-xs text-gray-500 italic">
+                No purchase logs recorded in current settings.
+              </div>
+            ) : (
+              sortedPurchases.map((p) => {
+                const isSelected = selectedPurchaseIds.includes(p.id);
+                const isSearchHighlighted = highlightedSearchResult?.id === p.id;
+                const matchedBank = bankAccounts.find(b => b.id === p.paymentMethodId);
+                const totalLabel = `${Number(p.totalPrice).toLocaleString()} ${p.currency || 'ETB'}`;
+
+                return (
+                  <div
+                    key={p.id}
+                    data-global-search-id={`purchase-${p.id}`}
+                    className={`border rounded-md p-3 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 min-h-[190px] ${
+                      isSearchHighlighted ? 'global-search-highlight' : ''
+                    } ${
+                      isSelected
+                        ? 'selected-row border-[#ee317b]'
+                        : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]/60'
+                    }`}
+                    onClick={(e) => handlePurchaseRowClick(p.id, e)}
+                    onTouchStart={(e) => startPurchaseRowLongPress(p.id, e)}
+                    onTouchMove={clearRowLongPressTimer}
+                    onTouchEnd={clearRowLongPressTimer}
+                    onTouchCancel={clearRowLongPressTimer}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setLastSelectedPurchaseId(p.id);
+                                if (e.target.checked) {
+                                  setSelectedPurchaseIds(prev => [...prev, p.id]);
+                                } else {
+                                  setSelectedPurchaseIds(prev => prev.filter(id => id !== p.id));
+                                }
+                              }}
+                              className="accent-[#ee317b] cursor-pointer"
+                              title="Select purchase"
+                            />
+                            <h4 className="font-bold text-white text-sm leading-tight truncate">{p.itemOrService}</h4>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span className="bg-[#24131A] text-pink-400 border border-pink-900/40 text-[9px] px-1.5 py-0.5 uppercase tracking-wide rounded-sm">
+                              {p.expenseCategory}
+                            </span>
+                            {p.hasVat && (
+                              <span className="bg-[#182318] text-emerald-400 border border-emerald-900/50 text-[9px] px-1.5 py-0.5 uppercase tracking-wide rounded-sm">
+                                +VAT
+                              </span>
+                            )}
+                            {p.hasWithholding && (
+                              <span className="bg-[#31111E] text-red-400 border border-rose-950/50 text-[9px] px-1.5 py-0.5 uppercase tracking-wide rounded-sm">
+                                -WH
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[#ee317b] font-extrabold text-sm leading-tight">{totalLabel}</div>
+                          <div className="text-[9px] text-gray-500 uppercase tracking-wider">{p.purchaseDate}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="bg-[#181818] border border-[#262626] rounded p-2 min-w-0">
+                          <span className="block text-gray-500 uppercase text-[9px] tracking-wider">Quantity</span>
+                          <span className="font-bold text-white">{p.quantity}</span>
+                        </div>
+                        <div className="bg-[#181818] border border-[#262626] rounded p-2 min-w-0">
+                          <span className="block text-gray-500 uppercase text-[9px] tracking-wider">Unit Price</span>
+                          <span className="font-bold text-white">{Number(p.unitPrice).toLocaleString()} {p.currency || 'ETB'}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-500">Account</span>
+                          <span className="text-gray-300 font-semibold text-right truncate">{matchedBank ? matchedBank.name : 'Unknown Account'}</span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-500">Recorded By</span>
+                          <span className="text-gray-300 font-semibold text-right truncate">{p.recordedBy || 'Unknown'}</span>
+                        </div>
+                        <div className="pt-1 text-gray-400 leading-snug line-clamp-2">
+                          {p.notesOrDescription || 'No notes'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-[#262626] flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenEditForm(p);
+                        }}
+                        className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                        title="Edit Purchase Record"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeletingPurchaseId(p.id);
+                        }}
+                        className="text-gray-400 hover:text-red-400 hover:bg-[#2E181D] p-1.5 rounded-md transition-colors cursor-pointer"
+                        title="Delete Purchase"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
