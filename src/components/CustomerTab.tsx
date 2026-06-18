@@ -1354,6 +1354,26 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setIsAddingProduct(false);
   };
 
+  const handleCreateProductTypeFromName = async (rawName: string) => {
+    const cleaned = rawName.trim();
+    if (!cleaned) return;
+    const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
+    if (existing) {
+      setProductType(existing.name);
+      return;
+    }
+    try {
+      await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
+      setProductType(cleaned);
+      showToast('Product type added successfully.', 'success');
+    } catch (error) {
+      console.error('Product type save failed:', error);
+      setProductType(cleaned);
+      setFormError('Product type saved locally, but the database update failed. Check Supabase product_types setup.');
+      showToast('Product type saved locally. Database update failed.', 'error');
+    }
+  };
+
   const handleAddClientTypeInline = () => {
     const cleaned = newClientTypeInput.trim();
     if (cleaned) {
@@ -3839,6 +3859,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                   id="field-client-product"
                                   value={productType}
                                   onChange={(e) => setProductType(e.target.value)}
+                                  onCreateOption={(newVal) => void handleCreateProductTypeFromName(newVal)}
+                                  createOptionLabel="Add product type"
+                                  createOptionBadge="Company"
+                                  placeholder="Search or add product..."
                                   className="flex-1 px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
                                 >
                                   <option value="">Select product type...</option>
@@ -5719,11 +5743,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           e.preventDefault();
                           if (newManagerProductInput.trim()) {
                             const cleaned = newManagerProductInput.trim();
-                            const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
-                            if (!existing) {
-                              await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
-                              showToast('Product type added successfully.', 'success');
-                            }
+                            await handleCreateProductTypeFromName(cleaned);
                             setNewManagerProductInput('');
                           }
                         }
@@ -5734,11 +5754,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       onClick={async () => {
                         if (newManagerProductInput.trim()) {
                           const cleaned = newManagerProductInput.trim();
-                          const existing = productTypes.find(p => p.name.toLowerCase() === cleaned.toLowerCase());
-                          if (!existing) {
-                            await onAddProductType({ id: 'pt_' + Date.now(), name: cleaned });
-                            showToast('Product type added successfully.', 'success');
-                          }
+                          await handleCreateProductTypeFromName(cleaned);
                           setNewManagerProductInput('');
                         }
                       }}

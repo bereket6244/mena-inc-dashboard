@@ -1329,24 +1329,28 @@ export default function App() {
     }
   };
 
-  const handleAddProductType = (newProd: ProductType) => {
+  const handleAddProductType = async (newProd: ProductType) => {
     const updated = [...productTypes, newProd];
     setProductTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
-    
-    import('./lib/dbService').then(({ saveProductTypeDoc }) => {
-      saveProductTypeDoc(newProd).catch(() => {});
-    }).catch(() => {});
+    try {
+      const { saveProductTypeDoc } = await import('./lib/dbService');
+      await saveProductTypeDoc({ ...newProd, isDeleted: false, deletedBy: undefined });
+    } catch (error) {
+      console.warn('DB save product type failed, kept local update', error);
+    }
   };
 
-  const handleUpdateProductType = (updatedProd: ProductType) => {
+  const handleUpdateProductType = async (updatedProd: ProductType) => {
     const updated = productTypes.map(prod => prod.id === updatedProd.id ? updatedProd : prod);
     setProductTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
-
-    import('./lib/dbService').then(({ saveProductTypeDoc }) => {
-      saveProductTypeDoc(updatedProd).catch(() => {});
-    }).catch(() => {});
+    try {
+      const { saveProductTypeDoc } = await import('./lib/dbService');
+      await saveProductTypeDoc(updatedProd);
+    } catch (error) {
+      console.warn('DB update product type failed, kept local update', error);
+    }
   };
 
   const handleDeleteProductType = async (ids: string[]) => {
@@ -1359,6 +1363,7 @@ export default function App() {
     }
     const updated = productTypes.filter(p => !ids.includes(p.id));
     setProductTypes(updated);
+    localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
   };
 
   const handleAddClientType = (newType: ClientType) => {
