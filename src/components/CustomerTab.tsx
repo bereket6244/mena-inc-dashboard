@@ -18,6 +18,7 @@ import {
   Phone, 
   MessageCircle,
   Send,
+  Share2,
   ExternalLink,
   User, 
   Layers, 
@@ -210,7 +211,7 @@ export default function CustomerTab({
   
   const availableCurrencies = Array.from(new Set([
     'ETB', 'USD', 'EUR', 'GBP', 'AED',
-    ...bankAccounts.map(b => b.currency || 'ETB')
+    ...bankAccounts.filter(b => !b.isDeleted).map(b => b.currency || 'ETB')
   ]));
 
   // View states
@@ -255,6 +256,7 @@ export default function CustomerTab({
   const [filterCompletion, setFilterCompletion] = useState<string>(savedCustomerFilters.completion || 'All'); // 'All', 'Completed', 'Pending', 'Incomplete'
   const [filterReceipt, setFilterReceipt] = useState<string>(savedCustomerFilters.receipt || 'All'); // 'All', 'NeedsReceipt'
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [showSelectedShareOptions, setShowSelectedShareOptions] = useState(false);
   const rowLongPressTimerRef = useRef<number | null>(null);
 
   const clearRowLongPressTimer = () => {
@@ -274,7 +276,7 @@ export default function CustomerTab({
 
   const startCustomerRowLongPress = (customerId: string, event: React.TouchEvent) => {
     const target = event.target as HTMLElement;
-    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    if (target.closest('button, input, select, textarea, a, [role="button"], [data-row-action]')) return;
     clearRowLongPressTimer();
     rowLongPressTimerRef.current = window.setTimeout(() => {
       toggleCustomerSelection(customerId);
@@ -282,7 +284,19 @@ export default function CustomerTab({
     }, 520);
   };
 
+  const handleCustomerRowClick = (customerId: string, event: React.MouseEvent) => {
+    if (selectedCustomerIds.length === 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"], [data-row-action]')) return;
+    toggleCustomerSelection(customerId);
+  };
+
   useEffect(() => clearRowLongPressTimer, []);
+  useEffect(() => {
+    if (selectedCustomerIds.length === 0) {
+      setShowSelectedShareOptions(false);
+    }
+  }, [selectedCustomerIds.length]);
   const [copiedOrderMessageIds, setCopiedOrderMessageIds] = useState<string[]>([]);
   const copiedOrderMessageTimerRef = useRef<number | null>(null);
 
@@ -351,15 +365,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     }, 1200);
   };
 
-  const handleCopySelectedOrdersMessages = () => {
-    const selectedItems = customers.filter(c => selectedCustomerIds.includes(c.id));
-    if (selectedItems.length === 0) return;
-    
+  const getSelectedOrderItems = () => customers.filter(c => selectedCustomerIds.includes(c.id));
+
+  const buildSelectedOrdersMessage = (selectedItems: Customer[]) => {
     if (selectedItems.length === 1) {
-      copyCustomerOrderMessage(selectedItems[0]);
-      return;
+      return buildCustomerOrderMessage(selectedItems[0]);
     }
-    
+
     // Multiple items: Sum up the math, separate the details
     let totalSum = 0;
     let totalAdvance = 0;
@@ -431,7 +443,15 @@ ${uniquePaymentLines.join('\n---\n')}
 
 The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
-    navigator.clipboard.writeText(message);
+    return message;
+  };
+
+  const handleCopySelectedOrdersMessages = async () => {
+    const selectedItems = getSelectedOrderItems();
+    if (selectedItems.length === 0) return;
+    const message = buildSelectedOrdersMessage(selectedItems);
+
+    await copyContactToClipboard(message);
     
     if (copiedOrderMessageTimerRef.current) {
       window.clearTimeout(copiedOrderMessageTimerRef.current);
@@ -441,6 +461,56 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       setCopiedOrderMessageIds([]);
     }, 1200);
   };
+
+  const handleShareSelectedOrdersMessage = (channel: 'whatsapp' | 'telegram' | 'sms') => {
+    const selectedItems = getSelectedOrderItems();
+    if (selectedItems.length === 0) return;
+    const message = buildSelectedOrdersMessage(selectedItems);
+    const lastSelectedCustomer = customers.find(customer => customer.id === selectedCustomerIds[selectedCustomerIds.length - 1]) || selectedItems[selectedItems.length - 1];
+    const contact = lastSelectedCustomer ? formatContactDisplay(lastSelectedCustomer.phone || '') : null;
+    setShowSelectedShareOptions(false);
+
+    if (channel === 'whatsapp') {
+      if (contact) {
+        openExternalContactUrl(createWhatsAppMessageUrl(contact.normalized || contact.raw || lastSelectedCustomer?.phone || '', message));
+      } else {
+        openExternalContactUrl(`https://wa.me/?text=${encodeURIComponent(message)}`);
+      }
+      return;
+    }
+
+    if (channel === 'telegram') {
+      if (contact && (contact.type === 'phone' || contact.type === 'username')) {
+        openExternalContactUrl(createTelegramMessageUrl(contact.normalized, message));
+      } else {
+        openExternalContactUrl(createTelegramShareUrl(message));
+      }
+      return;
+    }
+
+    if (channel === 'sms') {
+      if (contact?.type === 'phone') {
+        openExternalContactUrl(createSmsMessageUrl(contact.normalized, message));
+      } else {
+        openExternalContactUrl(`sms:?&body=${encodeURIComponent(message)}`);
+      }
+    }
+  };
+
+  const selectedShareOptions = (
+    <div className="absolute right-0 bottom-full mb-2 w-44 bg-[#181818] border border-[#262626] rounded-md shadow-2xl p-1 z-50">
+      <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
+      <button type="button" onClick={() => handleShareSelectedOrdersMessage('whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]">
+        <Send className="w-3.5 h-3.5 text-gray-400" /> WhatsApp
+      </button>
+      <button type="button" onClick={() => handleShareSelectedOrdersMessage('telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]">
+        <Send className="w-3.5 h-3.5 text-gray-400" /> Telegram
+      </button>
+      <button type="button" onClick={() => handleShareSelectedOrdersMessage('sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]">
+        <MessageCircle className="w-3.5 h-3.5 text-gray-400" /> SMS
+      </button>
+    </div>
+  );
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showMobileSortPopover, setShowMobileSortPopover] = useState(false);
@@ -499,11 +569,17 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     }));
   }, [filterAgent, filterSource, filterPayment, filterCompletion, filterReceipt]);
 
-  const agentFilterOptions = Array.from(new Set([
-    ...AGENTS,
-    ...employees.map(emp => emp.name).filter(Boolean),
-    ...customers.map(customer => customer.orderTakenBy).filter(Boolean),
-  ]));
+  const activeEmployees = employees.filter(employee => !employee.isDeleted);
+  const agentFilterOptions = Array.from(new Set(
+    (activeEmployees.length > 0 ? activeEmployees.map(emp => emp.name) : AGENTS).filter(Boolean)
+  ));
+  const activeBankAccounts = bankAccounts.filter(account => !account.isDeleted);
+
+  useEffect(() => {
+    if (filterAgent !== 'All' && !agentFilterOptions.includes(filterAgent)) {
+      setFilterAgent('All');
+    }
+  }, [agentFilterOptions, filterAgent]);
 
   useEffect(() => {
     if (!activeContactMenuId) return;
@@ -1993,7 +2069,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const getCustomerSortValue = (customer: Customer, field: CustomerColumnSortField) => {
     const fullValue = Number(customer.quantity || 0) * Number(customer.unitPrice || 0);
-    const remainingBalance = fullValue - Number(customer.advancePayment || 0);
+    const isCompleted = !!(customer.deliveryDate && customer.bankRemainingId);
+    const remainingBalance = isCompleted ? 0 : Math.max(0, fullValue - Number(customer.advancePayment || 0));
 
     switch (field) {
       case 'remainingBalance':
@@ -2028,16 +2105,19 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const matchesAgent = filterAgent === 'All' || normalizedOrderAgent === normalizedFilterAgent;
     const matchesSource = filterSource === 'All' || c.acquisitionSource === filterSource;
 
-    const full = c.quantity * c.unitPrice;
-    const remaining = full - c.advancePayment;
+    const full = Number(c.quantity || 0) * Number(c.unitPrice || 0);
+    const advance = Number(c.advancePayment || 0);
+    const remaining = Math.max(0, full - advance);
+    const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
+    const hasOutstandingDebt = !isCompleted && remaining > 0;
+    const isPaidOrSettled = isCompleted || remaining <= 0;
     let matchesPayment = true;
     if (filterPayment === 'Debt') {
-      matchesPayment = remaining > 0;
+      matchesPayment = hasOutstandingDebt;
     } else if (filterPayment === 'Paid') {
-      matchesPayment = remaining <= 0;
+      matchesPayment = isPaidOrSettled;
     }
 
-    const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
     let matchesCompletion = true;
     if (filterCompletion === 'Completed') {
       matchesCompletion = isCompleted;
@@ -2548,7 +2628,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             onChange={(e) => setFilterAgent(e.target.value)}
                             className="bg-transparent text-xs text-white"
                           >
-                            <option value="All">All Agents</option>
+                            <option value="All">All Staff</option>
                             {agentFilterOptions.map(agent => (
                               <option key={agent} value={agent}>{agent}</option>
                             ))}
@@ -2845,6 +2925,17 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <Copy className="w-3.5 h-3.5" />
                   Copy Message
                 </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowSelectedShareOptions(prev => !prev)}
+                    className="px-3 py-1 bg-[#181818] hover:bg-[#202020] border border-[#262626] text-white font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Share
+                  </button>
+                  {showSelectedShareOptions && selectedShareOptions}
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowBulkDeleteConfirm(true)}
@@ -2891,9 +2982,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
                 {filteredCustomers.map((c, index) => {
-                  const fullVal = c.quantity * c.unitPrice;
-                  const remainingVal = fullVal - c.advancePayment;
                   const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
+                  const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
+                  const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
+                  const remainingVal = isCompleted ? 0 : rawRemainingVal;
                   
                   const isSelected = selectedCustomerIds.includes(c.id);
                   
@@ -2911,6 +3003,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             ? 'incomplete-order-row' 
                             : 'hover:bg-[#1a1a1a]'
                       }`}
+                      onClick={(e) => handleCustomerRowClick(c.id, e)}
                       onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
                       onTouchMove={clearRowLongPressTimer}
                       onTouchEnd={clearRowLongPressTimer}
@@ -2941,6 +3034,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <div className="space-y-1">
                           <div className="flex items-baseline gap-1.5 min-w-0">
                             <span 
+                              data-row-action="true"
                               className="truncate text-[14px] font-bold leading-tight text-white hover:text-[#ee317b] hover:underline cursor-pointer transition-colors" 
                               title="Click to copy and share order message details"
                               onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
@@ -3087,7 +3181,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               className="bg-[#121212] text-[11px] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md w-full max-w-[128px] leading-tight truncate"
                             >
                               <option value="">- Empty/Unpaid -</option>
-                              {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                              {activeBankAccounts.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </SearchableSelect>
                           </div>
                           <div className="min-w-0">
@@ -3127,9 +3221,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       {/* RESPONSIVE CARDS VIEW */}
       <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0`}>
         {filteredCustomers.map((c) => {
-            const fullVal = c.quantity * c.unitPrice;
-            const remainingVal = fullVal - c.advancePayment;
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
+            const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
+            const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
+            const remainingVal = isCompleted ? 0 : rawRemainingVal;
             const isSelected = selectedCustomerIds.includes(c.id);
 
             return (
@@ -3144,6 +3239,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         ? 'bg-sky-950/20 border-sky-600/60 shadow-[inset_0_1px_0_0_rgba(56,189,248,0.15)] text-sky-300'
                         : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]'
                 }`}
+                onClick={(e) => handleCustomerRowClick(c.id, e)}
                 onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
                 onTouchMove={clearRowLongPressTimer}
                 onTouchEnd={clearRowLongPressTimer}
@@ -3187,6 +3283,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         </div>
                         <div className="mt-2.5 flex items-center gap-1.5 min-w-0">
                           <h3
+                            data-row-action="true"
                             className="min-w-0 truncate font-sans font-bold text-white text-base cursor-pointer hover:text-[#ee317b] hover:underline transition-colors"
                             title="Click to copy and share order message details"
                             onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
@@ -3282,7 +3379,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               className="bg-[#161616] text-[#ee317b] hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer max-w-[150px] truncate"
                             >
                               <option value="">- Unpaid -</option>
-                              {bankAccounts.map(b => (
+                              {activeBankAccounts.map(b => (
                                 <option key={b.id} value={b.id}>
                                   {b.name}
                                 </option>
@@ -3721,7 +3818,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             onChange={(e) => setOrderTakenBy(e.target.value as Customer['orderTakenBy'])}
                             className="w-full px-3 py-2 text-sm border font-sans rounded-md outline-none bg-[#121212] border-[#262626] text-gray-500 cursor-not-allowed opacity-80"
                           >
-                            {(employees.length > 0 ? employees.map(emp => emp.name) : AGENTS).map(a => (
+                            {(activeEmployees.length > 0 ? activeEmployees.map(emp => emp.name) : AGENTS).map(a => (
                               <option key={a} value={a}>{a}</option>
                             ))}
                           </SearchableSelect>
@@ -3872,7 +3969,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                             >
                               <option value="">-- Empty / Unpaid --</option>
-                              {bankAccounts.map(b => (
+                              {activeBankAccounts.map(b => (
                                 <option key={b.id} value={b.id}>
                                   {b.name}
                                 </option>
@@ -3890,7 +3987,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                           >
                             <option value="">-- Unpaid / Pending --</option>
-                            {bankAccounts.map(b => (
+                            {activeBankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.name}
                               </option>
@@ -4485,7 +4582,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         className="w-full bg-[#161616] text-[#71b536] border border-[#262626] focus:border-[#71b536] font-sans px-3 py-2 rounded-md outline-none cursor-pointer text-xs"
                       >
                         <option value="b1">Select Bank Account</option>
-                        {bankAccounts.map(b => (
+                        {activeBankAccounts.map(b => (
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </SearchableSelect>
@@ -4692,7 +4789,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
                       >
                         <option value="">-- No Bank Details --</option>
-                        {bankAccounts.map((b) => (
+                        {activeBankAccounts.map((b) => (
                           <option key={b.id} value={b.id}>
                             {b.name}
                           </option>
@@ -5740,16 +5837,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <div className="space-y-3 font-sans text-xs">
                 <div>
                   <label className="block text-gray-500 text-[10px] uppercase mb-1">Staff</label>
-                  <select
+                  <div className="w-full bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus-within:border-[#ee317b]">
+                  <SearchableSelect
                     value={filterAgent}
                     onChange={(e) => setFilterAgent(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full"
                   >
                     <option value="All">All Staff</option>
                     {agentFilterOptions.map(agent => (
                       <option key={agent} value={agent}>{agent}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
+                  </div>
                 </div>
                 
                 <div>
@@ -5836,7 +5935,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <span>{selectedCustomerIds.length} Selected Orders</span>
               <button type="button" onClick={() => setSelectedCustomerIds([])} className="text-gray-400 font-normal underline">Clear Selection</button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handleBulkComplete}
@@ -5882,6 +5981,17 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete
               </button>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowSelectedShareOptions(prev => !prev)}
+                className="w-full bg-[#181818] border border-[#262626] text-white py-3 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
+              {showSelectedShareOptions && selectedShareOptions}
             </div>
           </motion.div>
         )}

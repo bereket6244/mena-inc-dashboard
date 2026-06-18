@@ -1294,7 +1294,7 @@ tr.out-of-stock-row td:first-child {
   background-color: var(--danger-soft) !important;
 }
 .light-theme .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3), td, th) {
-  background-color: #e3ecfc !important;
+  background-color: #e8e0c9 !important;
 }
 .light-theme .freeze-pane-table tbody tr.low-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #ffe9a8 !important;
@@ -1923,8 +1923,8 @@ option {
 
 .light-theme .selected-row,
 .light-theme tr.selected-row td {
-  background-color: #e3ecfc !important;
-  border-left-color: #5c7df7 !important;
+  background-color: #e8e0c9 !important;
+  border-left-color: #b9aa85 !important;
 }
 
 .light-theme .text-\[\#ee317b\],
@@ -2118,8 +2118,8 @@ option {
 
 .light-theme .selected-row,
 .light-theme tr.selected-row td {
-  background-color: #e3ecfc !important;
-  border-left-color: #5c7df7 !important;
+  background-color: #e8e0c9 !important;
+  border-left-color: #b9aa85 !important;
 }
 
 .light-theme .text-\[\#ee317b\],
@@ -2697,7 +2697,7 @@ tr.selected-row.out-of-stock-row td,
 .light-theme .freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
-  background-color: #e3ecfc !important;
+  background-color: #e8e0c9 !important;
 }
 
 tr.selected-row td,
@@ -2712,7 +2712,7 @@ tr.selected-row th::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-color: rgba(96, 145, 255, 0.46);
+  background-color: rgba(232, 224, 201, 0.72);
   mix-blend-mode: multiply;
 }
 
@@ -2750,22 +2750,22 @@ tr.selected-row th > * {
 
 .light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td {
-  background-color: var(--brand-green-soft) !important;
+  background-color: #e8e0c9 !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(odd) td {
-  background-color: var(--danger-soft) !important;
+  background-color: #e8e0c9 !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(odd) td {
-  background-color: var(--warning-soft) !important;
+  background-color: #e8e0c9 !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(odd) td {
-  background-color: var(--danger-soft) !important;
+  background-color: #e8e0c9 !important;
 }
 
 @media (max-width: 768px) {

@@ -145,6 +145,7 @@ export default function PerformanceTab({
 
   // Multi-selection state for payment methods/bank accounts
   const [selectedBankIds, setSelectedBankIds] = useState<string[]>([]);
+  const bankLongPressTimerRef = useRef<number | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // Redesign States
@@ -170,6 +171,38 @@ export default function PerformanceTab({
     setBankToastMessage(message);
     setBankToastType(type);
     window.setTimeout(() => setBankToastMessage(null), 3000);
+  };
+
+  const clearBankLongPressTimer = () => {
+    if (bankLongPressTimerRef.current !== null) {
+      window.clearTimeout(bankLongPressTimerRef.current);
+      bankLongPressTimerRef.current = null;
+    }
+  };
+
+  const toggleBankSelection = (bankId: string) => {
+    setSelectedBankIds(prev => (
+      prev.includes(bankId)
+        ? prev.filter(id => id !== bankId)
+        : [...prev, bankId]
+    ));
+  };
+
+  const startBankLongPress = (bankId: string, event: React.TouchEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    clearBankLongPressTimer();
+    bankLongPressTimerRef.current = window.setTimeout(() => {
+      toggleBankSelection(bankId);
+      bankLongPressTimerRef.current = null;
+    }, 520);
+  };
+
+  const handleBankCardClick = (bankId: string, event: React.MouseEvent) => {
+    if (selectedBankIds.length === 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    toggleBankSelection(bankId);
   };
 
   // Filter States (previously missing)
@@ -200,6 +233,7 @@ export default function PerformanceTab({
       if (copiedAmountTimerRef.current) {
         window.clearTimeout(copiedAmountTimerRef.current);
       }
+      clearBankLongPressTimer();
     };
   }, []);
 
@@ -927,6 +961,7 @@ export default function PerformanceTab({
                 const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
                 const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
                 const isEditing = editingBankId === b.id;
+                const isBankSelected = selectedBankIds.includes(b.id);
 
                 if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
                   return null;
@@ -935,7 +970,12 @@ export default function PerformanceTab({
                 return (
                   <div 
                     key={b.id} 
-                    className="relative bg-white border border-[#E7E3D4] rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black"
+                    className={`relative bg-white border rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#E7E3D4]'}`}
+                    onClick={(e) => handleBankCardClick(b.id, e)}
+                    onTouchStart={(e) => startBankLongPress(b.id, e)}
+                    onTouchMove={clearBankLongPressTimer}
+                    onTouchEnd={clearBankLongPressTimer}
+                    onTouchCancel={clearBankLongPressTimer}
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
@@ -1622,6 +1662,7 @@ export default function PerformanceTab({
               const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
               const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
               const isEditing = editingBankId === b.id;
+              const isBankSelected = selectedBankIds.includes(b.id);
 
               // Hide or collapse zero-value currencies if requested (when viewing all, but hide zero-value accounts if not default and have zero balance)
               if (!showAllAccounts && currentBalance === 0 && !isSystemDefault) {
@@ -1631,7 +1672,12 @@ export default function PerformanceTab({
               return (
                 <div 
                   key={b.id} 
-                  className="relative bg-[#181818] border border-[#262626] rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between"
+                  className={`relative bg-[#181818] border rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#262626]'}`}
+                  onClick={(e) => handleBankCardClick(b.id, e)}
+                  onTouchStart={(e) => startBankLongPress(b.id, e)}
+                  onTouchMove={clearBankLongPressTimer}
+                  onTouchEnd={clearBankLongPressTimer}
+                  onTouchCancel={clearBankLongPressTimer}
                 >
                   {/* Account Details Header */}
                   <div className="space-y-1">

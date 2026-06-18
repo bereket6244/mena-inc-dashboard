@@ -123,9 +123,9 @@ export function SharedTd({ children, className = "", align = "left", isIndex = f
   );
 }
 
-export function SharedTr({ children, className = "", isSelected = false }: { children: ReactNode, className?: string, isSelected?: boolean }) {
+export function SharedTr({ children, className = "", isSelected = false, ...props }: { children: ReactNode, className?: string, isSelected?: boolean } & React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={`group hover:bg-[#1a1a1a] transition-colors border-b border-[#262626] ${isSelected ? 'selected-row' : ''} ${className}`}>
+    <tr {...props} className={`group hover:bg-[#1a1a1a] transition-colors border-b border-[#262626] ${isSelected ? 'selected-row' : ''} ${className}`}>
       {children}
     </tr>
   );

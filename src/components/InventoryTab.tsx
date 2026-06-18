@@ -73,6 +73,7 @@ export default function InventoryTab({
 
   // Multi-selection state for paper stocks
   const [selectedStockIds, setSelectedStockIds] = useState<string[]>([]);
+  const rowLongPressTimerRef = React.useRef<number | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   // Quick stock adjustment state
   const [adjustingStockId, setAdjustingStockId] = useState<string | null>(null);
@@ -87,6 +88,40 @@ export default function InventoryTab({
   });
 
   const isAdmin = currentUser?.role === 'admin';
+
+  const clearRowLongPressTimer = () => {
+    if (rowLongPressTimerRef.current !== null) {
+      window.clearTimeout(rowLongPressTimerRef.current);
+      rowLongPressTimerRef.current = null;
+    }
+  };
+
+  const toggleStockSelection = (stockId: string) => {
+    setSelectedStockIds(prev => (
+      prev.includes(stockId)
+        ? prev.filter(id => id !== stockId)
+        : [...prev, stockId]
+    ));
+  };
+
+  const startStockLongPress = (stockId: string, event: React.TouchEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    clearRowLongPressTimer();
+    rowLongPressTimerRef.current = window.setTimeout(() => {
+      toggleStockSelection(stockId);
+      rowLongPressTimerRef.current = null;
+    }, 520);
+  };
+
+  const handleStockRowClick = (stockId: string, event: React.MouseEvent) => {
+    if (selectedStockIds.length === 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    toggleStockSelection(stockId);
+  };
+
+  useEffect(() => clearRowLongPressTimer, []);
 
   const showInventoryToast = (message: string, type: AppToastType = 'success') => {
     setInventoryMessage(message);
@@ -348,6 +383,11 @@ export default function InventoryTab({
                         ? 'bg-[#2D210F]/20 border-[#FACC15]/25 hover:border-[#FACC15]/50'
                         : 'bg-[#121212] border-[#262626] hover:border-gray-700'
                 }`}
+                onClick={(e) => handleStockRowClick(stock.id, e)}
+                onTouchStart={(e) => startStockLongPress(stock.id, e)}
+                onTouchMove={clearRowLongPressTimer}
+                onTouchEnd={clearRowLongPressTimer}
+                onTouchCancel={clearRowLongPressTimer}
               >
                 {/* Top row: checkmark, Title */}
                 <div className="flex items-start justify-between gap-1 mb-1">
@@ -810,7 +850,15 @@ export default function InventoryTab({
 
               return (
                 <React.Fragment key={stock.id}>
-                <SharedTr isSelected={isSelected} className={rowClass}>
+                <SharedTr
+                  isSelected={isSelected}
+                  className={rowClass}
+                  onClick={(e) => handleStockRowClick(stock.id, e)}
+                  onTouchStart={(e) => startStockLongPress(stock.id, e)}
+                  onTouchMove={clearRowLongPressTimer}
+                  onTouchEnd={clearRowLongPressTimer}
+                  onTouchCancel={clearRowLongPressTimer}
+                >
                   <SharedTd isIndex>{index + 1}</SharedTd>
                   <SharedTd align="center" className="inventory-select-column bg-[#151515]/45">
                     <input

@@ -353,7 +353,7 @@ export default function App() {
 
   // 30-second deletion undo states & timer integration
   const [deletedHistory, setDeletedHistory] = useState<{
-    type: 'customer' | 'bulk-customers' | 'bank' | 'stock';
+    type: 'customer' | 'bulk-customers' | 'bank' | 'stock' | 'employee';
     data: any;
     timestamp: number;
   } | null>(null);
@@ -389,6 +389,8 @@ export default function App() {
   const [newStaffAllowedTabs, setNewStaffAllowedTabs] = useState<('customers' | 'inventory' | 'performance' | 'purchases')[]>(['customers', 'inventory', 'performance', 'purchases']);
   const [staffError, setStaffError] = useState('');
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
+  const [pendingDeleteEmployee, setPendingDeleteEmployee] = useState<EmployeeUser | null>(null);
+  const activeEmployees = employees.filter(emp => !emp.isDeleted);
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -988,7 +990,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteEmployee = (username: string) => {
+  const handleDeleteEmployee = async (username: string) => {
     if (currentUser?.role !== 'admin') {
       setStaffError('Only administrators can remove workforce members.');
       return;
@@ -997,14 +999,33 @@ export default function App() {
       setStaffError('You cannot remove your own active operator account.');
       return;
     }
-    const updated = employees.filter(emp => emp.username !== username);
+    const target = employees.find(emp => emp.username === username);
+    if (!target) return;
+
+    setIsBuffering(true);
+    setPendingDeleteEmployee(null);
+    setDeletedHistory({
+      type: 'employee',
+      data: { ...target, isDeleted: true, deletedBy: currentUser?.username },
+      timestamp: Date.now()
+    });
+
+    const updated = employees
+      .map(emp => emp.username === username ? { ...emp, isDeleted: true, deletedBy: currentUser?.username } : emp)
+      .filter(emp => !emp.isDeleted);
     setEmployees(updated);
     localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updated));
+    if (editingEmployee?.username === username) {
+      handleCancelEditEmployee();
+    }
 
-    // Sync deletion to live database
-    import('./lib/dbService').then(({ deleteEmployeeDoc }) => {
-      deleteEmployeeDoc(username, currentUser?.username).catch(() => {});
-    }).catch(() => {});
+    try {
+      const { deleteEmployeeDoc } = await import('./lib/dbService');
+      await deleteEmployeeDoc(username, currentUser?.username);
+    } catch (_) {
+    } finally {
+      setTimeout(() => setIsBuffering(false), 400);
+    }
   };
 
   // Mutators for Bank/Payment Accounts with Local and Cloud Storage integrations
@@ -1147,6 +1168,14 @@ export default function App() {
         for (const stock of items) {
           await savePaperStockDoc({ ...stock, isDeleted: false, deletedBy: undefined });
         }
+      } else if (type === 'employee') {
+        const item = data as EmployeeUser;
+        const restored = { ...item, isDeleted: false, deletedBy: undefined };
+        const updated = [restored, ...employees.filter(emp => emp.username !== restored.username)];
+        setEmployees(updated);
+        localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updated));
+        const { saveEmployeeDoc } = await import('./lib/dbService');
+        await saveEmployeeDoc(restored);
       }
     } catch (e) {
       console.error("Undo action failed", e);
@@ -2057,13 +2086,14 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-bold text-[#ee317b] tracking-wider uppercase text-[11px]">
-                  {deletedHistory.type === 'bulk-customers' ? 'Multiple Orders Disposed' : 'Ledger Record Disposed'}
+                  {deletedHistory.type === 'bulk-customers' ? 'Multiple Orders Disposed' : deletedHistory.type === 'employee' ? 'Staff Member Deleted' : 'Ledger Record Disposed'}
                 </p>
                 <p className="text-gray-400 text-[10px] mt-1">
                   {deletedHistory.type === 'customer' && `Deleted "${deletedHistory.data.clientName}"`}
                   {deletedHistory.type === 'bulk-customers' && `Deleted ${deletedHistory.data.length} client logs`}
                   {deletedHistory.type === 'bank' && `Deleted account "${deletedHistory.data.name}"`}
                   {deletedHistory.type === 'stock' && `Deleted ${deletedHistory.data.length} stock items`}
+                  {deletedHistory.type === 'employee' && `Deleted "${deletedHistory.data.name}" in app and marked deleted in database by ${deletedHistory.data.deletedBy || 'unknown user'}`}
                 </p>
               </div>
               <span className="text-[10px] bg-[#ee317b]/10 text-[#ee317b] border border-[#ee317b]/25 px-1.5 py-0.5 font-bold">
@@ -2241,7 +2271,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                 {/* Registered Workers List */}
                 <div className="space-y-3 font-sans">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({employees.length})</span>
+                    <span className="text-[10px] text-gray-500 tracking-wider uppercase font-bold block">Current Staff ({activeEmployees.length})</span>
                     <input
                       type="text"
                       placeholder="Search staff..."
@@ -2252,7 +2282,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                   </div>
                   
                   <div className="border border-[#262626] bg-[#141414] divide-y divide-[#232323] overflow-hidden rounded-md">
-                    {employees.filter(emp => emp.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.username.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.role.toLowerCase().includes(staffSearchQuery.toLowerCase())).map(emp => (
+                    {activeEmployees.filter(emp => emp.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.username.toLowerCase().includes(staffSearchQuery.toLowerCase()) || emp.role.toLowerCase().includes(staffSearchQuery.toLowerCase())).map(emp => (
                       <div key={emp.username} className="px-4 py-3 flex items-center justify-between text-xs font-sans">
                         <div>
                           <span className="font-semibold text-white font-sans">{emp.name}</span>
@@ -2280,11 +2310,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                           {currentUser && currentUser.role === 'admin' && currentUser.username !== emp.username && (
                             <button
                               type="button"
-                              onClick={() => {
-                                if (window.confirm(`Are you sure you want to permanently delete staff member "${emp.name}"?`)) {
-                                  handleDeleteEmployee(emp.username);
-                                }
-                              }}
+                              onClick={() => setPendingDeleteEmployee(emp)}
                               className="px-2 py-0.5 bg-[#31111E] text-[#F87171] hover:text-[#EF4444] border border-[#F87171]/20 rounded-md cursor-pointer text-[9px] font-bold font-sans transition-colors"
                             >
                               Delete
@@ -2307,6 +2333,55 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
       </AnimatePresence>
 
       {/* 🔮 SUPABASE DATABASE CONFIGURATION MODAL */}
+      <AnimatePresence>
+        {pendingDeleteEmployee && (
+          <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm p-0 md:p-4">
+            <motion.div
+              initial={{ y: 60, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 60, opacity: 0, scale: 0.98 }}
+              className="w-full md:max-w-md bg-[#121212] border-t md:border border-[#ee317b]/60 shadow-2xl rounded-t-2xl md:rounded-2xl p-5 font-sans"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider font-bold text-[#ee317b]">Delete Staff Member</p>
+                  <h3 className="mt-1 text-base font-bold text-white">{pendingDeleteEmployee.name}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteEmployee(null)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-gray-300">
+                This staff member will be removed from the app and marked as deleted in the database. The database record will keep <span className="font-bold text-white">deleted by {currentUser?.username || 'current user'}</span> for audit history.
+              </p>
+              <div className="mt-4 rounded-md border border-[#262626] bg-[#181818] p-3 text-[11px] text-gray-400">
+                You will have 30 seconds to undo this after deletion.
+              </div>
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteEmployee(null)}
+                  className="px-4 py-2 rounded-md bg-[#181818] border border-[#262626] text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEmployee(pendingDeleteEmployee.username)}
+                  className="px-4 py-2 rounded-md bg-[#31111E] border border-[#ee317b]/40 text-xs font-bold uppercase tracking-wider text-[#F87171] hover:bg-[#4a1a2d] transition-colors"
+                >
+                  Delete Staff
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showDbConfigModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm ">

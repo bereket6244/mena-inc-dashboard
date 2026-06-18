@@ -286,6 +286,13 @@ export default function PurchasesTab({
     }, 520);
   };
 
+  const handlePurchaseRowClick = (purchaseId: string, event: React.MouseEvent) => {
+    if (selectedPurchaseIds.length === 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    togglePurchaseSelection(purchaseId);
+  };
+
   useEffect(() => clearRowLongPressTimer, []);
 
   // Listen for clicks outside suggestions box to close it
@@ -2262,6 +2269,7 @@ export default function PurchasesTab({
                           className={`transition-colors ${
                             isSelected ? 'selected-row' : 'hover:bg-[#181818]'
                           }`}
+                          onClick={(e) => handlePurchaseRowClick(p.id, e)}
                           onTouchStart={(e) => startPurchaseRowLongPress(p.id, e)}
                           onTouchMove={clearRowLongPressTimer}
                           onTouchEnd={clearRowLongPressTimer}
