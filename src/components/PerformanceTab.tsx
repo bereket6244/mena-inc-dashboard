@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock } from '../types';
+import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeUser, BankAccountAdjustment } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import SearchableSelect from './SearchableSelect';
 import { TableToolbar } from './shared/TabLayout';
@@ -43,6 +43,7 @@ interface PerformanceTabProps {
   purchases?: Purchase[];
   categories?: ExpenseCategory[];
   paperStocks?: PaperStock[];
+  currentUser?: EmployeeUser | null;
 }
 
 export default function PerformanceTab({ 
@@ -53,7 +54,8 @@ export default function PerformanceTab({
   onDeleteBankAccount,
   purchases = [],
   categories = [],
-  paperStocks = []
+  paperStocks = [],
+  currentUser = null
 }: PerformanceTabProps) {
   const formatMockupValue = (val: number) => {
     if (val === 0) return '0';
@@ -137,8 +139,11 @@ export default function PerformanceTab({
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNumber, setEditNumber] = useState('');
-  const [editInitial, setEditInitial] = useState<string>('');
   const [editCurrency, setEditCurrency] = useState('ETB');
+  const [adjustingBank, setAdjustingBank] = useState<BankAccount | null>(null);
+  const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
+  const [adjustmentReason, setAdjustmentReason] = useState('');
 
   // Deletion tracking state
   const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
@@ -354,23 +359,79 @@ export default function PerformanceTab({
     setEditingBankId(b.id);
     setEditName(b.name);
     setEditNumber(b.accountNumber || '');
-    setEditInitial(b.initialBalance.toString());
     setEditCurrency(b.currency || 'ETB');
   };
 
   const handleSaveEdit = (id: string) => {
     if (!editName.trim()) return;
-    const cleanInitial = Math.max(0, parseFractionOrExpression(editInitial));
+    const existing = bankAccounts.find(account => account.id === id);
+    if (!existing) return;
 
     onUpdateBankAccount({
+      ...existing,
       id,
       name: editName.trim(),
       accountNumber: editNumber.trim() || undefined,
-      initialBalance: cleanInitial,
+      initialBalance: existing.initialBalance,
       currency: editCurrency
     });
     setEditingBankId(null);
     showBankToast('Bank account updated successfully.');
+  };
+
+  const openAdjustmentModal = (bank: BankAccount, type: 'add' | 'subtract' = 'add') => {
+    setAdjustingBank(bank);
+    setAdjustmentType(type);
+    setAdjustmentAmount('');
+    setAdjustmentReason('');
+    setActiveMenuBankId(null);
+  };
+
+  const handleConfirmBalanceAdjustment = async () => {
+    if (!adjustingBank) return;
+    const amount = Math.max(0, parseFractionOrExpression(adjustmentAmount));
+    const reason = adjustmentReason.trim();
+    if (amount <= 0) {
+      showBankToast('Enter an adjustment amount greater than zero.', 'error');
+      return;
+    }
+    if (!reason) {
+      showBankToast('Adjustment reason is required.', 'error');
+      return;
+    }
+
+    const previousInitialBalance = Number(adjustingBank.initialBalance || 0);
+    const newInitialBalance = adjustmentType === 'add'
+      ? previousInitialBalance + amount
+      : Math.max(0, previousInitialBalance - amount);
+
+    const updatedAccount: BankAccount = {
+      ...adjustingBank,
+      initialBalance: newInitialBalance
+    };
+
+    const adjustmentRecord: BankAccountAdjustment = {
+      id: `baa_${Date.now()}`,
+      bankAccountId: adjustingBank.id,
+      bankAccountName: adjustingBank.name,
+      adjustmentType,
+      amount,
+      previousInitialBalance,
+      newInitialBalance,
+      reason,
+      editedBy: currentUser?.username || currentUser?.name || 'unknown',
+      editedAt: new Date().toISOString()
+    };
+
+    onUpdateBankAccount(updatedAccount);
+    try {
+      const { saveBankAccountAdjustmentDoc } = await import('../lib/dbService');
+      await saveBankAccountAdjustmentDoc(adjustmentRecord);
+    } catch (_) {}
+    setAdjustingBank(null);
+    setAdjustmentAmount('');
+    setAdjustmentReason('');
+    showBankToast(`Balance ${adjustmentType === 'add' ? 'increased' : 'decreased'} successfully.`);
   };
 
   const handleConfirmBulkDelete = () => {
@@ -387,6 +448,9 @@ export default function PerformanceTab({
         if (showBulkDeleteConfirm) {
           event.preventDefault();
           setShowBulkDeleteConfirm(false);
+        } else if (adjustingBank) {
+          event.preventDefault();
+          setAdjustingBank(null);
         } else if (deletingBankId) {
           event.preventDefault();
           setDeletingBankId(null);
@@ -403,6 +467,9 @@ export default function PerformanceTab({
         if (showBulkDeleteConfirm) {
           event.preventDefault();
           handleConfirmBulkDelete();
+        } else if (adjustingBank) {
+          event.preventDefault();
+          handleConfirmBalanceAdjustment();
         } else if (deletingBankId) {
           event.preventDefault();
           onDeleteBankAccount(deletingBankId);
@@ -413,7 +480,7 @@ export default function PerformanceTab({
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showBulkDeleteConfirm, deletingBankId, editingBankId, isAddingBank, selectedBankIds]);
+  }, [showBulkDeleteConfirm, adjustingBank, adjustmentAmount, adjustmentReason, adjustmentType, deletingBankId, editingBankId, isAddingBank, selectedBankIds]);
 
   // Dynamic filtering of customers for interval analysis
   const filteredCustomersForInterval = customers.filter(c => {
@@ -1079,16 +1146,16 @@ export default function PerformanceTab({
                     <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-stone-500 font-sans">Opening Balance</span>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editInitial}
-                            onChange={(e) => setEditInitial(cleanLeadingZeros(e.target.value))}
-                            className="px-2 py-0.5 bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs text-right rounded-md outline-none w-20 font-bold"
-                          />
-                        ) : (
+                        <div className="flex items-center gap-2">
                           <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-black font-semibold" />
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => openAdjustmentModal(b)}
+                            className="rounded border border-[#E7E3D4] bg-[#FAF8F2] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:border-[#71b536] hover:text-black"
+                          >
+                            Adjust
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs">
@@ -1797,22 +1864,16 @@ export default function PerformanceTab({
                   <div className="mt-4 pt-3 border-t border-[#262626] space-y-2.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500 font-sans">Opening Balance</span>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editInitial}
-                          onChange={(e) => setEditInitial(cleanLeadingZeros(e.target.value))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              setEditInitial(parseFractionOrExpression(editInitial).toString());
-                            }
-                          }}
-                          className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs text-right rounded-md outline-none w-24 font-sans font-bold"
-                        />
-                      ) : (
+                      <div className="flex items-center gap-2">
                         <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-white font-bold" />
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => openAdjustmentModal(b)}
+                          className="rounded border border-[#262626] bg-[#181818] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:border-[#71b536] hover:text-white"
+                        >
+                          Adjust
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
@@ -2016,6 +2077,112 @@ export default function PerformanceTab({
         </div>
       </div>
       </div>
+
+      <AnimatePresence>
+        {adjustingBank && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-4 font-sans"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 60, opacity: 0, scale: 0.98 }}
+              className="w-full md:max-w-md bg-[#121212] border-t md:border border-[#262626] rounded-t-2xl md:rounded-2xl shadow-2xl p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#71b536]">Adjust Account Balance</p>
+                  <h3 className="mt-1 text-base font-bold text-white">{adjustingBank.name}</h3>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Current opening balance: <span className="text-gray-300 font-bold">{formatMockupValue(adjustingBank.initialBalance)} {adjustingBank.currency || 'ETB'}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAdjustingBank(null)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Adjustment Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdjustmentType('add')}
+                      className={`rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${adjustmentType === 'add' ? 'border-[#71b536] bg-[#112918] text-[#71b536]' : 'border-[#262626] bg-[#181818] text-gray-400 hover:text-white'}`}
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustmentType('subtract')}
+                      className={`rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${adjustmentType === 'subtract' ? 'border-[#ee317b] bg-[#31111E] text-[#ee317b]' : 'border-[#262626] bg-[#181818] text-gray-400 hover:text-white'}`}
+                    >
+                      Subtract
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Amount</label>
+                  <input
+                    type="text"
+                    value={adjustmentAmount}
+                    onChange={(e) => setAdjustmentAmount(cleanLeadingZeros(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setAdjustmentAmount(parseFractionOrExpression(adjustmentAmount).toString());
+                      }
+                    }}
+                    className="w-full rounded-md border border-[#262626] bg-[#181818] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#71b536]"
+                    placeholder={`0 ${adjustingBank.currency || 'ETB'}`}
+                  />
+                  <p className="mt-1 text-[10px] text-gray-500">Parsed: {parseFractionOrExpression(adjustmentAmount)} {adjustingBank.currency || 'ETB'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Reason</label>
+                  <textarea
+                    value={adjustmentReason}
+                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                    className="min-h-[92px] w-full resize-none rounded-md border border-[#262626] bg-[#181818] px-3 py-2 text-sm text-white outline-none focus:border-[#71b536]"
+                    placeholder="Why is this account balance being adjusted?"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-md border border-[#262626] bg-[#181818] p-3 text-[11px] text-gray-400">
+                This adjustment will be logged with user <span className="font-bold text-gray-200">{currentUser?.username || currentUser?.name || 'unknown'}</span>.
+              </div>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAdjustingBank(null)}
+                  className="rounded-md border border-[#262626] bg-[#181818] px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBalanceAdjustment}
+                  className="rounded-md bg-[#71b536] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#5a932a]"
+                >
+                  Save Adjustment
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {deletingBankId && (() => {

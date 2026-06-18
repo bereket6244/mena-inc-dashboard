@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
-import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType } from '../types';
+import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType, BankAccountAdjustment } from '../types';
 
 const getLeadChannelId = (name: string) =>
   `lc_${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || Date.now()}`;
@@ -223,6 +223,30 @@ export async function deleteBankAccountDoc(idOrIds: string | string[], deletedBy
       if (error) throw error;
     } catch (err) {
       console.error("Supabase deleteBankAccountDoc failed:", err);
+    }
+  }
+}
+
+export async function saveBankAccountAdjustmentDoc(adjustment: BankAccountAdjustment): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('bank_account_adjustments')
+        .insert({
+          id: adjustment.id,
+          bank_account_id: adjustment.bankAccountId,
+          bank_account_name: adjustment.bankAccountName,
+          adjustment_type: adjustment.adjustmentType,
+          amount: adjustment.amount,
+          previous_initial_balance: adjustment.previousInitialBalance,
+          new_initial_balance: adjustment.newInitialBalance,
+          reason: adjustment.reason,
+          edited_by: adjustment.editedBy || null,
+          edited_at: adjustment.editedAt
+        });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase saveBankAccountAdjustmentDoc failed:", err);
     }
   }
 }

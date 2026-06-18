@@ -2019,6 +2019,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               purchases={purchases}
               categories={categories}
               paperStocks={paperStocks}
+              currentUser={currentUser}
             />
           )}
 

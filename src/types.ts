@@ -15,6 +15,19 @@ export interface BankAccount {
   deletedBy?: string;
 }
 
+export interface BankAccountAdjustment {
+  id: string;
+  bankAccountId: string;
+  bankAccountName: string;
+  adjustmentType: 'add' | 'subtract';
+  amount: number;
+  previousInitialBalance: number;
+  newInitialBalance: number;
+  reason: string;
+  editedBy?: string;
+  editedAt: string;
+}
+
 export const DEFAULT_CLIENT_TYPES: ClientType[] = [
   { id: 'ct_1', name: 'Individual' },
   { id: 'ct_2', name: 'Organization' }

@@ -2209,7 +2209,7 @@ export default function PurchasesTab({
           </div>
 
           {/* Table Spreadsheet View */}
-          <div className="bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0">
+          <div className={`bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
             <DataTable
               id="purchases-table"
               className="min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"

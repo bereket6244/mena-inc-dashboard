@@ -1363,6 +1363,11 @@ tr.out-of-stock-row td:first-child {
     margin-bottom: 10px !important;
   }
 
+  .mobile-selection-lift {
+    padding-bottom: 190px !important;
+    margin-bottom: 190px !important;
+  }
+
   .data-table-scroll-outer {
     overflow-x: auto !important;
     overflow-y: hidden !important;

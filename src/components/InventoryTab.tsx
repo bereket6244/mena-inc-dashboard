@@ -363,6 +363,7 @@ export default function InventoryTab({
       tablePreferenceKey="ui.inventory.table"
       tableClassName="wide-freeze-three-cols"
       layoutMode={layoutMode}
+      contentClassName={selectedStockIds.length > 0 ? 'mobile-selection-lift' : ''}
       cardsView={
         <>
           {filteredStocks.map((stock) => {

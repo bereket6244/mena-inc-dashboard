@@ -2951,7 +2951,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </div>
 
       {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID (DEFAULT) */}
-      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mobile-table-bottom-gap md:mb-0 !border-t md:!border md:!rounded-md`}>
+      <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} w-fit max-w-full mx-auto mobile-table-bottom-gap md:mb-0 !border-t md:!border md:!rounded-md ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
         <DataTable
           className="customer-ledger-table alternating-table-rows wide-freeze-three-cols"
         >
@@ -3219,7 +3219,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </DataTableWrapper>
 
       {/* RESPONSIVE CARDS VIEW */}
-      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0`}>
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0 ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
         {filteredCustomers.map((c) => {
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
             const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);

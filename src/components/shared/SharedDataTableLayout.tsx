@@ -20,6 +20,7 @@ interface SharedDataTableLayoutProps {
   children?: ReactNode;
   tablePreferenceKey?: string;
   tableClassName?: string;
+  contentClassName?: string;
   disableResizing?: boolean;
 }
 
@@ -41,6 +42,7 @@ export function SharedDataTableLayout({
   cardsView,
   children,
   tableClassName = '',
+  contentClassName = '',
   disableResizing = false,
 }: SharedDataTableLayoutProps) {
   const tableStateClasses = `alternating-table-rows ${tableClassName}`.trim();
@@ -62,7 +64,7 @@ export function SharedDataTableLayout({
       {children || (
         <>
           {/* RENDER MODE: EXCEL SPREADSHEET HORIZONTAL GRID */}
-          <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mobile-table-bottom-gap md:mb-0 !border-t md:!border md:!rounded-md`}>
+          <DataTableWrapper className={`${layoutMode === 'grid' ? 'block' : 'hidden'} mobile-table-bottom-gap md:mb-0 !border-t md:!border md:!rounded-md ${contentClassName}`}>
             <DataTable className={tableStateClasses} disableResizing={disableResizing}>
               <thead>
                 <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 font-sans tracking-wider uppercase text-center">
@@ -77,7 +79,7 @@ export function SharedDataTableLayout({
 
           {/* RESPONSIVE CARDS VIEW */}
           {cardsView && (
-            <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 animate-none mobile-table-bottom-gap md:mb-0`}>
+            <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 animate-none mobile-table-bottom-gap md:mb-0 ${contentClassName}`}>
               {cardsView}
             </div>
           )}
