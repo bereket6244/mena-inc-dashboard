@@ -1364,8 +1364,16 @@ tr.out-of-stock-row td:first-child {
   }
 
   .mobile-selection-lift {
-    padding-bottom: 190px !important;
-    margin-bottom: 190px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .mobile-selection-lift .data-table-scroll {
+    padding-bottom: 240px !important;
+    scroll-padding-bottom: 240px !important;
+  }
+
+  .mobile-selection-lift .data-table-scroll-outer {
+    padding-bottom: 240px !important;
   }
 
   .data-table-scroll-outer {
@@ -2585,6 +2593,12 @@ textarea:disabled {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     padding-bottom: 1rem !important;
+  }
+
+  .shared-gallery-scroll.mobile-selection-lift,
+  .customer-gallery-scroll.mobile-selection-lift {
+    padding-bottom: 240px !important;
+    scroll-padding-bottom: 240px !important;
   }
 
   /* Standardize section-to-section spacing to 10px on mobile */
