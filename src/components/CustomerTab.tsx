@@ -269,6 +269,31 @@ export default function CustomerTab({
     }
   };
 
+  useEffect(() => {
+    const handleDebtFilterRequest = () => {
+      setSearchQuery('');
+      setFilterAgent('All');
+      setFilterSource('All');
+      setFilterPayment('Debt');
+      setFilterCompletion('All');
+      setFilterReceipt('All');
+    };
+    window.addEventListener('mena:customer-filter-debt', handleDebtFilterRequest);
+    const handleClearFiltersRequest = () => {
+      setSearchQuery('');
+      setFilterAgent('All');
+      setFilterSource('All');
+      setFilterPayment('All');
+      setFilterCompletion('All');
+      setFilterReceipt('All');
+    };
+    window.addEventListener('mena:customer-clear-filters', handleClearFiltersRequest);
+    return () => {
+      window.removeEventListener('mena:customer-filter-debt', handleDebtFilterRequest);
+      window.removeEventListener('mena:customer-clear-filters', handleClearFiltersRequest);
+    };
+  }, []);
+
   const toggleCustomerSelection = (customerId: string) => {
     setSelectedCustomerIds(prev => (
       prev.includes(customerId)

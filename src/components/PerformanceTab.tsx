@@ -45,6 +45,7 @@ interface PerformanceTabProps {
   paperStocks?: PaperStock[];
   currentUser?: EmployeeUser | null;
   highlightedSearchResult?: { type: string; id: string } | null;
+  onNavigateFromSummary?: (target: 'customers' | 'customers-debt' | 'purchases') => void;
 }
 
 export default function PerformanceTab({ 
@@ -57,7 +58,8 @@ export default function PerformanceTab({
   categories = [],
   paperStocks = [],
   currentUser = null,
-  highlightedSearchResult = null
+  highlightedSearchResult = null,
+  onNavigateFromSummary
 }: PerformanceTabProps) {
   const formatMockupValue = (val: number) => {
     if (val === 0) return '0';
@@ -106,9 +108,18 @@ export default function PerformanceTab({
     const resolvedCopyId = copyId || `${visibleValue}-${currency || 'amount'}`;
     return (
       <span className="inline-flex items-center gap-1 align-baseline">
-        <button
-          type="button"
-          onClick={() => {
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            copyTextToClipboard(copyValue || visibleValue);
+            showCopiedAmountIndicator(resolvedCopyId);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            event.stopPropagation();
             copyTextToClipboard(copyValue || visibleValue);
             showCopiedAmountIndicator(resolvedCopyId);
           }}
@@ -116,7 +127,7 @@ export default function PerformanceTab({
           title="Copy number"
         >
           {visibleValue}{currency ? <span className="text-[10px] font-semibold"> {currency}</span> : null}
-        </button>
+        </span>
         {copiedAmountId === resolvedCopyId && (
           <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
             Copied
@@ -256,6 +267,30 @@ export default function PerformanceTab({
       mobileSearchInputRef.current?.focus();
     }
   }, [isSearchExpanded]);
+
+  useEffect(() => {
+    if (highlightedSearchResult?.type !== 'bank' || !highlightedSearchResult.id) return;
+    setShowAllAccounts(true);
+    setSummarySearch('');
+  }, [highlightedSearchResult]);
+
+  useEffect(() => {
+    const handleFocusSearch = (event: Event) => {
+      const requestedTab = (event as CustomEvent)?.detail?.tab;
+      if (requestedTab && requestedTab !== 'performance') return;
+      setIsSearchExpanded(true);
+      window.setTimeout(() => {
+        const desktopVisible = searchInputRef.current && window.getComputedStyle(searchInputRef.current).display !== 'none';
+        if (desktopVisible) {
+          searchInputRef.current?.focus();
+        } else {
+          mobileSearchInputRef.current?.focus();
+        }
+      }, 0);
+    };
+    window.addEventListener('mena:focus-search', handleFocusSearch);
+    return () => window.removeEventListener('mena:focus-search', handleFocusSearch);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -953,7 +988,7 @@ export default function PerformanceTab({
                   {!isCollapsed && (
                     <div className="grid grid-cols-2 gap-3">
                       {/* KPI Card 1: Debt */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Debt</span>
                           <div className="w-5 h-5 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
@@ -965,10 +1000,10 @@ export default function PerformanceTab({
                             <CopyableAmount value={debt} currency={curr} className="text-[#a28031]" />
                           </p>
                         </div>
-                      </div>
+                      </button>
 
                       {/* KPI Card 2: Gross */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Gross</span>
                           <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
@@ -980,10 +1015,10 @@ export default function PerformanceTab({
                             <CopyableAmount value={gross} currency={curr} className="text-[#71b536]" />
                           </p>
                         </div>
-                      </div>
+                      </button>
 
                       {/* KPI Card 3: Spent */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Spent</span>
                           <div className="w-5 h-5 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
@@ -995,7 +1030,7 @@ export default function PerformanceTab({
                             <CopyableAmount value={spent} currency={curr} className="text-[#ee317b]" />
                           </p>
                         </div>
-                      </div>
+                      </button>
 
                       {/* KPI Card 4: Income */}
                       <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
@@ -1013,7 +1048,7 @@ export default function PerformanceTab({
                       </div>
 
                       {/* KPI Card 5: Net Cash */}
-                      <div className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between h-20 text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
                           <div className={`w-5 h-5 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
@@ -1025,7 +1060,7 @@ export default function PerformanceTab({
                             <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'} />
                           </p>
                         </div>
-                      </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1624,8 +1659,7 @@ export default function PerformanceTab({
 
               {!isCollapsed && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                  {/* Total Outstanding Debt */}
-                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Outstanding Debt</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#a28031]">
@@ -1635,10 +1669,9 @@ export default function PerformanceTab({
                     <div className="w-10 h-10 rounded-md bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
                       <FileText className="w-5 h-5 text-[#a28031]" />
                     </div>
-                  </div>
+                  </button>
 
-                  {/* Total Gross Orders */}
-                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Gross Orders</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-white">
@@ -1648,10 +1681,9 @@ export default function PerformanceTab({
                     <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
                       <ShoppingBag className="w-5 h-5 text-[#71b536]" />
                     </div>
-                  </div>
+                  </button>
 
-                  {/* Total Spent (Expenses) */}
-                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                  <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Spent (Expenses)</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
@@ -1661,9 +1693,8 @@ export default function PerformanceTab({
                     <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
                       <CreditCard className="w-5 h-5 text-[#ee317b]" />
                     </div>
-                  </div>
+                  </button>
 
-                  {/* Income */}
                   <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Income</span>
@@ -1676,8 +1707,7 @@ export default function PerformanceTab({
                     </div>
                   </div>
 
-                  {/* Net Cash Position */}
-                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
                     <div className="space-y-1">
                       <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Net Cash Position</span>
                       <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
@@ -1687,7 +1717,7 @@ export default function PerformanceTab({
                     <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
                       <Activity className="w-5 h-5 text-[#ee317b]" />
                     </div>
-                  </div>
+                  </button>
                 </div>
               )}
             </div>

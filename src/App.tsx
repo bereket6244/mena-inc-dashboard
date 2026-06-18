@@ -212,6 +212,31 @@ export default function App() {
     window.dispatchEvent(new CustomEvent('mena:focus-search', { detail: { tab: activeTabRef.current } }));
   };
 
+  const openTabSearch = (tab: AppTab) => {
+    changeTab(tab);
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('mena:focus-search', { detail: { tab } }));
+    }, 80);
+  };
+
+  const navigateFromReportsSummary = (target: 'customers' | 'customers-debt' | 'purchases') => {
+    if (target === 'purchases') {
+      changeTab('purchases');
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('mena:purchases-clear-filters'));
+      }, 80);
+      return;
+    }
+    changeTab('customers');
+    window.setTimeout(() => {
+      if (target === 'customers-debt') {
+        window.dispatchEvent(new CustomEvent('mena:customer-filter-debt'));
+      } else {
+        window.dispatchEvent(new CustomEvent('mena:customer-clear-filters'));
+      }
+    }, 80);
+  };
+
   const isEditableShortcutTarget = (target: EventTarget | null) => {
     const element = target as HTMLElement | null;
     if (!element) return false;
@@ -471,6 +496,8 @@ export default function App() {
     { id: 'command-inventory', title: 'Go to Inventory', source: 'Command', destination: 'Inventory', hint: 'Ctrl 2', action: () => changeTab('inventory'), disabled: !hasTabAccess('inventory') },
     { id: 'command-purchases', title: 'Go to Purchases', source: 'Command', destination: 'Purchases', hint: 'Ctrl 3', action: () => changeTab('purchases'), disabled: !hasTabAccess('purchases') },
     { id: 'command-performance', title: 'Go to Reports', source: 'Command', destination: 'Reports', hint: 'Ctrl 4', action: () => changeTab('performance'), disabled: !hasTabAccess('performance') },
+    { id: 'command-search-purchases', title: 'Search Purchases Ledger', source: 'Command', destination: 'Purchases', detail: 'Open Purchases and focus the ledger search', hint: 'Ctrl F', action: () => openTabSearch('purchases'), disabled: !hasTabAccess('purchases') },
+    { id: 'command-search-reports', title: 'Search Reports', source: 'Command', destination: 'Reports', detail: 'Open Reports and focus the reports search', hint: 'Ctrl F', action: () => openTabSearch('performance'), disabled: !hasTabAccess('performance') },
     { id: 'command-theme', title: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, source: 'Command', action: () => setTheme(prev => prev === 'dark' ? 'light' : 'dark') },
     { id: 'command-proforma', title: 'Open standalone proforma tool', source: 'Command', detail: 'Open the proforma workspace', action: () => setShowGlobalProforma(true) },
     { id: 'command-staff', title: 'Manage staff settings', source: 'Command', destination: 'Staff Settings', action: () => setShowStaffModal(true), disabled: currentUser.role !== 'admin' },
@@ -2425,6 +2452,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               paperStocks={paperStocks}
               currentUser={currentUser}
               highlightedSearchResult={globalSearchTarget?.type === 'bank' ? globalSearchTarget : null}
+              onNavigateFromSummary={navigateFromReportsSummary}
             />
           )}
 

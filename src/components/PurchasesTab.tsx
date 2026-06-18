@@ -129,6 +129,39 @@ export default function PurchasesTab({
   }, [isSearchExpanded]);
 
   useEffect(() => {
+    const handleFocusSearch = (event: Event) => {
+      const requestedTab = (event as CustomEvent)?.detail?.tab;
+      if (requestedTab && requestedTab !== 'purchases') return;
+      setIsSearchExpanded(true);
+      window.setTimeout(() => {
+        const desktopVisible = searchInputRef.current && window.getComputedStyle(searchInputRef.current).display !== 'none';
+        if (desktopVisible) {
+          searchInputRef.current?.focus();
+        } else {
+          mobileSearchInputRef.current?.focus();
+        }
+      }, 0);
+    };
+    window.addEventListener('mena:focus-search', handleFocusSearch);
+    return () => window.removeEventListener('mena:focus-search', handleFocusSearch);
+  }, []);
+
+  useEffect(() => {
+    const handleClearFiltersRequest = () => {
+      setSearchQuery('');
+      setSelectedCategoryFilter('All');
+      setSelectedBankFilter('All');
+      setSelectedRecordedByFilter('All');
+      setExpenseIntervalStart('');
+      setExpenseIntervalEnd('');
+      setShowFilterPopover(false);
+      setShowMobileFilters(false);
+    };
+    window.addEventListener('mena:purchases-clear-filters', handleClearFiltersRequest);
+    return () => window.removeEventListener('mena:purchases-clear-filters', handleClearFiltersRequest);
+  }, []);
+
+  useEffect(() => {
     if (isCategorySearchExpanded && categorySearchInputRef.current) {
       categorySearchInputRef.current.focus();
     }
