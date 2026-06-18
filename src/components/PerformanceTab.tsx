@@ -2194,7 +2194,7 @@ export default function PerformanceTab({
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#71b536]">Adjust Account Balance</p>
                   <h3 className="mt-1 text-base font-bold text-white">{adjustingBank.name}</h3>
                   <p className="mt-0.5 text-[11px] text-gray-500">
-                    Current opening balance: <span className="text-gray-300 font-bold">{formatMockupValue(adjustingBank.initialBalance)} {adjustingBank.currency || 'ETB'}</span>
+                    Current balance: <span className="text-gray-300 font-bold">{formatMockupValue(getBankCurrentBalance(adjustingBank))} {adjustingBank.currency || 'ETB'}</span>
                   </p>
                 </div>
                 <button
