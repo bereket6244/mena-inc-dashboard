@@ -44,12 +44,18 @@ const PURCHASE_SORT_ASC_STORAGE_KEY = 'ui.purchases.sortAsc';
 const PURCHASE_CATEGORIES_COLLAPSED_STORAGE_KEY = 'ui.purchases.categoriesCollapsed';
 const PURCHASE_FILTERS_STORAGE_KEY = 'ui.purchases.filters';
 const PURCHASE_LAYOUT_STORAGE_KEY = 'ui.purchases.layoutMode';
+const PURCHASE_CATEGORY_PANEL_WIDTH_STORAGE_KEY = 'ui.purchases.categoryPanelWidth';
+const PURCHASE_CATEGORY_LIST_HEIGHT_STORAGE_KEY = 'ui.purchases.categoryListHeight';
+const MIN_CATEGORY_PANEL_WIDTH = 260;
+const MAX_CATEGORY_PANEL_WIDTH = 620;
+const MIN_CATEGORY_LIST_HEIGHT = 220;
+const FALLBACK_MAX_CATEGORY_LIST_HEIGHT = 1200;
 
 interface PurchasesTabProps {
   purchases: Purchase[];
-  onUpdatePurchases: (updated: Purchase[]) => void;
+  onUpdatePurchases: (updated: Purchase[]) => void | Promise<void>;
   categories: ExpenseCategory[];
-  onUpdateCategories: (updated: ExpenseCategory[]) => void;
+  onUpdateCategories: (updated: ExpenseCategory[]) => void | Promise<void>;
   bankAccounts: BankAccount[];
   currentUser: EmployeeUser | null;
   highlightedSearchResult?: { type: string; id: string } | null;
@@ -150,7 +156,7 @@ export default function PurchasesTab({
     };
     window.addEventListener('mena:focus-search', handleFocusSearch);
     return () => window.removeEventListener('mena:focus-search', handleFocusSearch);
-  }, []);
+  }, [layoutMode]);
 
   useEffect(() => {
     const handleClearFiltersRequest = () => {
@@ -269,6 +275,27 @@ export default function PurchasesTab({
   const [editingCategoryItem, setEditingCategoryItem] = useState<{ catId: string; item: string } | null>(null);
   const [editCategoryItemValue, setEditCategoryItemValue] = useState('');
   const [deletingCategoryItem, setDeletingCategoryItem] = useState<{ catId: string; categoryName: string; item: string } | null>(null);
+  const [movingCategoryItem, setMovingCategoryItem] = useState<{ sourceCatId: string; sourceCategoryName: string; item: string; targetCatId: string } | null>(null);
+  const [draggedCategoryItem, setDraggedCategoryItem] = useState<{ sourceCatId: string; item: string } | null>(null);
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null);
+  const [categoryPanelWidth, setCategoryPanelWidth] = useState(() => {
+    const saved = Number(localStorage.getItem(PURCHASE_CATEGORY_PANEL_WIDTH_STORAGE_KEY));
+    if (!Number.isFinite(saved) || saved <= 0) return 320;
+    return Math.min(MAX_CATEGORY_PANEL_WIDTH, Math.max(MIN_CATEGORY_PANEL_WIDTH, saved));
+  });
+  const [categoryListHeight, setCategoryListHeight] = useState(() => {
+    const saved = Number(localStorage.getItem(PURCHASE_CATEGORY_LIST_HEIGHT_STORAGE_KEY));
+    if (!Number.isFinite(saved) || saved <= 0) return 500;
+    return Math.min(FALLBACK_MAX_CATEGORY_LIST_HEIGHT, Math.max(MIN_CATEGORY_LIST_HEIGHT, saved));
+  });
+  const [isResizingCategoryPanel, setIsResizingCategoryPanel] = useState(false);
+  const [isResizingCategoryList, setIsResizingCategoryList] = useState(false);
+  const categoryPanelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const categoryPanelRef = useRef<HTMLDivElement>(null);
+  const categoryListRef = useRef<HTMLDivElement>(null);
+  const purchaseLedgerTableRef = useRef<HTMLDivElement>(null);
+  const purchaseLedgerGalleryRef = useRef<HTMLDivElement>(null);
+  const categoryListResizeRef = useRef<{ startY: number; startHeight: number; maxHeight: number } | null>(null);
 
   // Category inline editing states (Make categories editable)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -437,6 +464,90 @@ export default function PurchasesTab({
   useEffect(() => {
     localStorage.setItem(PURCHASE_LAYOUT_STORAGE_KEY, layoutMode);
   }, [layoutMode]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_CATEGORY_PANEL_WIDTH_STORAGE_KEY, String(categoryPanelWidth));
+  }, [categoryPanelWidth]);
+
+  useEffect(() => {
+    localStorage.setItem(PURCHASE_CATEGORY_LIST_HEIGHT_STORAGE_KEY, String(categoryListHeight));
+  }, [categoryListHeight]);
+
+  const getCategoryListMaxHeight = () => {
+    const listRect = categoryListRef.current?.getBoundingClientRect();
+    const panelRect = categoryPanelRef.current?.getBoundingClientRect();
+    const ledgerRect = (layoutMode === 'grid'
+      ? purchaseLedgerTableRef.current
+      : purchaseLedgerGalleryRef.current
+    )?.getBoundingClientRect();
+    if (!listRect || !panelRect || !ledgerRect || ledgerRect.height <= 0) return FALLBACK_MAX_CATEGORY_LIST_HEIGHT;
+    const panelChromeBelowList = Math.max(0, panelRect.bottom - listRect.bottom);
+    return Math.max(MIN_CATEGORY_LIST_HEIGHT, ledgerRect.bottom - listRect.top - panelChromeBelowList);
+  };
+
+  useEffect(() => {
+    const clampCategoryListToLedger = () => {
+      const availableHeight = getCategoryListMaxHeight();
+      setCategoryListHeight(prev => Math.min(prev, availableHeight));
+    };
+
+    window.addEventListener('resize', clampCategoryListToLedger);
+    return () => window.removeEventListener('resize', clampCategoryListToLedger);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingCategoryPanel) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!categoryPanelResizeRef.current) return;
+      const delta = event.clientX - categoryPanelResizeRef.current.startX;
+      const nextWidth = categoryPanelResizeRef.current.startWidth + delta;
+      setCategoryPanelWidth(Math.min(MAX_CATEGORY_PANEL_WIDTH, Math.max(MIN_CATEGORY_PANEL_WIDTH, nextWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingCategoryPanel(false);
+      categoryPanelResizeRef.current = null;
+      document.body.classList.remove('purchase-category-panel-resizing');
+    };
+
+    document.body.classList.add('purchase-category-panel-resizing');
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('purchase-category-panel-resizing');
+    };
+  }, [isResizingCategoryPanel]);
+
+  useEffect(() => {
+    if (!isResizingCategoryList) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!categoryListResizeRef.current) return;
+      const delta = event.clientY - categoryListResizeRef.current.startY;
+      const nextHeight = categoryListResizeRef.current.startHeight + delta;
+      setCategoryListHeight(Math.min(categoryListResizeRef.current.maxHeight, Math.max(MIN_CATEGORY_LIST_HEIGHT, nextHeight)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingCategoryList(false);
+      categoryListResizeRef.current = null;
+      document.body.classList.remove('purchase-category-list-resizing');
+    };
+
+    document.body.classList.add('purchase-category-list-resizing');
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('purchase-category-list-resizing');
+    };
+  }, [isResizingCategoryList]);
 
   // Open Form for addition
   const handleOpenAddForm = () => {
@@ -922,6 +1033,105 @@ export default function PurchasesTab({
     setDeletingCategoryItem(null);
   };
 
+  const handleStartMoveCategoryItem = (cat: ExpenseCategory, item: string) => {
+    const firstTarget = categories.find(c => c.id !== cat.id && !c.isDeleted);
+    if (!firstTarget) {
+      showWarning('Create another category before moving this item.');
+      return;
+    }
+
+    setMovingCategoryItem({
+      sourceCatId: cat.id,
+      sourceCategoryName: cat.name,
+      item,
+      targetCatId: firstTarget.id
+    });
+  };
+
+  const moveCategoryItemToCategory = async (sourceCatId: string, targetCatId: string, itemToMove: string) => {
+    const sourceCat = categories.find(c => c.id === sourceCatId);
+    const targetCat = categories.find(c => c.id === targetCatId);
+    if (!sourceCat || !targetCat || sourceCat.id === targetCat.id) {
+      showWarning('Please select a valid target category.');
+      return null;
+    }
+
+    const itemLower = itemToMove.toLowerCase();
+    const updatedCategories = categories.map(cat => {
+      if (cat.id === sourceCat.id) {
+        return { ...cat, items: cat.items.filter(item => item !== itemToMove) };
+      }
+      if (cat.id === targetCat.id) {
+        const alreadyExists = cat.items.some(item => item.toLowerCase() === itemLower);
+        return alreadyExists ? cat : { ...cat, items: [...cat.items, itemToMove] };
+      }
+      return cat;
+    });
+
+    const sourceCategoryLower = sourceCat.name.toLowerCase();
+    let adjustedRows = 0;
+    const updatedPurchases = purchases.map(p => {
+      const matchesMovedItem =
+        (p.expenseCategory || '').toLowerCase() === sourceCategoryLower &&
+        (p.itemOrService || '').toLowerCase() === itemLower;
+      if (!matchesMovedItem) return p;
+      adjustedRows += 1;
+      return { ...p, expenseCategory: targetCat.name };
+    });
+
+    await onUpdateCategories(updatedCategories);
+    await onUpdatePurchases(updatedPurchases);
+    return { targetCategoryName: targetCat.name, adjustedRows };
+  };
+
+  const handleConfirmMoveCategoryItem = async () => {
+    if (!movingCategoryItem) return;
+    const result = await moveCategoryItemToCategory(
+      movingCategoryItem.sourceCatId,
+      movingCategoryItem.targetCatId,
+      movingCategoryItem.item
+    );
+    if (!result) return;
+    setMovingCategoryItem(null);
+    showPurchaseToast(`Moved "${movingCategoryItem.item}" to ${result.targetCategoryName}. Updated ${result.adjustedRows} ledger row${result.adjustedRows === 1 ? '' : 's'}.`);
+  };
+
+  const handleCategoryItemDrop = async (targetCatId: string) => {
+    if (!draggedCategoryItem) return;
+    if (draggedCategoryItem.sourceCatId === targetCatId) {
+      setDraggedCategoryItem(null);
+      setDragOverCategoryId(null);
+      return;
+    }
+
+    const result = await moveCategoryItemToCategory(draggedCategoryItem.sourceCatId, targetCatId, draggedCategoryItem.item);
+    if (result) {
+      showPurchaseToast(`Moved "${draggedCategoryItem.item}" to ${result.targetCategoryName}. Updated ${result.adjustedRows} ledger row${result.adjustedRows === 1 ? '' : 's'}.`);
+    }
+    setDraggedCategoryItem(null);
+    setDragOverCategoryId(null);
+  };
+
+  const handleStartCategoryPanelResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    categoryPanelResizeRef.current = {
+      startX: event.clientX,
+      startWidth: categoryPanelWidth
+    };
+    setIsResizingCategoryPanel(true);
+  };
+
+  const handleStartCategoryListResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const availableHeight = getCategoryListMaxHeight();
+    categoryListResizeRef.current = {
+      startY: event.clientY,
+      startHeight: categoryListHeight,
+      maxHeight: availableHeight
+    };
+    setIsResizingCategoryList(true);
+  };
+
   // Trigger add item setup from suggestions
   const handleTriggerAddNewItemFlow = () => {
     if (!itemOrServiceInput.trim()) return;
@@ -1018,6 +1228,12 @@ export default function PurchasesTab({
         } else if (deletingPurchaseId) {
           event.preventDefault();
           setDeletingPurchaseId(null);
+        } else if (movingCategoryItem) {
+          event.preventDefault();
+          setMovingCategoryItem(null);
+        } else if (deletingCategoryItem) {
+          event.preventDefault();
+          setDeletingCategoryItem(null);
         } else if (deletingCategory) {
           event.preventDefault();
           setDeletingCategory(null);
@@ -1034,6 +1250,12 @@ export default function PurchasesTab({
         } else if (deletingPurchaseId) {
           event.preventDefault();
           handleDeleteSingle(deletingPurchaseId);
+        } else if (movingCategoryItem) {
+          event.preventDefault();
+          handleConfirmMoveCategoryItem();
+        } else if (deletingCategoryItem) {
+          event.preventDefault();
+          handleConfirmDeleteCategoryItem(deletingCategoryItem.catId, deletingCategoryItem.item);
         } else if (deletingCategory) {
           event.preventDefault();
           onUpdateCategories(categories.filter(c => c.id !== deletingCategory.id));
@@ -1055,6 +1277,8 @@ export default function PurchasesTab({
     showFilterPopover,
     showBulkDeleteConfirm,
     deletingPurchaseId,
+    movingCategoryItem,
+    deletingCategoryItem,
     deletingCategory,
     purchases,
     selectedPurchaseIds,
@@ -1131,7 +1355,7 @@ export default function PurchasesTab({
 
   useEffect(() => {
     const isPurchasesShortcut = (event: Event) => (event as CustomEvent)?.detail?.tab === 'purchases';
-    const shortcutsBlocked = Boolean(warningMessage || addingNewItemFromSearch !== null || isFormOpen || showMobileFilters || showFilterPopover || showBulkDeleteConfirm || deletingPurchaseId || deletingCategory);
+    const shortcutsBlocked = Boolean(warningMessage || addingNewItemFromSearch !== null || isFormOpen || showMobileFilters || showFilterPopover || showBulkDeleteConfirm || deletingPurchaseId || movingCategoryItem || deletingCategoryItem || deletingCategory);
     const handleNewRecord = (event: Event) => {
       if (!isPurchasesShortcut(event) || shortcutsBlocked) return;
       handleOpenAddForm();
@@ -1153,7 +1377,7 @@ export default function PurchasesTab({
       window.removeEventListener('mena:select-all-visible', handleSelectAllVisible);
       window.removeEventListener('mena:delete-selected', handleDeleteSelected);
     };
-  }, [warningMessage, addingNewItemFromSearch, isFormOpen, showMobileFilters, showFilterPopover, showBulkDeleteConfirm, deletingPurchaseId, deletingCategory, sortedPurchases, selectedPurchaseIds]);
+  }, [warningMessage, addingNewItemFromSearch, isFormOpen, showMobileFilters, showFilterPopover, showBulkDeleteConfirm, deletingPurchaseId, movingCategoryItem, deletingCategoryItem, deletingCategory, sortedPurchases, selectedPurchaseIds]);
 
   return (
     <div
@@ -1248,11 +1472,21 @@ export default function PurchasesTab({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 md:gap-6 items-start">
+      <div
+        className="purchase-ledger-layout grid grid-cols-1 xl:grid-cols-4 gap-2 md:gap-6 items-start"
+        style={{ '--purchase-category-panel-width': `${categoryPanelWidth}px` } as React.CSSProperties}
+      >
         
         {/* Left Side: Expense Categories Sidebar Layout */}
         <div className="purchase-categories-sticky xl:col-span-1 space-y-2 md:space-y-4">
-          <div className={`expense-category-panel bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
+          <div ref={categoryPanelRef} className={`expense-category-panel relative bg-[#121212] border border-[#262626] rounded-md ${isMobileCategoriesCollapsed ? 'p-2 space-y-0 xl:p-4 xl:space-y-4' : 'p-4 space-y-4'}`}>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              title="Drag to resize categories"
+              onMouseDown={handleStartCategoryPanelResize}
+              className="purchase-category-resize-handle hidden xl:flex"
+            />
             <div className="purchase-mobile-category-control-sticky flex items-center justify-between">
               <h3 className={`${isMobileCategoriesCollapsed ? 'text-[11px]' : 'text-xs'} font-sans font-bold text-white uppercase tracking-wider flex items-center`}>
                 Expense Categories
@@ -1358,6 +1592,7 @@ export default function PurchasesTab({
               }}
               transition={{ duration: 0.25, ease: 'easeInOut' }}
               className="space-y-4 overflow-hidden xl:!block xl:!h-auto xl:!opacity-100"
+              style={{ '--purchase-category-list-height': `${categoryListHeight}px` } as React.CSSProperties}
             >
               {/* Quick add category form */}
               <AnimatePresence>
@@ -1391,14 +1626,32 @@ export default function PurchasesTab({
               </AnimatePresence>
 
               {/* List of Categories and their Subitems (Fully Editable) */}
-              <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
+              <div ref={categoryListRef} className="purchase-category-list space-y-3.5 overflow-y-auto pr-1">
                 {visibleCategories.length === 0 && (
                   <div className="text-[10px] text-gray-500 italic border border-[#202020] bg-[#161616]/45 p-3 rounded-md">
                     No categories or items match this search.
                   </div>
                 )}
                 {visibleCategories.map((cat) => (
-                  <div key={cat.id} className="border border-[#202020] bg-[#161616]/45 p-3 rounded-md relative">
+                  <div
+                    key={cat.id}
+                    onDragOver={(event) => {
+                      if (!draggedCategoryItem || draggedCategoryItem.sourceCatId === cat.id) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                      setDragOverCategoryId(cat.id);
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                        setDragOverCategoryId(prev => prev === cat.id ? null : prev);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      handleCategoryItemDrop(cat.id);
+                    }}
+                    className={`expense-category-drop-zone border border-[#202020] bg-[#161616]/45 p-3 rounded-md relative ${dragOverCategoryId === cat.id ? 'expense-category-drop-zone-active' : ''}`}
+                  >
                     
                     {/* Category Rename inline editor or standard display label */}
                     {editingCategoryId === cat.id ? (
@@ -1535,7 +1788,17 @@ export default function PurchasesTab({
                           ) : (
                             <span 
                               key={`${item}-${i}`} 
-                              className="expense-category-item-chip inline-flex items-center gap-1 text-[9px] font-sans pl-2 pr-1 py-0.5"
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.effectAllowed = 'move';
+                                event.dataTransfer.setData('text/plain', item);
+                                setDraggedCategoryItem({ sourceCatId: cat.id, item });
+                              }}
+                              onDragEnd={() => {
+                                setDraggedCategoryItem(null);
+                                setDragOverCategoryId(null);
+                              }}
+                              className={`expense-category-item-chip inline-flex items-center gap-1 text-[9px] font-sans pl-2 pr-1 py-0.5 ${draggedCategoryItem?.sourceCatId === cat.id && draggedCategoryItem.item === item ? 'expense-category-item-chip-dragging' : ''}`}
                               title="Ready for auto-fill in purchase entry"
                             >
                               <span className="max-w-[120px] truncate">{item}</span>
@@ -1546,6 +1809,14 @@ export default function PurchasesTab({
                                 title={`Rename ${item}`}
                               >
                                 <Edit3 className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStartMoveCategoryItem(cat, item)}
+                                className="p-0.5 text-stone-500 hover:text-[#71b536] dark:text-stone-400"
+                                title={`Move ${item} to another category`}
+                              >
+                                <ArrowRight className="w-2.5 h-2.5" />
                               </button>
                               <button
                                 type="button"
@@ -1563,6 +1834,13 @@ export default function PurchasesTab({
                   </div>
                 ))}
               </div>
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                title="Drag to extend categories"
+                onMouseDown={handleStartCategoryListResize}
+                className="purchase-category-list-resize-handle hidden xl:flex"
+              />
 
 
             </motion.div>
@@ -1570,7 +1848,7 @@ export default function PurchasesTab({
         </div>
 
         {/* Right Side: Ledger Table Grid */}
-        <div className="xl:col-span-3 space-y-2 md:space-y-4">
+        <div className="purchase-ledger-main xl:col-span-3 space-y-2 md:space-y-4">
           
           {/* Controls */}
           <div className="hidden">
@@ -2345,7 +2623,7 @@ export default function PurchasesTab({
           </div>
 
           {/* Table Spreadsheet View */}
-          <div className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
+          <div ref={purchaseLedgerTableRef} className={`${layoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] overflow-hidden rounded-md shadow-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
             <DataTable
               id="purchases-table"
               className="min-w-[980px] alternating-table-rows wide-freeze-three-cols purchase-ledger-table"
@@ -2522,7 +2800,7 @@ export default function PurchasesTab({
             </DataTable>
           </div>
 
-          <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
+          <div ref={purchaseLedgerGalleryRef} className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-none mobile-table-bottom-gap md:mb-0 ${selectedPurchaseIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
             {sortedPurchases.length === 0 ? (
               <div className="col-span-full border border-[#262626] bg-[#121212] rounded-md p-8 text-center text-xs text-gray-500 italic">
                 No purchase logs recorded in current settings.
@@ -2767,6 +3045,75 @@ export default function PurchasesTab({
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* Move category item modal */}
+      <AnimatePresence>
+        {movingCategoryItem && (() => {
+          const sourceCat = categories.find(c => c.id === movingCategoryItem.sourceCatId);
+          const targetOptions = categories.filter(c => c.id !== movingCategoryItem.sourceCatId && !c.isDeleted);
+          const selectedTarget = categories.find(c => c.id === movingCategoryItem.targetCatId);
+          const affectedRows = purchases.filter(p =>
+            (p.expenseCategory || '').toLowerCase() === (sourceCat?.name || '').toLowerCase() &&
+            (p.itemOrService || '').toLowerCase() === movingCategoryItem.item.toLowerCase()
+          ).length;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/85 backdrop-blur-sm">
+              <motion.div
+                initial={{ y: 36, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 36, opacity: 0 }}
+                className="bg-[#121212] border border-[#71b536]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
+              >
+                <div className="space-y-2">
+                  <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Move Category Item</h3>
+                  <p className="text-stone-400 text-xs leading-relaxed font-sans">
+                    Move <strong className="text-white">"{movingCategoryItem.item}"</strong> from <strong className="text-white">"{movingCategoryItem.sourceCategoryName}"</strong> to another category.
+                  </p>
+                  <p className="text-stone-500 text-[11px] leading-relaxed font-sans">
+                    {affectedRows} existing purchase ledger row{affectedRows === 1 ? '' : 's'} will automatically change to the new category.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Target Category</label>
+                  <select
+                    value={movingCategoryItem.targetCatId}
+                    onChange={(e) => setMovingCategoryItem(prev => prev ? { ...prev, targetCatId: e.target.value } : prev)}
+                    className="w-full rounded-md border border-[#262626] bg-[#181818] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#71b536]"
+                  >
+                    {targetOptions.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  {selectedTarget?.items.some(item => item.toLowerCase() === movingCategoryItem.item.toLowerCase()) && (
+                    <p className="mt-1 text-[10px] text-[#FBBF24]">
+                      This item already exists in {selectedTarget.name}; the catalog will merge it there.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
+                  <button
+                    type="button"
+                    onClick={() => setMovingCategoryItem(null)}
+                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmMoveCategoryItem}
+                    className="px-4 py-1.5 bg-[#71b536] hover:bg-[#5a932a] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
+                  >
+                    Move Item
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Confirmation modal for deleting a category item template */}
