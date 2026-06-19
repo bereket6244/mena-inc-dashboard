@@ -109,6 +109,35 @@ CREATE TABLE IF NOT EXISTS public.lead_channels (
 
 ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.bank_account_adjustments (
+  id text PRIMARY KEY,
+  bank_account_id text,
+  bank_account_name text,
+  adjustment_type text,
+  amount numeric DEFAULT 0,
+  previous_initial_balance numeric DEFAULT 0,
+  new_initial_balance numeric DEFAULT 0,
+  reason text,
+  edited_by text,
+  edited_at text
+);
+
+ALTER TABLE public.bank_account_adjustments DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id text PRIMARY KEY,
+  event_type text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id text NOT NULL,
+  entity_label text,
+  action text NOT NULL,
+  performed_by text,
+  performed_at text NOT NULL,
+  details jsonb DEFAULT '{}'::jsonb
+);
+
+ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;
+
 -- Relationship columns for stock consumption. New records store stock IDs here;
 -- the older paper name columns are kept only so legacy rows can still be read.
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "acquisitionSource" text;

@@ -30,6 +30,7 @@ import {
   Sliders
 } from 'lucide-react';
 import { exportAllDataToExcel } from './utils/excelExport';
+import { sendDailyTelegramBackup } from './utils/telegramBackup';
 import { resolveStockId } from './utils';
 import SearchableSelect from './components/SearchableSelect';
 import { 
@@ -48,7 +49,8 @@ import {
   ProductType,
   DEFAULT_PRODUCT_TYPES,
   ClientType,
-  DEFAULT_CLIENT_TYPES
+  DEFAULT_CLIENT_TYPES,
+  AuditLogEntry
 } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import InventoryTab from './components/InventoryTab';
@@ -63,6 +65,7 @@ const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
 const LOCAL_STORAGE_PRODUCT_TYPES_KEY = 'mena_inc_product_types_v3';
 const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
+const LOCAL_STORAGE_AUDIT_LOGS_KEY = 'mena_inc_audit_logs_v1';
 const TAB_SCROLL_STORAGE_KEY = 'mena_inc_tab_scroll_positions_v1';
 const TAB_SCROLL_TTL_MS = 5 * 60 * 1000;
 type AppTab = 'customers' | 'inventory' | 'performance' | 'purchases';
@@ -344,12 +347,21 @@ export default function App() {
     }
     return DEFAULT_CLIENT_TYPES;
   });
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_AUDIT_LOGS_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return [];
+  });
   const [liveDbLinked, setLiveDbLinked] = useState(false);
   const [showDbConfigModal, setShowDbConfigModal] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [dataLoadComplete, setDataLoadComplete] = useState(false);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const telegramBackupAttemptDateRef = useRef('');
 
   // Login & RBAC personnel state
   const [employees, setEmployees] = useState<EmployeeUser[]>(() => {
@@ -488,7 +500,32 @@ export default function App() {
   const [staffError, setStaffError] = useState('');
   const [editingEmployee, setEditingEmployee] = useState<EmployeeUser | null>(null);
   const [pendingDeleteEmployee, setPendingDeleteEmployee] = useState<EmployeeUser | null>(null);
+  const [showAuditLogModal, setShowAuditLogModal] = useState(false);
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditFilterType, setAuditFilterType] = useState('All');
   const activeEmployees = employees.filter(emp => !emp.isDeleted);
+  const getAuditActor = () => currentUser?.username || currentUser?.name || 'system';
+  const logAuditEntry = (entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>) => {
+    const performedAt = entry.performedAt || new Date().toISOString();
+    const auditEntry: AuditLogEntry = {
+      id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      performedBy: entry.performedBy || getAuditActor(),
+      performedAt,
+      ...entry
+    };
+
+    setAuditLogs(prev => {
+      const next = [auditEntry, ...prev].slice(0, 1000);
+      localStorage.setItem(LOCAL_STORAGE_AUDIT_LOGS_KEY, JSON.stringify(next));
+      return next;
+    });
+
+    import('./lib/dbService').then(({ saveAuditLogDoc }) => {
+      saveAuditLogDoc(auditEntry).catch(() => {});
+    }).catch(() => {});
+  };
+
+  const isOrderCompleted = (customer?: Customer | null) => Boolean(customer?.deliveryDate);
   const commandItems: GlobalSearchItem[] = currentUser ? [
     { id: 'command-search', title: 'Focus search', source: 'Command', detail: 'Focus the search field inside the current tab', hint: '/', action: () => focusCurrentTabSearch() },
     { id: 'command-new', title: 'New record in current tab', source: 'Command', detail: 'Open the create form for the active section', hint: 'Ctrl N', action: () => dispatchShortcut('new-record') },
@@ -501,14 +538,20 @@ export default function App() {
     { id: 'command-theme', title: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, source: 'Command', action: () => setTheme(prev => prev === 'dark' ? 'light' : 'dark') },
     { id: 'command-proforma', title: 'Open standalone proforma tool', source: 'Command', detail: 'Open the proforma workspace', action: () => setShowGlobalProforma(true) },
     { id: 'command-staff', title: 'Manage staff settings', source: 'Command', destination: 'Staff Settings', action: () => setShowStaffModal(true), disabled: currentUser.role !== 'admin' },
+    { id: 'command-audit-log', title: 'Open audit log', source: 'Command', destination: 'Audit Log', detail: 'Review deletions, staff edits, adjustments, purchases, and completions', action: () => setShowAuditLogModal(true), disabled: currentUser.role !== 'admin' },
     {
       id: 'command-export',
       title: 'Export all data',
       source: 'Command',
-      detail: 'Download customers, purchases, banks, and inventory',
+      detail: 'Download customers, purchases, banks, inventory, catalogs, and staff',
       action: () => {
         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-        exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+        exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName, {
+          categories,
+          productTypes,
+          clientTypes,
+          employees
+        });
       },
       disabled: currentUser.role !== 'admin'
     },
@@ -912,6 +955,28 @@ export default function App() {
         localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedCurrentUser));
       }
 
+      logAuditEntry({
+        eventType: 'staff_update',
+        entityType: 'staff',
+        entityId: updatedEmp.id,
+        entityLabel: updatedEmp.name,
+        action: `Updated staff member ${updatedEmp.name}`,
+        details: {
+          previous: {
+            name: editingEmployee.name,
+            username: editingEmployee.username,
+            role: editingEmployee.role,
+            allowedTabs: editingEmployee.allowedTabs || []
+          },
+          next: {
+            name: updatedEmp.name,
+            username: updatedEmp.username,
+            role: updatedEmp.role,
+            allowedTabs: updatedEmp.allowedTabs || []
+          }
+        }
+      });
+
       setEditingEmployee(null);
       setNewStaffName('');
       setNewStaffUser('');
@@ -935,6 +1000,18 @@ export default function App() {
         allowedTabs: newStaffRole === 'employee' ? newStaffAllowedTabs : undefined
       };
       handleAddNewEmployee(newWorker);
+      logAuditEntry({
+        eventType: 'staff_create',
+        entityType: 'staff',
+        entityId: newWorker.id,
+        entityLabel: newWorker.name,
+        action: `Created staff member ${newWorker.name}`,
+        details: {
+          username: newWorker.username,
+          role: newWorker.role,
+          allowedTabs: newWorker.allowedTabs || []
+        }
+      });
       setNewStaffName('');
       setNewStaffUser('');
       setNewStaffPass('');
@@ -1003,7 +1080,10 @@ export default function App() {
 
   // Load from LocalStorage and synchronizing with Real Cloud Firestore if configured
   const loadData = async (isBackgroundRefresh = false) => {
-    if (!isBackgroundRefresh) setIsBuffering(true);
+    if (!isBackgroundRefresh) {
+      setIsBuffering(true);
+      setDataLoadComplete(false);
+    }
     try {
       // Load and seed employees
       const savedEmployees = localStorage.getItem('mena_inc_employees_v3');
@@ -1031,6 +1111,7 @@ export default function App() {
       const savedPurchases = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
       const savedCategories = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
       const savedProductTypes = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
+      const savedAuditLogs = localStorage.getItem(LOCAL_STORAGE_AUDIT_LOGS_KEY);
       
       let initialS = DEFAULT_PAPER_STOCKS;
       let initialC = INITIAL_CUSTOMERS;
@@ -1038,6 +1119,7 @@ export default function App() {
       let initialP = INITIAL_PURCHASES;
       let initialCat = INITIAL_EXPENSE_CATEGORIES;
       let initialProd = DEFAULT_PRODUCT_TYPES;
+      let initialAuditLogs: AuditLogEntry[] = [];
       
       if (savedStocks) {
         try {
@@ -1069,6 +1151,11 @@ export default function App() {
           initialProd = JSON.parse(savedProductTypes);
         } catch (_) {}
       }
+      if (savedAuditLogs) {
+        try {
+          initialAuditLogs = JSON.parse(savedAuditLogs);
+        } catch (_) {}
+      }
 
       if (!isBackgroundRefresh) {
         const savedClientTypes = localStorage.getItem(LOCAL_STORAGE_CLIENT_TYPES_KEY);
@@ -1098,7 +1185,8 @@ export default function App() {
         fetchAllProductTypes,
         saveProductTypeDoc,
         fetchAllClientTypes,
-        saveClientTypeDoc
+        saveClientTypeDoc,
+        fetchAllAuditLogs
       } = await import('./lib/dbService');
       
       const finalS = await fetchAllPaperStocks(initialS);
@@ -1179,6 +1267,7 @@ export default function App() {
         }
         finalClientTypes.push(...DEFAULT_CLIENT_TYPES);
       }
+      const finalAuditLogs = await fetchAllAuditLogs(initialAuditLogs);
 
       if (!isBackgroundRefresh && finalEmployees.length === 0 && initialEmployees.length > 0) {
         // Empty remote table, seed with initialEmployees
@@ -1206,6 +1295,7 @@ export default function App() {
       updateIfChanged(setEmployees, finalEmployees);
       updateIfChanged(setProductTypes, finalProd, LOCAL_STORAGE_PRODUCT_TYPES_KEY);
       updateIfChanged(setClientTypes, finalClientTypes);
+      updateIfChanged(setAuditLogs, finalAuditLogs, LOCAL_STORAGE_AUDIT_LOGS_KEY);
 
       if (currentUser) {
         const matchedUser = finalEmployees.find(e => e.username === currentUser.username);
@@ -1233,7 +1323,10 @@ export default function App() {
     } catch (err) {
       // Fallback
     } finally {
-      if (!isBackgroundRefresh) setTimeout(() => setIsBuffering(false), 500);
+      if (!isBackgroundRefresh) {
+        setDataLoadComplete(true);
+        setTimeout(() => setIsBuffering(false), 500);
+      }
     }
   };
 
@@ -1241,6 +1334,22 @@ export default function App() {
   useEffect(() => {
     loadData(false);
   }, []);
+
+  useEffect(() => {
+    if (!dataLoadComplete) return;
+    const backupDate = new Date();
+    const dateKey = `${backupDate.getFullYear()}-${String(backupDate.getMonth() + 1).padStart(2, '0')}-${String(backupDate.getDate()).padStart(2, '0')}`;
+    if (telegramBackupAttemptDateRef.current === dateKey) return;
+    telegramBackupAttemptDateRef.current = dateKey;
+
+    sendDailyTelegramBackup(
+      { customers, purchases, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees },
+      getBankName,
+      currentUser
+    ).catch((err) => {
+      console.warn('Daily Telegram backup was not sent:', err);
+    });
+  }, [dataLoadComplete, customers, purchases, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, currentUser]);
 
   // Sync state changes to Local Storage & Database
   const handleUpdateStocks = async (newStocks: PaperStock[]) => {
@@ -1255,6 +1364,14 @@ export default function App() {
         data: deletedStocks,
         timestamp: Date.now()
       });
+      deletedStocks.forEach(stock => logAuditEntry({
+        eventType: 'delete',
+        entityType: 'stock',
+        entityId: stock.id,
+        entityLabel: stock.name,
+        action: `Deleted stock item ${stock.name}`,
+        details: { initialStock: stock.initialStock }
+      }));
     }
 
     setPaperStocks(newStocks);
@@ -1291,8 +1408,24 @@ export default function App() {
 
   const handleEditCustomer = async (c: Customer) => {
     setIsBuffering(true);
+    const previousCustomer = customers.find(item => item.id === c.id);
     const updated = customers.map(item => item.id === c.id ? c : item);
     handleUpdateCustomers(updated);
+    if (!isOrderCompleted(previousCustomer) && isOrderCompleted(c)) {
+      logAuditEntry({
+        eventType: 'order_completion',
+        entityType: 'customer',
+        entityId: c.id,
+        entityLabel: c.clientName,
+        action: `Completed order for ${c.clientName}`,
+        details: {
+          deliveryDate: c.deliveryDate,
+          remainingBank: c.bankRemainingId,
+          productType: c.productType,
+          quantity: c.quantity
+        }
+      });
+    }
     try {
       const { saveCustomerDoc } = await import('./lib/dbService');
       await saveCustomerDoc(c);
@@ -1309,6 +1442,18 @@ export default function App() {
         type: 'customer',
         data: target,
         timestamp: Date.now()
+      });
+      logAuditEntry({
+        eventType: 'delete',
+        entityType: 'customer',
+        entityId: target.id,
+        entityLabel: target.clientName,
+        action: `Deleted customer order for ${target.clientName}`,
+        details: {
+          phone: target.phone,
+          productType: target.productType,
+          total: Number(target.quantity || 0) * Number(target.unitPrice || 0)
+        }
       });
     }
     const updated = customers.filter(item => item.id !== id);
@@ -1331,9 +1476,41 @@ export default function App() {
         data: deletedItems,
         timestamp: Date.now()
       });
+      deletedItems.forEach(item => logAuditEntry({
+        eventType: 'delete',
+        entityType: 'customer',
+        entityId: item.id,
+        entityLabel: item.clientName,
+        action: `Deleted customer order for ${item.clientName}`,
+        details: {
+          phone: item.phone,
+          productType: item.productType,
+          source: 'bulk_update'
+        }
+      }));
     }
 
     handleUpdateCustomers(updatedList);
+    const previousById = new Map(customers.map(item => [item.id, item]));
+    updatedList.forEach(item => {
+      const previous = previousById.get(item.id);
+      if (!isOrderCompleted(previous) && isOrderCompleted(item)) {
+        logAuditEntry({
+          eventType: 'order_completion',
+          entityType: 'customer',
+          entityId: item.id,
+          entityLabel: item.clientName,
+          action: `Completed order for ${item.clientName}`,
+          details: {
+            deliveryDate: item.deliveryDate,
+            remainingBank: item.bankRemainingId,
+            productType: item.productType,
+            quantity: item.quantity,
+            source: 'bulk_update'
+          }
+        });
+      }
+    });
     try {
       const { saveCustomerDoc, deleteCustomerDoc } = await import('./lib/dbService');
       // Concurrently run all database updates/deletes in parallel
@@ -1363,6 +1540,18 @@ export default function App() {
       type: 'employee',
       data: { ...target, isDeleted: true, deletedBy: currentUser?.username },
       timestamp: Date.now()
+    });
+    logAuditEntry({
+      eventType: 'staff_delete',
+      entityType: 'staff',
+      entityId: target.id,
+      entityLabel: target.name,
+      action: `Deleted staff member ${target.name}`,
+      details: {
+        username: target.username,
+        role: target.role,
+        deletedBy: currentUser?.username || currentUser?.name || 'unknown'
+      }
     });
 
     const updated = employees
@@ -1424,6 +1613,20 @@ export default function App() {
         timestamp: Date.now()
       });
     }
+    bankAccounts
+      .filter(item => idList.includes(item.id))
+      .forEach(item => logAuditEntry({
+        eventType: 'delete',
+        entityType: 'bank_account',
+        entityId: item.id,
+        entityLabel: item.name,
+        action: `Deleted bank account ${item.name}`,
+        details: {
+          accountNumber: item.accountNumber || '',
+          currency: item.currency || 'ETB',
+          initialBalance: item.initialBalance
+        }
+      }));
     const updated = bankAccounts.filter(item => !idList.includes(item.id));
     handleUpdateBankAccountsLocal(updated);
     try {
@@ -1437,14 +1640,59 @@ export default function App() {
   // Mutators for Business Expenses/Purchases Ledger
   const handleUpdatePurchases = async (newPurchases: Purchase[]) => {
     setIsBuffering(true);
+    const oldIds = new Set<string>(purchases.map(p => p.id));
+    const newIds = new Set<string>(newPurchases.map(p => p.id));
+    const oldMap = new Map(purchases.map(p => [p.id, p]));
+    purchases
+      .filter(p => !newIds.has(p.id))
+      .forEach(p => logAuditEntry({
+        eventType: 'purchase_delete',
+        entityType: 'purchase',
+        entityId: p.id,
+        entityLabel: p.itemOrService,
+        action: `Deleted purchase ${p.itemOrService}`,
+        details: {
+          category: p.expenseCategory,
+          totalPrice: p.totalPrice,
+          purchaseDate: p.purchaseDate,
+          paymentMethodId: p.paymentMethodId
+        }
+      }));
+    newPurchases.forEach(p => {
+      const oldP = oldMap.get(p.id);
+      if (!oldP) {
+        logAuditEntry({
+          eventType: 'purchase_create',
+          entityType: 'purchase',
+          entityId: p.id,
+          entityLabel: p.itemOrService,
+          action: `Created purchase ${p.itemOrService}`,
+          details: {
+            category: p.expenseCategory,
+            totalPrice: p.totalPrice,
+            purchaseDate: p.purchaseDate,
+            paymentMethodId: p.paymentMethodId
+          }
+        });
+      } else if (JSON.stringify(oldP) !== JSON.stringify(p)) {
+        logAuditEntry({
+          eventType: 'purchase_update',
+          entityType: 'purchase',
+          entityId: p.id,
+          entityLabel: p.itemOrService,
+          action: `Updated purchase ${p.itemOrService}`,
+          details: {
+            previous: oldP,
+            next: p
+          }
+        });
+      }
+    });
     setPurchases(newPurchases);
     localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(newPurchases));
     try {
       const { savePurchaseDoc, deletePurchaseDoc } = await import('./lib/dbService');
-      
-      const oldIds = new Set<string>(purchases.map(p => p.id));
-      const newIds = new Set<string>(newPurchases.map(p => p.id));
-      
+
       const promises: Promise<any>[] = [];
       // Delete removed purchases from database
       for (const oldId of oldIds) {
@@ -1454,7 +1702,6 @@ export default function App() {
       }
       
       // Save added/changed purchases to database
-      const oldMap = new Map(purchases.map(p => [p.id, p]));
       for (const p of newPurchases) {
         const oldP = oldMap.get(p.id);
         if (!oldP || JSON.stringify(oldP) !== JSON.stringify(p)) {
@@ -1472,6 +1719,14 @@ export default function App() {
     setIsBuffering(true);
     // Find deleted categories by comparing state with newCategories list
     const deletedCats = categories.filter(oldCat => !newCategories.some(newCat => newCat.id === oldCat.id));
+    deletedCats.forEach(cat => logAuditEntry({
+      eventType: 'delete',
+      entityType: 'expense_category',
+      entityId: cat.id,
+      entityLabel: cat.name,
+      action: `Deleted expense category ${cat.name}`,
+      details: { items: cat.items || [] }
+    }));
     
     setCategories(newCategories);
     localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCategories));
@@ -1565,6 +1820,16 @@ export default function App() {
 
   const handleDeleteProductType = async (ids: string[]) => {
     if (ids.length === 0) return;
+    productTypes
+      .filter(product => ids.includes(product.id))
+      .forEach(product => logAuditEntry({
+        eventType: 'delete',
+        entityType: 'product_type',
+        entityId: product.id,
+        entityLabel: product.name,
+        action: `Deleted product type ${product.name}`,
+        details: {}
+      }));
     try {
       const { deleteProductTypes } = await import('./lib/dbService');
       await deleteProductTypes(ids, currentUser?.username);
@@ -1598,6 +1863,16 @@ export default function App() {
 
   const handleDeleteClientType = async (ids: string[]) => {
     if (ids.length === 0) return;
+    clientTypes
+      .filter(type => ids.includes(type.id))
+      .forEach(type => logAuditEntry({
+        eventType: 'delete',
+        entityType: 'client_type',
+        entityId: type.id,
+        entityLabel: type.name,
+        action: `Deleted client type ${type.name}`,
+        details: {}
+      }));
     try {
       const { deleteClientTypes } = await import('./lib/dbService');
       await deleteClientTypes(ids, currentUser?.username);
@@ -1747,6 +2022,31 @@ CREATE TABLE IF NOT EXISTS public.lead_channels (
   "deletedBy" text
 );
 
+CREATE TABLE IF NOT EXISTS public.bank_account_adjustments (
+  id text PRIMARY KEY,
+  bank_account_id text,
+  bank_account_name text,
+  adjustment_type text,
+  amount numeric DEFAULT 0,
+  previous_initial_balance numeric DEFAULT 0,
+  new_initial_balance numeric DEFAULT 0,
+  reason text,
+  edited_by text,
+  edited_at text
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id text PRIMARY KEY,
+  event_type text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id text NOT NULL,
+  entity_label text,
+  action text NOT NULL,
+  performed_by text,
+  performed_at text NOT NULL,
+  details jsonb DEFAULT '{}'::jsonb
+);
+
 -- Safely migrate existing tables by adding any new columns
 ALTER TABLE IF EXISTS public.employees ADD COLUMN IF NOT EXISTS "allowedTabs" jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "acquisitionSource" text;
@@ -1791,7 +2091,9 @@ ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.client_types DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bank_account_adjustments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(bootstrapSqlText).then(() => {
@@ -1815,11 +2117,11 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
   }, []);
 
   // Keep a ref containing the latest state of all collections to avoid resetting the polling interval on changes
-  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories, employees });
+  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs });
   
   useEffect(() => {
-    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories, employees };
-  }, [paperStocks, customers, bankAccounts, purchases, categories, employees]);
+    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs };
+  }, [paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs]);
 
   // Background database polling to fetch updates when online and linked
   useEffect(() => {
@@ -1837,19 +2139,21 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
           saveBankAccountDoc,
           fetchAllPurchases,
           fetchAllExpenseCategories,
-          fetchAllEmployees
+          fetchAllEmployees,
+          fetchAllAuditLogs
         } = await import('./lib/dbService');
 
         const current = collectionsRef.current;
 
         // Fetch all tables concurrently in parallel
-        const [newS, newC, newB, newP, newCat, newE] = await Promise.all([
+        const [newS, newC, newB, newP, newCat, newE, newAuditLogs] = await Promise.all([
           fetchAllPaperStocks(current.paperStocks),
           fetchAllCustomers(current.customers),
           fetchAllBankAccounts(current.bankAccounts),
           fetchAllPurchases(current.purchases),
           fetchAllExpenseCategories(current.categories),
-          fetchAllEmployees(current.employees)
+          fetchAllEmployees(current.employees),
+          fetchAllAuditLogs(current.auditLogs)
         ]);
 
         const hasCbeDefault = newB.some(b => b.accountNumber === '1000632725896');
@@ -1924,6 +2228,12 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
           localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(recCat.list));
         }
 
+        const recAuditLogs = reconcileCollection(current.auditLogs, newAuditLogs);
+        if (recAuditLogs.hasChanges) {
+          setAuditLogs(recAuditLogs.list);
+          localStorage.setItem(LOCAL_STORAGE_AUDIT_LOGS_KEY, JSON.stringify(recAuditLogs.list));
+        }
+
         const recE = reconcileCollection(current.employees, newE);
         if (recE.hasChanges) {
           setEmployees(recE.list);
@@ -1954,6 +2264,47 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
 
     return () => clearInterval(intervalId);
   }, [liveDbLinked, isOnline, currentUser]);
+
+  const auditEventLabels: Record<string, string> = {
+    delete: 'Deletion',
+    staff_create: 'Staff Created',
+    staff_update: 'Staff Edited',
+    staff_delete: 'Staff Deleted',
+    bank_adjustment: 'Bank Adjustment',
+    purchase_create: 'Purchase Created',
+    purchase_update: 'Purchase Edited',
+    purchase_delete: 'Purchase Deleted',
+    order_completion: 'Order Completed'
+  };
+  const auditFilterOptions = ['All', ...Array.from(new Set(auditLogs.map(log => log.eventType)))];
+  const visibleAuditLogs = auditLogs
+    .filter(log => auditFilterType === 'All' || log.eventType === auditFilterType)
+    .filter(log => {
+      const query = auditSearchQuery.trim().toLowerCase();
+      if (!query) return true;
+      return [
+        auditEventLabels[log.eventType] || log.eventType,
+        log.entityType,
+        log.entityId,
+        log.entityLabel,
+        log.action,
+        log.performedBy,
+        JSON.stringify(log.details || {})
+      ].join(' ').toLowerCase().includes(query);
+    })
+    .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+
+  const formatAuditDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   if (!currentUser) {
     return (
@@ -2246,7 +2597,12 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                           onClick={() => {
                             setIsMobileMenuOpen(false);
                             const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
-                            exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName);
+                            exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName, {
+                              categories,
+                              productTypes,
+                              clientTypes,
+                              employees
+                            });
                           }}
                           className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
                         >
@@ -2266,6 +2622,20 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
                         >
                           <UserPlus className="w-4 h-4 text-[#ee317b]" />
                           Manage Staff Settings
+                        </button>
+                      )}
+
+                      {currentUser.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            setShowAuditLogModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                        >
+                          <Shield className="w-4 h-4 text-[#71b536]" />
+                          Audit Log
                         </button>
                       )}
 
@@ -2453,6 +2823,7 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
               currentUser={currentUser}
               highlightedSearchResult={globalSearchTarget?.type === 'bank' ? globalSearchTarget : null}
               onNavigateFromSummary={navigateFromReportsSummary}
+              onAuditLog={logAuditEntry}
             />
           )}
 
@@ -2769,6 +3140,96 @@ ALTER TABLE public.lead_channels DISABLE ROW LEVEL SECURITY;`;
       </AnimatePresence>
 
       {/* 🔮 SUPABASE DATABASE CONFIGURATION MODAL */}
+      {/* Audit Log Modal */}
+      <AnimatePresence>
+        {showAuditLogModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#121212] border border-[#262626] w-full max-w-6xl overflow-hidden shadow-2xl flex flex-col relative rounded-2xl"
+            >
+              <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#71b536] to-[#ee317b]" />
+              <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#71b536]" />
+                  <div>
+                    <h3 className="text-sm font-bold font-sans tracking-wider uppercase text-white">Audit Log</h3>
+                    <p className="text-[10px] text-gray-500 font-sans">{auditLogs.length} recorded actions</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setShowAuditLogModal(false)} className="text-gray-400 hover:text-white cursor-pointer transition-colors">
+                  <X className="w-5 h-5 flex-shrink-0" />
+                </button>
+              </div>
+              <div className="p-4 border-b border-[#262626] grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3 bg-[#121212]">
+                <SearchableSelect value={auditFilterType} onChange={(e) => setAuditFilterType(e.target.value)}>
+                  {auditFilterOptions.map(type => (
+                    <option key={type} value={type}>{type === 'All' ? 'All event types' : auditEventLabels[type] || type}</option>
+                  ))}
+                </SearchableSelect>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    value={auditSearchQuery}
+                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                    placeholder="Search actor, action, entity, or details..."
+                    className="w-full bg-[#181818] border border-[#262626] rounded-md pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-[#71b536] font-sans"
+                  />
+                </div>
+              </div>
+              <div className="max-h-[70vh] overflow-auto">
+                <table className="w-full min-w-[980px] text-xs font-sans">
+                  <thead className="sticky top-0 z-10 bg-[#181818] border-b border-[#262626]">
+                    <tr className="text-left text-gray-500 uppercase tracking-wider text-[10px]">
+                      <th className="px-3 py-2 border-r border-[#262626]">Time</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">Event</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">Action</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">Entity</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">User</th>
+                      <th className="px-3 py-2">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#262626]">
+                    {visibleAuditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-10 text-center text-gray-500 italic">
+                          No audit log entries match this view.
+                        </td>
+                      </tr>
+                    ) : (
+                      visibleAuditLogs.map(log => (
+                        <tr key={log.id} className="hover:bg-[#181818] text-gray-300 align-top">
+                          <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap text-gray-400">{formatAuditDate(log.performedAt)}</td>
+                          <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap">
+                            <span className="inline-flex px-2 py-0.5 rounded border border-[#71b536]/25 bg-[#1b2b1a] text-[#71b536] text-[10px] font-bold uppercase">
+                              {auditEventLabels[log.eventType] || log.eventType}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 border-r border-[#262626] text-white font-semibold">{log.action}</td>
+                          <td className="px-3 py-2 border-r border-[#262626]">
+                            <div className="text-white">{log.entityLabel || log.entityId}</div>
+                            <div className="text-[10px] text-gray-500">{log.entityType} - {log.entityId}</div>
+                          </td>
+                          <td className="px-3 py-2 border-r border-[#262626] text-gray-400">{log.performedBy}</td>
+                          <td className="px-3 py-2">
+                            <pre className="max-w-[360px] whitespace-pre-wrap break-words text-[10px] leading-relaxed text-gray-500 bg-[#0d0d0d] border border-[#202020] rounded p-2">
+                              {JSON.stringify(log.details || {}, null, 2)}
+                            </pre>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {pendingDeleteEmployee && (
           <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm p-0 md:p-4">

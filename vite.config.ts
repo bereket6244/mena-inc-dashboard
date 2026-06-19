@@ -2,10 +2,20 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import { createTelegramBackupMiddleware } from './server/telegramBackup.mjs';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      {
+        name: 'telegram-daily-backup-api',
+        configureServer(server) {
+          server.middlewares.use(createTelegramBackupMiddleware());
+        },
+      },
+      react(),
+      tailwindcss()
+    ],
     resolve: {
       dedupe: ['react', 'react-dom'],
       alias: {

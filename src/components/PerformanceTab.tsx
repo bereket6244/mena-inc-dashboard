@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeUser, BankAccountAdjustment } from '../types';
+import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeUser, BankAccountAdjustment, AuditLogEntry } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import SearchableSelect from './SearchableSelect';
 import { TableToolbar } from './shared/TabLayout';
@@ -46,6 +46,7 @@ interface PerformanceTabProps {
   currentUser?: EmployeeUser | null;
   highlightedSearchResult?: { type: string; id: string } | null;
   onNavigateFromSummary?: (target: 'customers' | 'customers-debt' | 'purchases') => void;
+  onAuditLog?: (entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>) => void;
 }
 
 export default function PerformanceTab({ 
@@ -59,7 +60,8 @@ export default function PerformanceTab({
   paperStocks = [],
   currentUser = null,
   highlightedSearchResult = null,
-  onNavigateFromSummary
+  onNavigateFromSummary,
+  onAuditLog
 }: PerformanceTabProps) {
   const formatMockupValue = (val: number) => {
     if (val === 0) return '0';
@@ -487,6 +489,22 @@ export default function PerformanceTab({
       const { saveBankAccountAdjustmentDoc } = await import('../lib/dbService');
       await saveBankAccountAdjustmentDoc(adjustmentRecord);
     } catch (_) {}
+    onAuditLog?.({
+      eventType: 'bank_adjustment',
+      entityType: 'bank_account',
+      entityId: adjustingBank.id,
+      entityLabel: adjustingBank.name,
+      action: `${adjustmentType === 'add' ? 'Added to' : 'Subtracted from'} bank account ${adjustingBank.name}`,
+      performedBy: adjustmentRecord.editedBy,
+      performedAt: adjustmentRecord.editedAt,
+      details: {
+        adjustmentType,
+        amount,
+        previousInitialBalance,
+        newInitialBalance,
+        reason
+      }
+    });
     setAdjustingBank(null);
     setAdjustmentAmount('');
     setAdjustmentReason('');

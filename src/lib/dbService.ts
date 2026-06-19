@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
-import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType, BankAccountAdjustment } from '../types';
+import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType, BankAccountAdjustment, AuditLogEntry } from '../types';
 
 const getLeadChannelId = (name: string) =>
   `lc_${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || Date.now()}`;
@@ -618,6 +618,65 @@ export async function deleteLeadChannels(names: string[], deletedBy?: string): P
       console.error("Supabase deleteLeadChannels failed:", err);
       setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}`);
       throw err;
+    }
+  }
+}
+
+// ============================================
+// 11. AUDIT LOG OPERATIONS
+// ============================================
+
+export async function fetchAllAuditLogs(localFallback: AuditLogEntry[]): Promise<AuditLogEntry[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('performed_at', { ascending: false })
+        .limit(1000);
+
+      if (error) throw error;
+
+      return (data || []).map((entry: any) => ({
+        id: entry.id,
+        eventType: entry.event_type,
+        entityType: entry.entity_type,
+        entityId: entry.entity_id,
+        entityLabel: entry.entity_label,
+        action: entry.action,
+        performedBy: entry.performed_by,
+        performedAt: entry.performed_at,
+        details: entry.details || {}
+      })) as AuditLogEntry[];
+    } catch (err: any) {
+      console.error("Supabase fetchAllAuditLogs failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}. Audit logs are using local fallback until Supabase is ready.`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveAuditLogDoc(entry: AuditLogEntry): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('audit_logs')
+        .upsert({
+          id: entry.id,
+          event_type: entry.eventType,
+          entity_type: entry.entityType,
+          entity_id: entry.entityId,
+          entity_label: entry.entityLabel,
+          action: entry.action,
+          performed_by: entry.performedBy,
+          performed_at: entry.performedAt,
+          details: entry.details || {}
+        }, { onConflict: 'id' });
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase saveAuditLogDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}. Audit entry was kept locally but could not be written to Supabase.`);
     }
   }
 }

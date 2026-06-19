@@ -1,17 +1,34 @@
 import * as XLSX from 'xlsx';
-import { Customer, Purchase, BankAccount, PaperStock } from '../types';
+import { Customer, Purchase, BankAccount, PaperStock, ExpenseCategory, ProductType, ClientType, EmployeeUser } from '../types';
 import { computeStockConsumed, getCustomerStockDisplayName } from '../utils';
 
+interface FullBackupOptions {
+  categories?: ExpenseCategory[];
+  productTypes?: ProductType[];
+  clientTypes?: ClientType[];
+  employees?: EmployeeUser[];
+  date?: string;
+}
+
+export const getLocalBackupDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const getBackupFilename = (date = getLocalBackupDate()) => `Mena_CRM_Full_Backup_${date}.xlsx`;
+
 /**
- * Universal export function that generates a single .xlsx file 
- * containing multiple sheets for different data sets.
+ * Universal workbook builder for downloads and automated backups.
  */
-export function exportAllDataToExcel(
+export function buildAllDataWorkbook(
   customers: Customer[],
   purchases: Purchase[],
   bankAccounts: BankAccount[],
   paperStocks: PaperStock[],
-  getBankName: (id?: string) => string
+  getBankName: (id?: string) => string,
+  options: FullBackupOptions = {}
 ) {
   const wb = XLSX.utils.book_new();
 
@@ -135,6 +152,94 @@ export function exportAllDataToExcel(
   const wsInventory = XLSX.utils.aoa_to_sheet([inventoryHeaders, ...inventoryRows]);
   XLSX.utils.book_append_sheet(wb, wsInventory, "Inventory Ledger");
 
+  const categoryRows = (options.categories || []).map(cat => [
+    cat.id,
+    cat.name,
+    (cat.items || []).join(', '),
+    cat.isDeleted ? 'Yes' : 'No',
+    cat.deletedBy || ''
+  ]);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([['Category ID', 'Category Name', 'Subitems', 'Deleted', 'Deleted By'], ...categoryRows]),
+    'Expense Categories'
+  );
+
+  const productTypeRows = (options.productTypes || []).map(product => [
+    product.id,
+    product.name,
+    product.isDeleted ? 'Yes' : 'No',
+    product.deletedBy || ''
+  ]);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([['Product Type ID', 'Name', 'Deleted', 'Deleted By'], ...productTypeRows]),
+    'Product Types'
+  );
+
+  const clientTypeRows = (options.clientTypes || []).map(type => [
+    type.id,
+    type.name,
+    type.isDeleted ? 'Yes' : 'No',
+    type.deletedBy || ''
+  ]);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([['Client Type ID', 'Name', 'Deleted', 'Deleted By'], ...clientTypeRows]),
+    'Client Types'
+  );
+
+  const staffRows = (options.employees || []).map(employee => [
+    employee.id,
+    employee.name,
+    employee.username,
+    employee.role,
+    (employee.allowedTabs || []).join(', '),
+    employee.isDeleted ? 'Yes' : 'No',
+    employee.deletedBy || ''
+  ]);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([['Staff ID', 'Name', 'Username', 'Role', 'Allowed Tabs', 'Deleted', 'Deleted By'], ...staffRows]),
+    'Staff'
+  );
+
+  return wb;
+}
+
+export function createAllDataExcelBlob(
+  customers: Customer[],
+  purchases: Purchase[],
+  bankAccounts: BankAccount[],
+  paperStocks: PaperStock[],
+  getBankName: (id?: string) => string,
+  options: FullBackupOptions = {}
+) {
+  const date = options.date || getLocalBackupDate();
+  const wb = buildAllDataWorkbook(customers, purchases, bankAccounts, paperStocks, getBankName, { ...options, date });
+  const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  return {
+    blob: new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    filename: getBackupFilename(date),
+    date
+  };
+}
+
+/**
+ * Universal export function that generates a single .xlsx file
+ * containing multiple sheets for different data sets.
+ */
+export function exportAllDataToExcel(
+  customers: Customer[],
+  purchases: Purchase[],
+  bankAccounts: BankAccount[],
+  paperStocks: PaperStock[],
+  getBankName: (id?: string) => string,
+  options: FullBackupOptions = {}
+) {
+  const date = options.date || getLocalBackupDate();
+  const wb = buildAllDataWorkbook(customers, purchases, bankAccounts, paperStocks, getBankName, { ...options, date });
+
   // Trigger download
-  XLSX.writeFile(wb, `Mena_CRM_Full_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.writeFile(wb, getBackupFilename(date));
 }

@@ -28,6 +28,29 @@ export interface BankAccountAdjustment {
   editedAt: string;
 }
 
+export type AuditEventType =
+  | 'delete'
+  | 'staff_create'
+  | 'staff_update'
+  | 'staff_delete'
+  | 'bank_adjustment'
+  | 'purchase_create'
+  | 'purchase_update'
+  | 'purchase_delete'
+  | 'order_completion';
+
+export interface AuditLogEntry {
+  id: string;
+  eventType: AuditEventType;
+  entityType: string;
+  entityId: string;
+  entityLabel: string;
+  action: string;
+  performedBy: string;
+  performedAt: string;
+  details?: Record<string, any>;
+}
+
 export const DEFAULT_CLIENT_TYPES: ClientType[] = [
   { id: 'ct_1', name: 'Individual' },
   { id: 'ct_2', name: 'Organization' }
