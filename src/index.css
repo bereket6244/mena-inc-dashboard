@@ -3062,6 +3062,7 @@ tr.global-search-highlight > th,
   }
   
   /* Hide mobile bottom navigation bar */
+
   nav.fixed.bottom-0 {
     display: none !important;
   }
@@ -3088,3 +3089,185 @@ tr.global-search-highlight > th,
     display: block !important;
   }
 }
+
+/* ======================================================== */
+/* Premium Theme Colors for Business & Performance Summary  */
+/* ======================================================== */
+:root:not(.light-theme) #performance-tab-pnl {
+  background-color: #0f0d0b !important;
+  color: #f6efe7 !important;
+  box-shadow: none !important;
+}
+
+/* Force view all accounts button text to stay pure white always */
+#performance-tab-pnl .always-text-white {
+  color: #ffffff !important;
+}
+
+/* Section Containers / Desktop desks */
+:root:not(.light-theme) #performance-tab-pnl #treasury-desk-pnl,
+:root:not(.light-theme) #performance-tab-pnl .performance-sticky-toolbar {
+  background-color: #171310 !important;
+  border-color: rgba(255, 244, 230, 0.10) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35) !important;
+}
+
+/* Dropdown selections & inputs */
+:root:not(.light-theme) #performance-tab-pnl select,
+:root:not(.light-theme) #performance-tab-pnl input,
+:root:not(.light-theme) #performance-tab-pnl .w-44 {
+  background-color: #211b17 !important;
+  color: #f6efe7 !important;
+  border-color: rgba(255, 244, 230, 0.18) !important;
+}
+
+/* Main background overrides for different card types */
+/* 1. Success / Income cards */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EEF8EF\] {
+  background-color: #102117 !important;
+  border-color: rgba(61, 209, 138, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EEF8EF\]:hover {
+  border-color: #3fd18a !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EEF8EF\] .text-\[\#166534\],
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EEF8EF\] svg {
+  color: #3fd18a !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EEF8EF\] svg {
+  opacity: 0.08 !important;
+}
+
+/* 2. Warning / Debt cards */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF8E7\] {
+  background-color: #261b0a !important;
+  border-color: rgba(255, 244, 230, 0.10) !important;
+  border-left-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF8E7\]:hover {
+  border-left-color: #f5a623 !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF8E7\] .text-\[\#A16207\] {
+  color: #f5a623 !important;
+}
+
+/* 3. Danger / Spent cards */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF0F6\] {
+  background-color: #281019 !important;
+  border-color: rgba(255, 244, 230, 0.10) !important;
+  border-left-color: rgba(236, 47, 122, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF0F6\]:hover {
+  border-left-color: #ec2f7a !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFF0F6\] .text-\[\#EC2F78\] {
+  color: #ff4f93 !important;
+}
+
+/* 4. Neutral / Loan / Account cards */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFFCF7\] {
+  background-color: #211b17 !important;
+  border-color: rgba(255, 244, 230, 0.14) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FFFCF7\]:hover {
+  background-color: #29211c !important;
+  border-color: rgba(255, 244, 230, 0.25) !important;
+}
+
+/* Selected row / account outline */
+:root:not(.light-theme) #performance-tab-pnl .selected-row.border-\[\#EC2F78\] {
+  border-color: #ec2f7a !important;
+  box-shadow: 0 0 0 1px #ec2f7a !important;
+}
+
+/* General dividers and headings text */
+:root:not(.light-theme) #performance-tab-pnl .border-b,
+:root:not(.light-theme) #performance-tab-pnl .border-t,
+:root:not(.light-theme) #performance-tab-pnl .border-stone-100,
+:root:not(.light-theme) #performance-tab-pnl .border-\[\#E5D8C5\] {
+  border-color: rgba(255, 244, 230, 0.10) !important;
+}
+:root:not(.light-theme) #performance-tab-pnl .border-\[\#E7E3D4\] {
+  border-color: rgba(255, 244, 230, 0.18) !important;
+}
+
+/* Text coloring rules */
+:root:not(.light-theme) #performance-tab-pnl .text-\[\#111111\],
+:root:not(.light-theme) #performance-tab-pnl .text-black,
+:root:not(.light-theme) #performance-tab-pnl h3,
+:root:not(.light-theme) #performance-tab-pnl h4 {
+  color: #f6efe7 !important;
+}
+
+:root:not(.light-theme) #performance-tab-pnl .text-\[\#6B6258\],
+:root:not(.light-theme) #performance-tab-pnl .text-stone-500,
+:root:not(.light-theme) #performance-tab-pnl .text-stone-600 {
+  color: #c6baad !important;
+}
+
+:root:not(.light-theme) #performance-tab-pnl .text-stone-400,
+:root:not(.light-theme) #performance-tab-pnl .text-stone-300 {
+  color: #8f8377 !important;
+}
+
+/* Add Account button */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#EC2F78\],
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#ee317b\] {
+  background-color: #ec2f7a !important;
+}
+
+:root:not(.light-theme) #performance-tab-pnl .hover\:bg-\[\#D9286C\]:hover {
+  background-color: #be1e5a !important;
+}
+
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FAF8F2\] {
+  background-color: #211b17 !important;
+}
+
+/* 5. Current Balance row & Adjust button & edit inputs (FAF7F0) */
+:root:not(.light-theme) #performance-tab-pnl .bg-\[\#FAF7F0\] {
+  background-color: #1a1512 !important;
+}
+
+/* 6. White backgrounds (dropdown menus, loan panels, modals) */
+:root:not(.light-theme) #performance-tab-pnl .bg-white {
+  background-color: #1e1915 !important;
+  border-color: rgba(255, 244, 230, 0.14) !important;
+  color: #f6efe7 !important;
+}
+
+/* 7. Grid column dividers inside bank cards */
+:root:not(.light-theme) #performance-tab-pnl .divide-\[\#E5D8C5\] > * + * {
+  border-color: rgba(255, 244, 230, 0.10) !important;
+}
+
+/* 8. Border-y on the balance calculation section */
+:root:not(.light-theme) #performance-tab-pnl .border-y {
+  border-top-color: rgba(255, 244, 230, 0.10) !important;
+  border-bottom-color: rgba(255, 244, 230, 0.10) !important;
+}
+
+/* 9. Hover states for dropdown menu items */
+:root:not(.light-theme) #performance-tab-pnl .hover\:bg-\[\#FAF7F0\]:hover {
+  background-color: #29211c !important;
+}
+
+/* 10. Hover on bank card border */
+:root:not(.light-theme) #performance-tab-pnl .hover\:border-\[\#166534\]:hover {
+  border-color: #3fd18a !important;
+}
+
+/* 11. Border on the Adjust button */
+:root:not(.light-theme) #performance-tab-pnl .hover\:border-\[\#166534\]:hover {
+  border-color: #3fd18a !important;
+}
+
+/* 12. Text black inside dropdown menus */
+:root:not(.light-theme) #performance-tab-pnl .text-black {
+  color: #f6efe7 !important;
+}
+

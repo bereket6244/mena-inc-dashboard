@@ -1104,8 +1104,16 @@ export default function PerformanceTab({
                         <p className="mt-1 text-[11px] text-[#6B6258]">Received customer payments.</p>
                       </button>
 
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
-                        <Activity className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
+                      <button 
+                        type="button" 
+                        onClick={() => onNavigateFromSummary?.('customers')} 
+                        className={`relative overflow-hidden rounded-[10px] p-4 text-left cursor-pointer transition-colors ${
+                          cash >= 0 
+                            ? 'bg-[#EEF8EF] border border-[#A7C8AE] hover:border-[#166534]' 
+                            : 'bg-[#FFF0F6] border border-[#E5D8C5] border-l-4 border-l-[#EC2F78] hover:border-[#EC2F78]'
+                        }`}
+                      >
+                        <Activity className={`absolute -right-2 top-3 w-16 h-16 opacity-10 ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`} />
                         <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Net Cash Position</span>
                         <p className={`mt-2 text-xl font-sans font-extrabold leading-tight break-all ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`}>
                           <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'} />
@@ -1161,7 +1169,7 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setShowAllAccounts(!showAllAccounts)}
-              className="flex-1 px-3 py-2.5 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white font-sans text-xs font-semibold rounded-[8px] cursor-pointer transition-colors text-center"
+              className="flex-1 px-3 py-2.5 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white always-text-white font-sans text-xs font-semibold rounded-[8px] cursor-pointer transition-colors text-center"
             >
               {showAllAccounts ? 'Selected Currency' : 'View All Accounts'}
             </button>
@@ -1229,9 +1237,6 @@ export default function PerformanceTab({
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-white">
-                            Bank
-                          </div>
                           <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <input
@@ -1764,8 +1769,16 @@ export default function PerformanceTab({
                     <p className="mt-2 text-xs text-[#6B6258]">Customer payments received into accounts.</p>
                   </button>
 
-                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
-                    <Activity className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
+                  <button 
+                    type="button" 
+                    onClick={() => onNavigateFromSummary?.('customers')} 
+                    className={`relative min-h-[154px] overflow-hidden rounded-md p-5 text-left cursor-pointer transition-colors shadow-sm ${
+                      cash >= 0 
+                        ? 'bg-[#EEF8EF] border border-[#A7C8AE] hover:border-[#166534]' 
+                        : 'bg-[#FFF0F6] border border-[#E5D8C5] border-l-4 border-l-[#EC2F78] hover:border-[#EC2F78]'
+                    }`}
+                  >
+                    <Activity className={`absolute -right-4 top-5 w-24 h-24 opacity-10 ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`} />
                     <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Net Cash Position</span>
                     <p className={`mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight break-all ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`}>
                       <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'} />
@@ -1827,7 +1840,7 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setShowAllAccounts(!showAllAccounts)}
-              className="px-4 py-2 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white font-sans text-xs font-semibold rounded-md cursor-pointer transition-colors"
+              className="px-4 py-2 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white always-text-white font-sans text-xs font-semibold rounded-md cursor-pointer transition-colors"
             >
               {showAllAccounts ? 'Show Selected Currency Only' : 'View All Accounts'}
             </button>
@@ -1938,9 +1951,6 @@ export default function PerformanceTab({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-white">
-                          Bank
-                        </div>
                         <div className="flex-1 min-w-0">
                         {isEditing ? (
                           <input
