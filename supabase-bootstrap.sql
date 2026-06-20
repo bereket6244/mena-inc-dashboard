@@ -40,6 +40,25 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   "baseAmount" numeric DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS public.loans (
+  id text PRIMARY KEY,
+  type text NOT NULL CHECK (type IN ('given', 'received')),
+  "personName" text NOT NULL,
+  phone text,
+  "principalAmount" numeric DEFAULT 0,
+  currency text DEFAULT 'ETB',
+  "loanDate" text,
+  "dueDate" text,
+  "paymentMethodId" text,
+  "interestAmount" numeric DEFAULT 0,
+  notes text,
+  "recordedBy" text,
+  payments jsonb DEFAULT '[]'::jsonb,
+  status text DEFAULT 'open',
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
+);
+
 CREATE TABLE IF NOT EXISTS public.customers (
   id text PRIMARY KEY,
   "clientType" text,
@@ -81,6 +100,7 @@ ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loans DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.employees (

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, setSupabaseValidationError } from './supabase';
-import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType, BankAccountAdjustment, AuditLogEntry } from '../types';
+import { Customer, PaperStock, BankAccount, Purchase, ExpenseCategory, EmployeeUser, ProductType, BankAccountAdjustment, AuditLogEntry, Loan } from '../types';
 
 const getLeadChannelId = (name: string) =>
   `lc_${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || Date.now()}`;
@@ -322,6 +322,81 @@ export async function deletePurchaseDoc(id: string, deletedBy?: string): Promise
       if (error) throw error;
     } catch (err: any) {
       console.error("Supabase deletePurchaseDoc failed:", err);
+      setSupabaseValidationError(`Database Delete Error: ${err?.message || String(err)}`);
+      throw err;
+    }
+  }
+}
+
+// ============================================
+// 4b. LOANS OPERATIONS
+// ============================================
+
+export async function fetchAllLoans(localFallback: Loan[]): Promise<Loan[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('loans')
+        .select('*')
+        .or('isDeleted.is.null,isDeleted.eq.false')
+        .order('loanDate', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map((loan: any) => ({
+        ...loan,
+        principalAmount: Number(loan.principalAmount || 0),
+        interestAmount: Number(loan.interestAmount || 0),
+        payments: Array.isArray(loan.payments) ? loan.payments.map((payment: any) => ({
+          ...payment,
+          amount: Number(payment.amount || 0)
+        })) : []
+      })) as Loan[];
+    } catch (err: any) {
+      console.error("Supabase fetchAllLoans failed, falling back:", err);
+      setSupabaseValidationError(`Database Query Error: ${err?.message || String(err)}. Loans are using local fallback until Supabase is ready.`);
+    }
+  }
+  return localFallback;
+}
+
+export async function saveLoanDoc(loan: Loan): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const payload: Loan = {
+        ...loan,
+        principalAmount: Number(loan.principalAmount || 0),
+        interestAmount: Number(loan.interestAmount || 0),
+        payments: Array.isArray(loan.payments) ? loan.payments.map(payment => ({
+          ...payment,
+          amount: Number(payment.amount || 0)
+        })) : [],
+        isDeleted: loan.isDeleted || false,
+        deletedBy: loan.deletedBy || undefined
+      };
+
+      const { error } = await supabase
+        .from('loans')
+        .upsert(payload, { onConflict: 'id' });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase saveLoanDoc failed:", err);
+      setSupabaseValidationError(`Database Save Error: ${err?.message || String(err)}. Loan changes were kept locally but could not be written to Supabase.`);
+      throw err;
+    }
+  }
+}
+
+export async function deleteLoanDoc(id: string, deletedBy?: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('loans')
+        .update({ isDeleted: true, deletedBy })
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase deleteLoanDoc failed:", err);
       setSupabaseValidationError(`Database Delete Error: ${err?.message || String(err)}`);
       throw err;
     }

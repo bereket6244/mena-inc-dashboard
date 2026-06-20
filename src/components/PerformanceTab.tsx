@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeUser, BankAccountAdjustment, AuditLogEntry } from '../types';
+import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeUser, BankAccountAdjustment, AuditLogEntry, Loan } from '../types';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import SearchableSelect from './SearchableSelect';
 import { TableToolbar } from './shared/TabLayout';
@@ -15,6 +15,7 @@ import {
   Terminal,
   Building,
   CreditCard,
+  Banknote,
   Plus,
   Trash2,
   Lock,
@@ -41,6 +42,7 @@ interface PerformanceTabProps {
   onUpdateBankAccount: (account: BankAccount) => void;
   onDeleteBankAccount: (idOrIds: string | string[]) => void;
   purchases?: Purchase[];
+  loans?: Loan[];
   categories?: ExpenseCategory[];
   paperStocks?: PaperStock[];
   currentUser?: EmployeeUser | null;
@@ -56,6 +58,7 @@ export default function PerformanceTab({
   onUpdateBankAccount,
   onDeleteBankAccount,
   purchases = [],
+  loans = [],
   categories = [],
   paperStocks = [],
   currentUser = null,
@@ -244,8 +247,22 @@ export default function PerformanceTab({
       .filter(p => p.paymentMethodId === bank.id)
       .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
 
-    return bank.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+    return bank.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + getLoanCashMovementForBank(bank.id);
   };
+
+  const getLoanCashMovementForBank = (bankId: string) => loans.reduce((sum, loan) => {
+    const principal = Number(loan.principalAmount || 0);
+    const loanStartsInBank = loan.paymentMethodId === bankId
+      ? (loan.type === 'given' ? -principal : principal)
+      : 0;
+    const repaymentsForBank = (loan.payments || [])
+      .filter(payment => payment.paymentMethodId === bankId)
+      .reduce((paymentSum, payment) => {
+        const amount = Number(payment.amount || 0);
+        return paymentSum + (loan.type === 'given' ? amount : -amount);
+      }, 0);
+    return sum + loanStartsInBank + repaymentsForBank;
+  }, 0);
 
   // Filter States (previously missing)
   const [summarySearch, setSummarySearch] = useState('');
@@ -388,6 +405,39 @@ export default function PerformanceTab({
   });
 
   const filteredExpenseSum = filteredPurchasesForInterval.reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
+
+  const loanMatchesSummarySearch = (loan: Loan) => {
+    if (!summarySearch) return true;
+    const searchLower = summarySearch.toLowerCase();
+    return Boolean(
+      loan.personName?.toLowerCase().includes(searchLower) ||
+      loan.phone?.toLowerCase().includes(searchLower) ||
+      loan.notes?.toLowerCase().includes(searchLower) ||
+      loan.recordedBy?.toLowerCase().includes(searchLower)
+    );
+  };
+
+  const loanPrincipalMatchesSummaryFilters = (loan: Loan) => {
+    const loanCurrency = getBankCurrency(loan.paymentMethodId);
+    if (summaryCurrency !== 'All' && loanCurrency !== summaryCurrency) return false;
+    if (summaryAccount !== 'All' && loan.paymentMethodId !== summaryAccount) return false;
+    if (summaryEmployee !== 'All' && loan.recordedBy !== summaryEmployee) return false;
+    if (summaryStartDate && (!loan.loanDate || loan.loanDate < summaryStartDate)) return false;
+    if (summaryEndDate && (!loan.loanDate || loan.loanDate > summaryEndDate)) return false;
+    if (!loanMatchesSummarySearch(loan)) return false;
+    return true;
+  };
+
+  const loanPaymentMatchesSummaryFilters = (loan: Loan, payment: NonNullable<Loan['payments']>[number]) => {
+    const paymentCurrency = getBankCurrency(payment.paymentMethodId);
+    if (summaryCurrency !== 'All' && paymentCurrency !== summaryCurrency) return false;
+    if (summaryAccount !== 'All' && payment.paymentMethodId !== summaryAccount) return false;
+    if (summaryEmployee !== 'All' && payment.recordedBy !== summaryEmployee) return false;
+    if (summaryStartDate && (!payment.paymentDate || payment.paymentDate < summaryStartDate)) return false;
+    if (summaryEndDate && (!payment.paymentDate || payment.paymentDate > summaryEndDate)) return false;
+    if (!loanMatchesSummarySearch(loan)) return false;
+    return true;
+  };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -634,6 +684,30 @@ export default function PerformanceTab({
     spentByCurrency[curr] = (spentByCurrency[curr] || 0) + val;
   });
 
+  const loanGivenByCurrency: Record<string, number> = {};
+  const loanReceivedByCurrency: Record<string, number> = {};
+  const loanCashMovementByCurrency: Record<string, number> = {};
+  loans.forEach(loan => {
+    if (loanPrincipalMatchesSummaryFilters(loan)) {
+      const curr = getBankCurrency(loan.paymentMethodId);
+      const principal = Number(loan.principalAmount || 0);
+      if (loan.type === 'given') {
+        loanGivenByCurrency[curr] = (loanGivenByCurrency[curr] || 0) + principal;
+        loanCashMovementByCurrency[curr] = (loanCashMovementByCurrency[curr] || 0) - principal;
+      } else {
+        loanReceivedByCurrency[curr] = (loanReceivedByCurrency[curr] || 0) + principal;
+        loanCashMovementByCurrency[curr] = (loanCashMovementByCurrency[curr] || 0) + principal;
+      }
+    }
+
+    (loan.payments || []).forEach(payment => {
+      if (!loanPaymentMatchesSummaryFilters(loan, payment)) return;
+      const curr = getBankCurrency(payment.paymentMethodId);
+      const amount = Number(payment.amount || 0);
+      loanCashMovementByCurrency[curr] = (loanCashMovementByCurrency[curr] || 0) + (loan.type === 'given' ? amount : -amount);
+    });
+  });
+
   // 3. Collected cash in-hand grouped by currency (inflow - outflow per currency)
   const inflowByCurrency: Record<string, number> = {};
   filteredCustomersForInterval.forEach(c => {
@@ -659,6 +733,9 @@ export default function PerformanceTab({
     ...Object.keys(grossByCurrency),
     ...Object.keys(spentByCurrency),
     ...Object.keys(inflowByCurrency),
+    ...Object.keys(loanGivenByCurrency),
+    ...Object.keys(loanReceivedByCurrency),
+    ...Object.keys(loanCashMovementByCurrency),
     'ETB'
   ]));
 
@@ -679,7 +756,8 @@ export default function PerformanceTab({
     const items = allCurrencies.map(curr => {
       const inflow = inflowByCurrency[curr] || 0;
       const spent = spentByCurrency[curr] || 0;
-      const balance = inflow - spent;
+      const loanMovement = loanCashMovementByCurrency[curr] || 0;
+      const balance = inflow - spent + loanMovement;
       return { curr, balance };
     }).filter(item => item.balance !== 0 || item.curr === 'ETB');
 
@@ -743,13 +821,13 @@ export default function PerformanceTab({
   const maxEmployeeGross = Math.max(...employeeLeaderboard.map(e => e.totalGross), 1);
 
   return (
-    <div className="space-y-5" id="performance-tab-pnl">
+    <div className="space-y-5 bg-[#FAF7F0] text-[#111111] rounded-md p-2 sm:p-4" id="performance-tab-pnl">
       <AppToast message={bankToastMessage} type={bankToastType} />
 
       {/* ========================================== */}
       {/* MOBILE LAYOUT                              */}
       {/* ========================================== */}
-      <div className="block md:hidden space-y-3.5 text-black">
+      <div className="block md:hidden space-y-3.5 text-[#111111]">
         {/* Mobile Top Section & Control Area */}
         <div className="flex flex-col gap-1.5 py-1">
           {/* Row 1 */}
@@ -980,11 +1058,14 @@ export default function PerformanceTab({
               const spent = spentByCurrency[curr] || 0;
               const inflow = inflowByCurrency[curr] || 0;
               const income = inflow;
-              const cash = inflow - spent;
+              const loanGiven = loanGivenByCurrency[curr] || 0;
+              const loanReceived = loanReceivedByCurrency[curr] || 0;
+              const loanMovement = loanCashMovementByCurrency[curr] || 0;
+              const cash = inflow - spent + loanMovement;
               const debt = debtByCurrency[curr] || 0;
               const isCollapsed = !!collapsedCurrencies[curr];
 
-              if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+              if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && loanGiven === 0 && loanReceived === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
                 return null;
               }
 
@@ -1004,79 +1085,61 @@ export default function PerformanceTab({
                   </div>
 
                   {!isCollapsed && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* KPI Card 1: Debt */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Debt</span>
-                          <div className="w-5 h-5 rounded bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
-                            <FileText className="w-3 h-3 text-[#a28031]" />
-                          </div>
-                        </div>
-                        <div className="mt-1">
-                          <p className="text-[15px] font-sans font-bold leading-tight text-[#a28031] break-all">
-                            <CopyableAmount value={debt} currency={curr} className="text-[#a28031]" />
-                          </p>
-                        </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
+                        <ShoppingBag className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Total Gross Orders</span>
+                        <p className="mt-2 text-xl font-sans font-extrabold leading-tight text-[#111111] break-all">
+                          <CopyableAmount value={gross} currency={curr} className="text-[#111111]" />
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#6B6258]">All order value for this currency.</p>
                       </button>
 
-                      {/* KPI Card 2: Gross */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Gross</span>
-                          <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
-                            <ShoppingBag className="w-3 h-3 text-[#71b536]" />
-                          </div>
-                        </div>
-                        <div className="mt-1">
-                          <p className="text-[15px] font-sans font-bold leading-tight text-[#71b536] break-all">
-                            <CopyableAmount value={gross} currency={curr} className="text-[#71b536]" />
-                          </p>
-                        </div>
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
+                        <DollarSign className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Income</span>
+                        <p className="mt-2 text-xl font-sans font-extrabold leading-tight text-[#166534] break-all">
+                          <CopyableAmount value={income} currency={curr} className="text-[#166534]" />
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#6B6258]">Received customer payments.</p>
                       </button>
 
-                      {/* KPI Card 3: Spent */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Spent</span>
-                          <div className="w-5 h-5 rounded bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
-                            <CreditCard className="w-3 h-3 text-[#ee317b]" />
-                          </div>
-                        </div>
-                        <div className="mt-1">
-                          <p className="text-[15px] font-sans font-bold leading-tight text-[#ee317b] break-all">
-                            <CopyableAmount value={spent} currency={curr} className="text-[#ee317b]" />
-                          </p>
-                        </div>
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
+                        <Activity className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Net Cash Position</span>
+                        <p className={`mt-2 text-xl font-sans font-extrabold leading-tight break-all ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`}>
+                          <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'} />
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#6B6258]">Income less expenses plus loan movement.</p>
                       </button>
 
-                      {/* KPI Card 4: Income */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Income</span>
-                          <div className="w-5 h-5 rounded bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
-                            <DollarSign className="w-3 h-3 text-[#71b536]" />
-                          </div>
-                        </div>
-                        <div className="mt-1">
-                          <p className="text-[15px] font-sans font-bold leading-tight text-[#71b536] break-all">
-                            <CopyableAmount value={income} currency={curr} className="text-[#71b536]" />
-                          </p>
-                        </div>
+                      <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="bg-[#FFF8E7] border border-[#E5D8C5] border-l-4 border-l-[#A16207] rounded-[10px] p-4 text-left cursor-pointer hover:border-l-[#854D0E] transition-colors">
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Total Outstanding Debt</span>
+                        <p className="mt-2 text-xl font-sans font-extrabold leading-tight text-[#A16207] break-all">
+                          <CopyableAmount value={debt} currency={curr} className="text-[#A16207]" />
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#6B6258]">Unpaid balances still owed by customers.</p>
                       </button>
 
-                      {/* KPI Card 5: Net Cash */}
-                      <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="bg-white border border-[#E7E3D4] rounded-[10px] p-2 shadow-xs flex flex-col justify-between items-stretch h-20 w-full text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-sans font-semibold uppercase text-stone-400 tracking-wider">Net Cash</span>
-                          <div className={`w-5 h-5 rounded flex items-center justify-center border ${cash >= 0 ? 'bg-[#71b536]/10 border-[#71b536]/20' : 'bg-[#ee317b]/10 border-[#ee317b]/20'}`}>
-                            <Activity className={`w-3 h-3 ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`} />
+                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-[#FFF0F6] border border-[#E5D8C5] border-l-4 border-l-[#EC2F78] rounded-[10px] p-4 text-left cursor-pointer hover:border-l-[#BE185D] transition-colors">
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Total Spent Expenses</span>
+                        <p className="mt-2 text-xl font-sans font-extrabold leading-tight text-[#EC2F78] break-all">
+                          <CopyableAmount value={spent} currency={curr} className="text-[#EC2F78]" />
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#6B6258]">Purchases and operating expenses.</p>
+                      </button>
+
+                      <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="bg-[#FFFCF7] border border-[#E5D8C5] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#CDBEA8] transition-colors">
+                        <span className="text-[10px] font-sans font-bold uppercase text-[#6B6258] tracking-wider">Loans Summary</span>
+                        <div className="mt-3 space-y-2 text-xs">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[#6B6258]">Loan Given</span>
+                            <CopyableAmount value={loanGiven} currency={curr} className="text-[#EC2F78] font-bold" />
                           </div>
-                        </div>
-                        <div className="mt-1">
-                          <p className={`text-[15px] font-sans font-bold leading-tight break-all ${cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'}`}>
-                            <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#71b536]' : 'text-[#ee317b]'} />
-                          </p>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[#6B6258]">Loan Received</span>
+                            <CopyableAmount value={loanReceived} currency={curr} className="text-[#166534] font-bold" />
+                          </div>
                         </div>
                       </button>
                     </div>
@@ -1098,7 +1161,7 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setShowAllAccounts(!showAllAccounts)}
-              className="flex-1 px-3 py-2.5 bg-[#f5f4ee] hover:bg-[#eae9e2] border border-[#dfdccf] text-black font-sans text-xs font-semibold rounded-[8px] cursor-pointer transition-colors text-center"
+              className="flex-1 px-3 py-2.5 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white font-sans text-xs font-semibold rounded-[8px] cursor-pointer transition-colors text-center"
             >
               {showAllAccounts ? 'Selected Currency' : 'View All Accounts'}
             </button>
@@ -1106,7 +1169,7 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setIsAddingBank(!isAddingBank)}
-              className="flex-1 bg-[#ee317b] hover:bg-[#ee317b]/90 text-white font-bold px-3 py-2.5 rounded-[8px] flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer"
+              className="flex-1 bg-[#EC2F78] hover:bg-[#D9286C] text-white font-bold px-3 py-2.5 rounded-[8px] flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Account</span>
@@ -1141,7 +1204,8 @@ export default function PerformanceTab({
                   .filter(p => p.paymentMethodId === b.id)
                   .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
                 
-                const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+                const loanCashMovement = getLoanCashMovementForBank(b.id);
+                const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
                 const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
                 const isEditing = editingBankId === b.id;
                 const isBankSelected = selectedBankIds.includes(b.id);
@@ -1155,7 +1219,7 @@ export default function PerformanceTab({
                   <div 
                     key={b.id} 
                     data-global-search-id={`bank-${b.id}`}
-                    className={`relative bg-white border rounded-[12px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-black ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#E7E3D4]'}`}
+                    className={`relative bg-[#FFFCF7] border rounded-[10px] p-4 shadow-xs flex flex-col justify-between w-full max-w-full font-sans text-[#111111] ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#EC2F78]' : 'border-[#E5D8C5]'}`}
                     onClick={(e) => handleBankCardClick(b.id, e)}
                     onTouchStart={(e) => startBankLongPress(b.id, e)}
                     onTouchMove={clearBankLongPressTimer}
@@ -1164,26 +1228,36 @@ export default function PerformanceTab({
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-white">
+                            Bank
+                          </div>
+                          <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <input
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              className="px-2 py-1 bg-[#FAF8F2] border border-[#ee317b] text-black text-xs font-semibold rounded-md outline-none w-full"
+                              className="px-2 py-1 bg-[#FAF7F0] border border-[#EC2F78] text-[#111111] text-xs font-semibold rounded-md outline-none w-full"
                             />
                           ) : (
-                            <h4 className="font-bold text-black text-[13px] tracking-tight uppercase break-words" title={b.name}>
+                            <h4 className="font-bold text-[#111111] text-[13px] tracking-tight uppercase break-words" title={b.name}>
                               {b.name}
                             </h4>
                           )}
+                          {!isEditing && (
+                            <p className="mt-1 text-[11px] text-[#6B6258]">
+                              {b.accountNumber ? `A/C: ${b.accountNumber}` : 'Cash account'} - {b.currency || 'ETB'}
+                            </p>
+                          )}
+                          </div>
                         </div>
 
                         <div className="relative">
                           <button
                             type="button"
                             onClick={() => setActiveMenuBankId(activeMenuBankId === b.id ? null : b.id)}
-                            className="text-stone-500 hover:text-black p-1 rounded transition-colors"
+                            className="text-[#6B6258] hover:text-[#111111] p-1 rounded transition-colors"
                           >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
@@ -1229,7 +1303,7 @@ export default function PerformanceTab({
                         </div>
                       </div>
 
-                      <div className="text-xs text-stone-500 font-sans">
+                      <div className="text-xs text-[#6B6258] font-sans">
                         {isEditing ? (
                           <div className="space-y-1.5 mt-2">
                             <input
@@ -1251,44 +1325,36 @@ export default function PerformanceTab({
                               ))}
                             </select>
                           </div>
-                        ) : b.accountNumber ? (
-                          <span className="text-[11px]">
-                            A/C: {b.accountNumber} ({b.currency || 'ETB'})
-                          </span>
-                        ) : (
-                          <span className="text-[10px] tracking-wider uppercase">Cash Account ({b.currency || 'ETB'})</span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-stone-500 font-sans">Opening Balance</span>
-                        <div className="flex items-center gap-2">
-                          <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-black font-semibold" />
+                    <div className="mt-3 border-y border-[#E5D8C5] divide-y divide-[#E5D8C5]">
+                      <div className="grid grid-cols-3 divide-x divide-[#E5D8C5] text-xs">
+                        <div className="py-3 pr-2">
+                          <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Opening Balance</span>
+                          <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-semibold" />
                           <button
                             type="button"
                             onClick={() => openAdjustmentModal(b)}
-                            className="rounded border border-[#E7E3D4] bg-[#FAF8F2] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:border-[#71b536] hover:text-black"
+                            className="mt-1 rounded border border-[#E5D8C5] bg-[#FAF7F0] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6258] hover:border-[#166534] hover:text-[#111111]"
                           >
                             Adjust
                           </button>
                         </div>
+                        <div className="py-3 px-2">
+                          <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Received</span>
+                          <span className="text-[#166534] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
+                        </div>
+                        <div className="py-3 pl-2">
+                          <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Spent</span>
+                          <span className="text-[#EC2F78] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#EC2F78] font-bold" /></span>
+                        </div>
                       </div>
 
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-stone-500 font-sans">Received</span>
-                        <span className="text-[#71b536] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#71b536] font-bold" /></span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-stone-500 font-sans">Spent</span>
-                        <span className="text-[#ee317b] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#ee317b] font-bold" /></span>
-                      </div>
-
-                      <div className="flex justify-between items-center pt-2.5 border-t border-stone-100">
-                        <span className="text-stone-600 font-sans text-xs font-semibold">Available Balance</span>
-                        <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-black font-extrabold text-[15px] tracking-tight" />
+                      <div className="flex justify-between items-end bg-[#FAF7F0] px-3 py-3">
+                        <span className="text-[#6B6258] font-sans text-xs font-semibold">Current Balance</span>
+                        <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-extrabold text-[15px] tracking-tight" />
                       </div>
                     </div>
 
@@ -1389,13 +1455,13 @@ export default function PerformanceTab({
       {/* ========================================== */}
       {/* DESKTOP LAYOUT                             */}
       {/* ========================================== */}
-      <div className="hidden md:block space-y-5">
+      <div className="hidden md:block space-y-5 text-[#111111]">
 
       {/* Custom Redesigned Financial Toolbar to match mockup */}
       <div className="performance-sticky-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           {/* Dropdown for selecting main currency, styled as a tab/badge in mockup */}
-          <div className="w-44 bg-[#181818] border border-[#262626] rounded-md overflow-hidden">
+          <div className="w-44 bg-[#FFFCF7] border border-[#E5D8C5] rounded-md overflow-hidden">
             <SearchableSelect
               value={selectedCurrency}
               onChange={(e) => {
@@ -1403,7 +1469,7 @@ export default function PerformanceTab({
                 setShowAllCurrencies(false);
               }}
               placeholder="Select Currency..."
-              inputClassName="font-bold font-sans text-xs uppercase tracking-wider text-white"
+              inputClassName="font-bold font-sans text-xs uppercase tracking-wider text-[#111111]"
             >
               {newAccountCurrencies.map(curr => (
                 <option key={curr} value={curr}>
@@ -1417,7 +1483,7 @@ export default function PerformanceTab({
           <button
             type="button"
             onClick={() => setShowAllCurrencies(!showAllCurrencies)}
-            className="text-xs font-sans text-gray-500 hover:text-white transition-colors cursor-pointer"
+            className="text-xs font-sans text-[#6B6258] hover:text-[#111111] transition-colors cursor-pointer"
           >
             {showAllCurrencies ? `Collapse to ${selectedCurrency}` : `View all currencies (${newAccountCurrencies.length})`}
           </button>
@@ -1437,7 +1503,7 @@ export default function PerformanceTab({
                   transition={{ duration: 0.1 }}
                   type="button"
                   onClick={() => setIsSearchExpanded(true)}
-                  className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer"
+                  className="flex items-center justify-center p-1.5 rounded text-[#6B6258] hover:bg-[#FFFCF7] hover:text-[#111111] transition-colors cursor-pointer"
                   title="Search accounts"
                 >
                   <Search className="w-3.5 h-3.5" />
@@ -1451,7 +1517,7 @@ export default function PerformanceTab({
                   transition={{ type: "spring", damping: 25, stiffness: 250 }}
                   className="relative flex items-center bg-transparent overflow-hidden"
                 >
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#FFFCF7] border border-[#E5D8C5] text-[#6B6258] mr-1 flex-shrink-0">
                     <Search className="h-3.5 w-3.5" />
                   </div>
                   <input
@@ -1465,7 +1531,7 @@ export default function PerformanceTab({
                         setIsSearchExpanded(false);
                       }
                     }}
-                    className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                    className="bg-transparent text-[11px] text-[#111111] border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5 placeholder-[#6B6258]"
                   />
                   {summarySearch && (
                     <button
@@ -1474,7 +1540,7 @@ export default function PerformanceTab({
                         setSummarySearch('');
                         setIsSearchExpanded(false);
                       }}
-                      className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+                      className="ml-1 text-[#6B6258] hover:text-[#111111] transition-colors focus:outline-none flex-shrink-0"
                       title="Clear search"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1489,15 +1555,15 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setShowFilterPopover(!showFilterPopover)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[#6B6258] hover:bg-[#FFFCF7] hover:text-[#111111] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
                 (summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All')
-                  ? 'text-[#ee317b] bg-[#ee317b]/10'
+                  ? 'text-[#EC2F78] bg-[#EC2F78]/10'
                   : ''
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
               {[summaryStartDate, summaryEndDate, summaryAccount, summaryEmployee].filter(f => f && f !== 'All').length > 0 && (
-                <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                <span className="bg-[#EC2F78] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5">
                   {[summaryStartDate, summaryEndDate, summaryAccount, summaryEmployee].filter(f => f && f !== 'All').length}
                 </span>
               )}
@@ -1510,11 +1576,11 @@ export default function PerformanceTab({
                   onClick={() => setShowFilterPopover(false)}
                 />
                 <div
-                  className="absolute right-0 mt-1.5 w-[320px] bg-[#181818] border border-[#262626] rounded shadow-xl z-40 p-3 text-xs font-sans text-gray-300 flex flex-col gap-2.5"
+                  className="absolute right-0 mt-1.5 w-[320px] bg-[#FFFCF7] border border-[#E5D8C5] rounded shadow-xl z-40 p-3 text-xs font-sans text-[#111111] flex flex-col gap-2.5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between px-1">
-                    <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Database Filter</span>
+                    <span className="font-bold text-[#6B6258] text-[10px] uppercase tracking-wider select-none">Database Filter</span>
                     {(summaryStartDate || summaryEndDate || summaryAccount !== 'All' || summaryEmployee !== 'All') && (
                       <button
                         type="button"
@@ -1650,25 +1716,28 @@ export default function PerformanceTab({
           const spent = spentByCurrency[curr] || 0;
           const inflow = inflowByCurrency[curr] || 0;
           const income = inflow;
-          const cash = inflow - spent;
+          const loanGiven = loanGivenByCurrency[curr] || 0;
+          const loanReceived = loanReceivedByCurrency[curr] || 0;
+          const loanMovement = loanCashMovementByCurrency[curr] || 0;
+          const cash = inflow - spent + loanMovement;
           const debt = debtByCurrency[curr] || 0;
           const isCollapsed = !!collapsedCurrencies[curr];
 
           // Skip if zero values across the board unless it is ETB or selected
-          if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
+          if (gross === 0 && spent === 0 && income === 0 && cash === 0 && debt === 0 && loanGiven === 0 && loanReceived === 0 && curr !== 'ETB' && curr !== selectedCurrency) {
             return null;
           }
 
           return (
             <div key={curr} className="space-y-3">
-              <div className="flex items-center justify-between border-b border-[#262626] pb-2">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-white font-sans">
+              <div className="flex items-center justify-between border-b border-[#E5D8C5] pb-2">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[#111111] font-sans">
                   {curr} FINANCIAL SUMMARY FROM ORDERS
                 </h4>
                 <button
                   type="button"
                   onClick={() => setCollapsedCurrencies(prev => ({ ...prev, [curr]: !prev[curr] }))}
-                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
+                  className="text-[#6B6258] hover:text-[#111111] transition-colors cursor-pointer"
                   title={isCollapsed ? 'Expand' : 'Collapse'}
                 >
                   {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1676,64 +1745,67 @@ export default function PerformanceTab({
               </div>
 
               {!isCollapsed && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                  <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#a28031]/60 transition-colors">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Outstanding Debt</span>
-                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#a28031]">
-                        <CopyableAmount value={debt} currency={curr} className="text-[#a28031]" />
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-md bg-[#a28031]/10 flex items-center justify-center border border-[#a28031]/20">
-                      <FileText className="w-5 h-5 text-[#a28031]" />
-                    </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
+                    <ShoppingBag className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
+                    <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Total Gross Orders</span>
+                    <p className="mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight text-[#111111] break-all">
+                      <CopyableAmount value={gross} currency={curr} className="text-[#111111]" />
+                    </p>
+                    <p className="mt-2 text-xs text-[#6B6258]">All order value recorded for this currency.</p>
                   </button>
 
-                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#71b536]/60 transition-colors">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Gross Orders</span>
-                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-white">
-                        <CopyableAmount value={gross} currency={curr} className="text-white" />
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
-                      <ShoppingBag className="w-5 h-5 text-[#71b536]" />
-                    </div>
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
+                    <DollarSign className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
+                    <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Income</span>
+                    <p className="mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight text-[#166534] break-all">
+                      <CopyableAmount value={income} currency={curr} className="text-[#166534]" />
+                    </p>
+                    <p className="mt-2 text-xs text-[#6B6258]">Customer payments received into accounts.</p>
                   </button>
 
-                  <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Total Spent (Expenses)</span>
-                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
-                        <CopyableAmount value={spent} currency={curr} className="text-[#ee317b]" />
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
-                      <CreditCard className="w-5 h-5 text-[#ee317b]" />
-                    </div>
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
+                    <Activity className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
+                    <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Net Cash Position</span>
+                    <p className={`mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight break-all ${cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'}`}>
+                      <CopyableAmount value={cash} currency={curr} className={cash >= 0 ? 'text-[#166534]' : 'text-[#EC2F78]'} />
+                    </p>
+                    <p className="mt-2 text-xs text-[#6B6258]">Income less expenses plus loan movement.</p>
                   </button>
 
-                  <div className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Income</span>
-                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#71b536]">
-                        <CopyableAmount value={income} currency={curr} className="text-[#71b536]" />
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-md bg-[#71b536]/10 flex items-center justify-center border border-[#71b536]/20">
-                      <DollarSign className="w-5 h-5 text-[#71b536]" />
-                    </div>
-                  </div>
+                  <button type="button" onClick={() => onNavigateFromSummary?.('customers-debt')} className="min-h-[136px] bg-[#FFF8E7] border border-[#E5D8C5] border-l-4 border-l-[#A16207] rounded-md p-5 text-left cursor-pointer hover:border-l-[#854D0E] transition-colors shadow-sm">
+                    <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Total Outstanding Debt</span>
+                    <p className="mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight text-[#A16207] break-all">
+                      <CopyableAmount value={debt} currency={curr} className="text-[#A16207]" />
+                    </p>
+                    <p className="mt-2 text-xs text-[#6B6258]">Unpaid customer balances still open.</p>
+                  </button>
 
-                  <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#181818] border border-[#262626] rounded-md p-5 flex items-center justify-between shadow-sm text-left cursor-pointer hover:border-[#ee317b]/60 transition-colors">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 text-[10px] font-sans tracking-wider uppercase font-semibold">Net Cash Position</span>
-                      <p className="text-[17px] font-sans font-bold leading-normal tracking-tight text-[#ee317b]">
-                        <CopyableAmount value={cash} currency={curr} className="text-[#ee317b]" />
-                      </p>
+                  <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="min-h-[136px] bg-[#FFF0F6] border border-[#E5D8C5] border-l-4 border-l-[#EC2F78] rounded-md p-5 text-left cursor-pointer hover:border-l-[#BE185D] transition-colors shadow-sm">
+                    <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Total Spent Expenses</span>
+                    <p className="mt-4 text-2xl font-sans font-extrabold leading-tight tracking-tight text-[#EC2F78] break-all">
+                      <CopyableAmount value={spent} currency={curr} className="text-[#EC2F78]" />
+                    </p>
+                    <p className="mt-2 text-xs text-[#6B6258]">Purchases and expense outflow.</p>
+                  </button>
+
+                  <button type="button" onClick={() => onNavigateFromSummary?.('purchases')} className="min-h-[136px] bg-[#FFFCF7] border border-[#E5D8C5] rounded-md p-5 text-left cursor-pointer hover:border-[#CDBEA8] transition-colors shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Loans Summary</span>
+                        <p className="mt-1 text-xs text-[#6B6258]">Quiet treasury movement view.</p>
+                      </div>
+                      <Banknote className="w-5 h-5 text-[#6B6258]" />
                     </div>
-                    <div className="w-10 h-10 rounded-md bg-[#ee317b]/10 flex items-center justify-center border border-[#ee317b]/20">
-                      <Activity className="w-5 h-5 text-[#ee317b]" />
+                    <div className="mt-5 space-y-3 text-xs">
+                      <div className="flex items-center justify-between gap-3 border-b border-[#E5D8C5] pb-2">
+                        <span className="font-medium text-[#6B6258]">Loan Given</span>
+                        <CopyableAmount value={loanGiven} currency={curr} className="text-[#EC2F78] font-bold" />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-[#6B6258]">Loan Received</span>
+                        <CopyableAmount value={loanReceived} currency={curr} className="text-[#166534] font-bold" />
+                      </div>
                     </div>
                   </button>
                 </div>
@@ -1743,10 +1815,10 @@ export default function PerformanceTab({
         })}
 
       {/* --- TREASURY DEPARTMENT & BANK ACCOUNTS MANAGER --- */}
-      <div className="bg-[#121212] border border-[#262626] rounded-md p-5 shadow-sm space-y-4" id="treasury-desk-pnl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#262626] pb-4 gap-4">
+      <div className="bg-[#FFFCF7] border border-[#E5D8C5] rounded-md p-5 shadow-sm space-y-4" id="treasury-desk-pnl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E5D8C5] pb-4 gap-4">
           <div>
-            <h3 className="font-sans font-bold text-black dark:text-white uppercase tracking-wider text-sm">
+            <h3 className="font-sans font-bold text-[#111111] uppercase tracking-wider text-sm">
               Payment Accounts
             </h3>
           </div>
@@ -1755,14 +1827,14 @@ export default function PerformanceTab({
             <button
               type="button"
               onClick={() => setShowAllAccounts(!showAllAccounts)}
-              className="px-4 py-2 bg-[#f5f4ee] hover:bg-[#eae9e2] dark:bg-[#181818] dark:hover:bg-[#222] border border-[#dfdccf] dark:border-[#262626] text-black dark:text-white font-sans text-xs font-semibold rounded-md cursor-pointer transition-colors"
+              className="px-4 py-2 bg-[#111111] hover:bg-[#2A2A2A] border border-[#111111] text-white font-sans text-xs font-semibold rounded-md cursor-pointer transition-colors"
             >
               {showAllAccounts ? 'Show Selected Currency Only' : 'View All Accounts'}
             </button>
             <button
               type="button"
               onClick={() => setIsAddingBank(!isAddingBank)}
-              className="bg-[#ee317b] hover:bg-[#ee317b]/90 text-white font-bold px-4 py-2 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
+              className="bg-[#EC2F78] hover:bg-[#D9286C] text-white font-bold px-4 py-2 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
             >
               {isAddingBank ? (
                 <>
@@ -1808,7 +1880,7 @@ export default function PerformanceTab({
         )}
 
         {/* Breathtaking Grid list of Accounts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-sans">
           {bankAccounts
             .filter(b => {
               if (summarySearch.trim()) {
@@ -1839,7 +1911,8 @@ export default function PerformanceTab({
                 .filter(p => p.paymentMethodId === b.id)
                 .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
               
-              const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+              const loanCashMovement = getLoanCashMovementForBank(b.id);
+              const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
               const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
               const isEditing = editingBankId === b.id;
               const isBankSelected = selectedBankIds.includes(b.id);
@@ -1854,7 +1927,7 @@ export default function PerformanceTab({
                 <div 
                   key={b.id} 
                   data-global-search-id={`bank-${b.id}`}
-                  className={`relative bg-[#181818] border rounded-md p-4 shadow-sm hover:border-[#71b536] dark:hover:border-[#71b536] transition-all duration-300 md:min-h-[190px] flex flex-col justify-between ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#ee317b]' : 'border-[#262626]'}`}
+                  className={`relative bg-[#FFFCF7] border rounded-md p-4 shadow-sm hover:border-[#166534] transition-all duration-300 md:min-h-[238px] flex flex-col justify-between ${isSearchHighlighted ? 'global-search-highlight' : ''} ${isBankSelected ? 'selected-row border-[#EC2F78]' : 'border-[#E5D8C5]'}`}
                   onClick={(e) => handleBankCardClick(b.id, e)}
                   onTouchStart={(e) => startBankLongPress(b.id, e)}
                   onTouchMove={clearBankLongPressTimer}
@@ -1862,21 +1935,31 @@ export default function PerformanceTab({
                   onTouchCancel={clearBankLongPressTimer}
                 >
                   {/* Account Details Header */}
-                  <div className="space-y-1">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-white">
+                          Bank
+                        </div>
+                        <div className="flex-1 min-w-0">
                         {isEditing ? (
                           <input
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-xs font-semibold rounded-md outline-none w-full min-w-0"
+                            className="px-2 py-1 bg-[#FAF7F0] border border-[#166534] text-[#111111] text-xs font-semibold rounded-md outline-none w-full min-w-0"
                           />
                         ) : (
-                          <h4 className="font-bold text-white text-[13px] tracking-tight uppercase break-words min-w-0" title={b.name}>
+                          <h4 className="font-bold text-[#111111] text-[13px] tracking-tight uppercase break-words min-w-0" title={b.name}>
                             {b.name}
                           </h4>
                         )}
+                        {!isEditing && (
+                          <p className="mt-1 text-[11px] text-[#6B6258]">
+                            {b.accountNumber ? `A/C: ${b.accountNumber}` : 'Cash account'} - {b.currency || 'ETB'}
+                          </p>
+                        )}
+                        </div>
                       </div>
 
                       {/* Three-dot dropdown menu trigger */}
@@ -1884,7 +1967,7 @@ export default function PerformanceTab({
                         <button
                           type="button"
                           onClick={() => setActiveMenuBankId(activeMenuBankId === b.id ? null : b.id)}
-                          className="text-gray-500 hover:text-white p-1 rounded transition-colors"
+                          className="text-[#6B6258] hover:text-[#111111] p-1 rounded transition-colors"
                           title="Menu"
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -1895,14 +1978,14 @@ export default function PerformanceTab({
                         {activeMenuBankId === b.id && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={() => setActiveMenuBankId(null)} />
-                            <div className="absolute right-0 mt-1 w-28 bg-[#181818] border border-[#262626] rounded shadow-lg z-50 py-1 text-xs">
+                            <div className="absolute right-0 mt-1 w-32 bg-[#FFFCF7] border border-[#E5D8C5] rounded shadow-lg z-50 py-1 text-xs">
                               <button
                                 type="button"
                                 onClick={() => {
                                   setActiveMenuBankId(null);
                                   startEditing(b);
                                 }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-[#202020] text-white flex items-center gap-1.5"
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#FAF7F0] text-[#111111] flex items-center gap-1.5"
                               >
                                 <Edit2 className="w-3 h-3" />
                                 Edit Account
@@ -1914,13 +1997,13 @@ export default function PerformanceTab({
                                     setActiveMenuBankId(null);
                                     setDeletingBankId(b.id);
                                   }}
-                                  className="w-full text-left px-3 py-1.5 hover:bg-[#202020] text-rose-500 font-semibold flex items-center gap-1.5"
+                                  className="w-full text-left px-3 py-1.5 hover:bg-[#FAF7F0] text-rose-500 font-semibold flex items-center gap-1.5"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                   Delete
                                 </button>
                               ) : (
-                                <div className="px-3 py-1.5 text-gray-500 flex items-center gap-1.5 cursor-not-allowed select-none">
+                                <div className="px-3 py-1.5 text-[#6B6258] flex items-center gap-1.5 cursor-not-allowed select-none">
                                   <Lock className="w-3 h-3" />
                                   System Lock
                                 </div>
@@ -1931,7 +2014,7 @@ export default function PerformanceTab({
                       </div>
                     </div>
 
-                    <div className="text-xs text-gray-500 font-sans flex flex-col gap-1">
+                    <div className="text-xs text-[#6B6258] font-sans flex flex-col gap-1">
                       {isEditing ? (
                         <>
                           <input
@@ -1939,9 +2022,9 @@ export default function PerformanceTab({
                             placeholder="A/C: optional"
                             value={editNumber}
                             onChange={(e) => setEditNumber(e.target.value)}
-                            className="px-1.5 py-0.5 bg-[#121212] border border-[#71b536] text-white text-[11px] rounded-md outline-none w-full font-sans"
+                            className="px-2 py-1 bg-[#FAF7F0] border border-[#E5D8C5] text-[#111111] text-[11px] rounded-md outline-none w-full font-sans"
                           />
-                          <div className="w-full bg-[#121212] border border-[#71b536] rounded-md outline-none font-sans mt-1 overflow-hidden flex items-center min-h-[24px]">
+                          <div className="w-full bg-[#FAF7F0] border border-[#E5D8C5] rounded-md outline-none font-sans mt-1 overflow-hidden flex items-center min-h-[24px]">
                             <SearchableSelect
                               value={editCurrency}
                               onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
@@ -1954,8 +2037,8 @@ export default function PerformanceTab({
                               }}
                               createOptionLabel="Add currency"
                               placeholder="Search/add..."
-                              className="w-full h-full text-white text-[11px] bg-transparent"
-                              inputClassName="text-white text-[11px] uppercase bg-transparent pl-1"
+                              className="w-full h-full text-[#111111] text-[11px] bg-transparent"
+                              inputClassName="text-[#111111] text-[11px] uppercase bg-transparent pl-1"
                             >
                               {newAccountCurrencies.map(curr => (
                                 <option key={curr} value={curr}>
@@ -1965,55 +2048,47 @@ export default function PerformanceTab({
                             </SearchableSelect>
                           </div>
                         </>
-                      ) : b.accountNumber ? (
-                        <span className="text-[11px]">
-                          A/C: {b.accountNumber} ({b.currency || 'ETB'})
-                        </span>
-                      ) : (
-                        <span className="text-[10px] tracking-wider uppercase">Cash Account ({b.currency || 'ETB'})</span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
                   {/* Account Balance Calculations */}
-                  <div className="mt-4 pt-3 border-t border-[#262626] space-y-2.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-sans">Opening Balance</span>
-                      <div className="flex items-center gap-2">
-                        <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-white font-bold" />
+                  <div className="mt-4 border-y border-[#E5D8C5] divide-y divide-[#E5D8C5]">
+                    <div className="grid grid-cols-3 divide-x divide-[#E5D8C5] text-xs">
+                      <div className="py-3 pr-3">
+                        <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Opening Balance</span>
+                        <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-bold" />
                         <button
                           type="button"
                           onClick={() => openAdjustmentModal(b)}
-                          className="rounded border border-[#262626] bg-[#181818] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:border-[#71b536] hover:text-white"
+                          className="mt-1 rounded border border-[#E5D8C5] bg-[#FAF7F0] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6258] hover:border-[#166534] hover:text-[#111111]"
                         >
                           Adjust
                         </button>
                       </div>
+                      <div className="py-3 px-3">
+                        <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Received</span>
+                        <span className="text-[#166534] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
+                      </div>
+                      <div className="py-3 pl-3">
+                        <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Spent</span>
+                        <span className="text-[#EC2F78] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#EC2F78] font-bold" /></span>
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-sans">Received</span>
-                      <span className="text-[#71b536] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#71b536] font-bold" /></span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-sans">Spent</span>
-                      <span className="text-[#ee317b] font-bold">-<CopyableAmount value={purchasesOutOfBank} displayValue={formatMockupValue(purchasesOutOfBank)} copyValue={formatMockupValue(purchasesOutOfBank)} currency={b.currency || 'ETB'} className="text-[#ee317b] font-bold" /></span>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-3 border-t border-[#262626]">
-                      <span className="text-gray-500 font-sans text-xs">Available Balance</span>
-                      <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-white font-bold text-base tracking-tight" />
+                    <div className="flex justify-between items-end bg-[#FAF7F0] px-3 py-3">
+                      <span className="text-[#6B6258] font-sans text-xs font-semibold">Current Balance</span>
+                      <CopyableAmount value={currentBalance} displayValue={formatMockupValue(currentBalance)} copyValue={formatMockupValue(currentBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-extrabold text-lg tracking-tight" />
                     </div>
                   </div>
 
                   {/* Inline Editing Controls */}
                   {isEditing && (
-                    <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#262626]">
+                    <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#E5D8C5]">
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(b.id)}
-                        className="p-1 text-[#71b536] hover:bg-[#71b536]/10 border border-[#71b536]/20 bg-emerald-990/10 cursor-pointer rounded"
+                        className="p-1 text-[#166534] hover:bg-[#166534]/10 border border-[#166534]/20 cursor-pointer rounded"
                         title="Save Changes"
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -2021,7 +2096,7 @@ export default function PerformanceTab({
                       <button
                         type="button"
                         onClick={() => setEditingBankId(null)}
-                        className="p-1 text-gray-500 hover:bg-[#202020] border border-[#262626] cursor-pointer rounded"
+                        className="p-1 text-[#6B6258] hover:bg-[#FAF7F0] border border-[#E5D8C5] cursor-pointer rounded"
                         title="Cancel"
                       >
                         <X className="w-3.5 h-3.5" />

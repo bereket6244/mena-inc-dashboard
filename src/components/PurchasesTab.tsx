@@ -8,6 +8,7 @@ import {
   DollarSign, 
   User, 
   FileText, 
+  CreditCard,
   FolderPlus, 
   Tag, 
   X, 
@@ -29,10 +30,10 @@ import {
   Table as TableIcon
 } from 'lucide-react';
 
-import { Purchase, ExpenseCategory, BankAccount, EmployeeUser } from '../types';
+import { Purchase, ExpenseCategory, BankAccount, EmployeeUser, Loan } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import SearchableSelect from './SearchableSelect';
-import { FloatingAddButton, DataTable } from './shared/TabLayout';
+import { FloatingAddButton, DataTable, TableToolbar } from './shared/TabLayout';
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import AppToast, { AppToastType } from './shared/AppToast';
 
@@ -46,6 +47,13 @@ const PURCHASE_FILTERS_STORAGE_KEY = 'ui.purchases.filters';
 const PURCHASE_LAYOUT_STORAGE_KEY = 'ui.purchases.layoutMode';
 const PURCHASE_CATEGORY_PANEL_WIDTH_STORAGE_KEY = 'ui.purchases.categoryPanelWidth';
 const PURCHASE_CATEGORY_LIST_HEIGHT_STORAGE_KEY = 'ui.purchases.categoryListHeight';
+const PURCHASE_FINANCE_VIEW_STORAGE_KEY = 'ui.purchases.financeView';
+const LOAN_LAYOUT_STORAGE_KEY = 'ui.loans.layoutMode';
+const LOAN_SORT_BY_STORAGE_KEY = 'ui.loans.sortBy';
+const LOAN_SORT_ASC_STORAGE_KEY = 'ui.loans.sortAsc';
+const LOAN_FILTERS_STORAGE_KEY = 'ui.loans.filters';
+const LOAN_SORT_FIELDS = ['loanDate', 'personName', 'principalAmount', 'paidAmount', 'remainingAmount', 'dueDate', 'status'] as const;
+type LoanSortField = typeof LOAN_SORT_FIELDS[number];
 const MIN_CATEGORY_PANEL_WIDTH = 260;
 const MAX_CATEGORY_PANEL_WIDTH = 620;
 const MIN_CATEGORY_LIST_HEIGHT = 220;
@@ -54,20 +62,26 @@ const FALLBACK_MAX_CATEGORY_LIST_HEIGHT = 1200;
 interface PurchasesTabProps {
   purchases: Purchase[];
   onUpdatePurchases: (updated: Purchase[]) => void | Promise<void>;
+  loans: Loan[];
+  onUpdateLoans: (updated: Loan[]) => void | Promise<void>;
   categories: ExpenseCategory[];
   onUpdateCategories: (updated: ExpenseCategory[]) => void | Promise<void>;
   bankAccounts: BankAccount[];
   currentUser: EmployeeUser | null;
+  employees: EmployeeUser[];
   highlightedSearchResult?: { type: string; id: string } | null;
 }
 
 export default function PurchasesTab({
   purchases,
   onUpdatePurchases,
+  loans,
+  onUpdateLoans,
   categories,
   onUpdateCategories,
   bankAccounts,
   currentUser,
+  employees,
   highlightedSearchResult = null
 }: PurchasesTabProps) {
   
@@ -78,6 +92,9 @@ export default function PurchasesTab({
   ]));
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [financeView, setFinanceView] = useState<'purchases' | 'loans'>(() => {
+    return localStorage.getItem(PURCHASE_FINANCE_VIEW_STORAGE_KEY) === 'loans' ? 'loans' : 'purchases';
+  });
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +123,9 @@ export default function PurchasesTab({
   const [layoutMode, setLayoutMode] = useState<'grid' | 'cards'>(() => {
     return localStorage.getItem(PURCHASE_LAYOUT_STORAGE_KEY) === 'cards' ? 'cards' : 'grid';
   });
+  const [loanLayoutMode, setLoanLayoutMode] = useState<'grid' | 'cards'>(() => {
+    return localStorage.getItem(LOAN_LAYOUT_STORAGE_KEY) === 'cards' ? 'cards' : 'grid';
+  });
   const [sortBy, setSortBy] = useState<PurchaseSortField>(() => {
     const savedSortBy = localStorage.getItem(PURCHASE_SORT_BY_STORAGE_KEY);
     return PURCHASE_SORT_FIELDS.includes(savedSortBy as PurchaseSortField) ? savedSortBy as PurchaseSortField : 'purchaseDate';
@@ -113,16 +133,80 @@ export default function PurchasesTab({
   const [isSortAsc, setIsSortAsc] = useState(() => {
     return localStorage.getItem(PURCHASE_SORT_ASC_STORAGE_KEY) === 'true';
   });
+  const savedLoanFilters = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(LOAN_FILTERS_STORAGE_KEY) || '{}') as Partial<Record<'type' | 'status' | 'account' | 'staff' | 'startDate' | 'endDate', string>>;
+    } catch {
+      return {};
+    }
+  })();
+  const [loanSearchQuery, setLoanSearchQuery] = useState('');
+  const [loanTypeFilter, setLoanTypeFilter] = useState<string>(savedLoanFilters.type || 'All');
+  const [loanStatusFilter, setLoanStatusFilter] = useState<string>(savedLoanFilters.status || 'All');
+  const [loanAccountFilter, setLoanAccountFilter] = useState<string>(savedLoanFilters.account || 'All');
+  const [loanStaffFilter, setLoanStaffFilter] = useState<string>(savedLoanFilters.staff || 'All');
+  const [loanStartDate, setLoanStartDate] = useState(savedLoanFilters.startDate || '');
+  const [loanEndDate, setLoanEndDate] = useState(savedLoanFilters.endDate || '');
+  const [showLoanFilters, setShowLoanFilters] = useState(false);
+  const [showLoanSortPopover, setShowLoanSortPopover] = useState(false);
+  const [loanSortBy, setLoanSortBy] = useState<LoanSortField>(() => {
+    const savedSortBy = localStorage.getItem(LOAN_SORT_BY_STORAGE_KEY);
+    return LOAN_SORT_FIELDS.includes(savedSortBy as LoanSortField) ? savedSortBy as LoanSortField : 'loanDate';
+  });
+  const [isLoanSortAsc, setIsLoanSortAsc] = useState(() => {
+    return localStorage.getItem(LOAN_SORT_ASC_STORAGE_KEY) === 'true';
+  });
   // Form management for custom Purchase
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [isLoanFormOpen, setIsLoanFormOpen] = useState(false);
+  const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
+  const [loanType, setLoanType] = useState<'given' | 'received'>('given');
+  const [loanPersonName, setLoanPersonName] = useState('');
+  const [loanPhone, setLoanPhone] = useState('');
+  const [loanPrincipalInput, setLoanPrincipalInput] = useState('');
+  const [loanInterestInput, setLoanInterestInput] = useState('');
+  const [loanCurrency, setLoanCurrency] = useState('');
+  const [loanDate, setLoanDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [loanDueDate, setLoanDueDate] = useState('');
+  const [loanPaymentMethodId, setLoanPaymentMethodId] = useState('');
+  const [loanNotes, setLoanNotes] = useState('');
+  const [repaymentLoan, setRepaymentLoan] = useState<Loan | null>(null);
+  const [repaymentAmountInput, setRepaymentAmountInput] = useState('');
+  const [repaymentDate, setRepaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [repaymentMethodId, setRepaymentMethodId] = useState('');
+  const [repaymentNotes, setRepaymentNotes] = useState('');
 
   // New item from search suggestion flow state
   const [addingNewItemFromSearch, setAddingNewItemFromSearch] = useState<string | null>(null);
 
-  // Lock body scroll when purchases form is open
   useEffect(() => {
-    if (isFormOpen || addingNewItemFromSearch !== null) {
+    localStorage.setItem(PURCHASE_FINANCE_VIEW_STORAGE_KEY, financeView);
+  }, [financeView]);
+
+  useEffect(() => {
+    localStorage.setItem(LOAN_LAYOUT_STORAGE_KEY, loanLayoutMode);
+  }, [loanLayoutMode]);
+
+  useEffect(() => {
+    localStorage.setItem(LOAN_SORT_BY_STORAGE_KEY, loanSortBy);
+    localStorage.setItem(LOAN_SORT_ASC_STORAGE_KEY, String(isLoanSortAsc));
+  }, [loanSortBy, isLoanSortAsc]);
+
+  useEffect(() => {
+    localStorage.setItem(LOAN_FILTERS_STORAGE_KEY, JSON.stringify({
+      type: loanTypeFilter,
+      status: loanStatusFilter,
+      account: loanAccountFilter,
+      staff: loanStaffFilter,
+      startDate: loanStartDate,
+      endDate: loanEndDate
+    }));
+  }, [loanTypeFilter, loanStatusFilter, loanAccountFilter, loanStaffFilter, loanStartDate, loanEndDate]);
+
+  // Lock body scroll when purchases or loan forms are open
+  useEffect(() => {
+    if (isFormOpen || isLoanFormOpen || repaymentLoan || addingNewItemFromSearch !== null) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -130,7 +214,7 @@ export default function PurchasesTab({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isFormOpen, addingNewItemFromSearch]);
+  }, [isFormOpen, isLoanFormOpen, repaymentLoan, addingNewItemFromSearch]);
 
   // Focus search input on expansion
   useEffect(() => {
@@ -894,6 +978,143 @@ export default function PurchasesTab({
     setSelectedPurchaseIds([]);
   };
 
+  const getLoanTotalDue = (loan: Loan) => Number(loan.principalAmount || 0) + Number(loan.interestAmount || 0);
+  const getLoanPaid = (loan: Loan) => (loan.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const getLoanRemaining = (loan: Loan) => Math.max(0, getLoanTotalDue(loan) - getLoanPaid(loan));
+  const getLoanStatus = (loan: Loan): Loan['status'] => {
+    if (loan.status === 'written_off') return 'written_off';
+    const paid = getLoanPaid(loan);
+    if (paid <= 0) return 'open';
+    return getLoanRemaining(loan) <= 0 ? 'paid' : 'partially_paid';
+  };
+
+  const openAddLoanForm = (type: 'given' | 'received' = 'given') => {
+    setEditingLoan(null);
+    setLoanType(type);
+    setLoanPersonName('');
+    setLoanPhone('');
+    setLoanPrincipalInput('');
+    setLoanInterestInput('');
+    setLoanCurrency('');
+    setLoanDate(new Date().toISOString().split('T')[0]);
+    setLoanDueDate('');
+    setLoanPaymentMethodId('');
+    setLoanNotes('');
+    setIsLoanFormOpen(true);
+  };
+
+  const openEditLoanForm = (loan: Loan) => {
+    setEditingLoan(loan);
+    setLoanType(loan.type);
+    setLoanPersonName(loan.personName);
+    setLoanPhone(loan.phone || '');
+    setLoanPrincipalInput(String(loan.principalAmount || ''));
+    setLoanInterestInput(String(loan.interestAmount || ''));
+    setLoanCurrency(loan.currency || '');
+    setLoanDate(loan.loanDate);
+    setLoanDueDate(loan.dueDate || '');
+    setLoanPaymentMethodId(loan.paymentMethodId);
+    setLoanNotes(loan.notes || '');
+    setIsLoanFormOpen(true);
+  };
+
+  const handleLoanPaymentMethodChange = (accountId: string) => {
+    setLoanPaymentMethodId(accountId);
+    const selectedAccount = bankAccounts.find(account => account.id === accountId);
+    if (selectedAccount) {
+      setLoanCurrency(selectedAccount.currency || 'ETB');
+    }
+  };
+
+  const handleSaveLoan = () => {
+    const personName = loanPersonName.trim();
+    const principalAmount = Math.max(0, parseFractionOrExpression(loanPrincipalInput));
+    const interestAmount = Math.max(0, parseFractionOrExpression(loanInterestInput));
+    if (!personName) {
+      showWarning('Loan person or organization name is required.');
+      return;
+    }
+    if (principalAmount <= 0) {
+      showWarning('Loan amount must be greater than zero.');
+      return;
+    }
+    if (!loanPaymentMethodId) {
+      showWarning('Select the bank or cash account for this loan.');
+      return;
+    }
+    if (!loanCurrency) {
+      showWarning('Select a currency for this loan.');
+      return;
+    }
+
+    const baseLoan: Loan = {
+      id: editingLoan?.id || `loan-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      type: loanType,
+      personName,
+      phone: loanPhone.trim() || undefined,
+      principalAmount,
+      currency: loanCurrency,
+      loanDate,
+      dueDate: loanDueDate || undefined,
+      paymentMethodId: loanPaymentMethodId,
+      interestAmount,
+      notes: loanNotes.trim() || undefined,
+      recordedBy: editingLoan?.recordedBy || currentUser?.name || currentUser?.username || 'Staff',
+      payments: editingLoan?.payments || []
+    };
+    const nextLoan = { ...baseLoan, status: getLoanStatus(baseLoan) };
+    const nextLoans = editingLoan
+      ? loans.map(loan => loan.id === editingLoan.id ? nextLoan : loan)
+      : [nextLoan, ...loans];
+
+    onUpdateLoans(nextLoans);
+    setIsLoanFormOpen(false);
+    showPurchaseToast(editingLoan ? 'Loan updated successfully.' : 'Loan recorded successfully.');
+  };
+
+  const openRepaymentForm = (loan: Loan) => {
+    setRepaymentLoan(loan);
+    setRepaymentAmountInput('');
+    setRepaymentDate(new Date().toISOString().split('T')[0]);
+    setRepaymentMethodId(loan.paymentMethodId);
+    setRepaymentNotes('');
+  };
+
+  const handleSaveRepayment = () => {
+    if (!repaymentLoan) return;
+    const amount = Math.max(0, parseFractionOrExpression(repaymentAmountInput));
+    if (amount <= 0) {
+      showWarning('Repayment amount must be greater than zero.');
+      return;
+    }
+    if (!repaymentMethodId) {
+      showWarning('Select the bank or cash account for this repayment.');
+      return;
+    }
+    const payment = {
+      id: `lp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      loanId: repaymentLoan.id,
+      amount,
+      paymentDate: repaymentDate,
+      paymentMethodId: repaymentMethodId,
+      recordedBy: currentUser?.name || currentUser?.username || 'Staff',
+      notes: repaymentNotes.trim() || undefined
+    };
+    const nextLoans = loans.map(loan => {
+      if (loan.id !== repaymentLoan.id) return loan;
+      const nextLoan = { ...loan, payments: [...(loan.payments || []), payment] };
+      return { ...nextLoan, status: getLoanStatus(nextLoan) };
+    });
+    onUpdateLoans(nextLoans);
+    setRepaymentLoan(null);
+    showPurchaseToast('Repayment recorded successfully.');
+  };
+
+  const handleDeleteLoan = (loanId: string) => {
+    onUpdateLoans(loans.filter(loan => loan.id !== loanId));
+    showPurchaseToast('Loan deleted successfully.');
+  };
+
   // --- EDITABLE CATEGORIES AND CASCADE CONTROLS ---
 
   // Initiate category rename
@@ -1338,6 +1559,87 @@ export default function PurchasesTab({
   });
 
   const intervalExpenseAmount = filteredPurchases.reduce((sum, p) => sum + p.totalPrice, 0);
+  const activeLoans = loans.filter(loan => getLoanStatus(loan) !== 'paid' && getLoanStatus(loan) !== 'written_off');
+  const totalLoanedOut = loans
+    .filter(loan => loan.type === 'given')
+    .reduce((sum, loan) => sum + getLoanRemaining(loan), 0);
+  const totalBorrowed = loans
+    .filter(loan => loan.type === 'received')
+    .reduce((sum, loan) => sum + getLoanRemaining(loan), 0);
+  const loanRepaymentsTotal = loans.reduce((sum, loan) => sum + getLoanPaid(loan), 0);
+  const getLoanStatusClasses = (status?: Loan['status']) => {
+    if (status === 'paid') return 'bg-[#112918] text-[#71b536] border-[#71b536]/30';
+    if (status === 'partially_paid') return 'bg-[#24131A] text-[#ee317b] border-[#ee317b]/30';
+    if (status === 'written_off') return 'bg-[#2E181D] text-red-400 border-red-900/40';
+    return 'bg-[#181818] text-gray-300 border-[#262626]';
+  };
+  const loanStaffOptions = Array.from(new Set([
+    ...employees.filter(employee => !employee.isDeleted).map(employee => employee.name || employee.username),
+    ...loans.map(loan => loan.recordedBy),
+    ...loans.flatMap(loan => (loan.payments || []).map(payment => payment.recordedBy))
+  ].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const loanSortLabels: Record<LoanSortField, string> = {
+    loanDate: 'Loan Date',
+    personName: 'Name',
+    principalAmount: 'Principal',
+    paidAmount: 'Paid',
+    remainingAmount: 'Remaining',
+    dueDate: 'Due Date',
+    status: 'Status'
+  };
+  const filteredLoans = loans.filter(loan => {
+    const status = getLoanStatus(loan);
+    const bank = bankAccounts.find(account => account.id === loan.paymentMethodId);
+    const searchLower = loanSearchQuery.trim().toLowerCase();
+    const matchesSearch = !searchLower || [
+      loan.personName,
+      loan.phone,
+      loan.notes,
+      loan.recordedBy,
+      bank?.name,
+      loan.type === 'given' ? 'given loaned out receivable' : 'received borrowed payable',
+      status?.replace('_', ' ')
+    ].some(value => (value || '').toLowerCase().includes(searchLower));
+    const matchesType = loanTypeFilter === 'All' || loan.type === loanTypeFilter;
+    const matchesStatus = loanStatusFilter === 'All' || status === loanStatusFilter;
+    const matchesAccount = loanAccountFilter === 'All' || loan.paymentMethodId === loanAccountFilter || (loan.payments || []).some(payment => payment.paymentMethodId === loanAccountFilter);
+    const matchesStaff = loanStaffFilter === 'All' || loan.recordedBy === loanStaffFilter || (loan.payments || []).some(payment => payment.recordedBy === loanStaffFilter);
+    const matchesStart = !loanStartDate || loan.loanDate >= loanStartDate || (loan.payments || []).some(payment => payment.paymentDate >= loanStartDate);
+    const matchesEnd = !loanEndDate || loan.loanDate <= loanEndDate || (loan.payments || []).some(payment => payment.paymentDate <= loanEndDate);
+    return matchesSearch && matchesType && matchesStatus && matchesAccount && matchesStaff && matchesStart && matchesEnd;
+  });
+  const sortedLoans = [...filteredLoans].sort((a, b) => {
+    const getLoanSortValue = (loan: Loan) => {
+      if (loanSortBy === 'paidAmount') return getLoanPaid(loan);
+      if (loanSortBy === 'remainingAmount') return getLoanRemaining(loan);
+      if (loanSortBy === 'status') return getLoanStatus(loan) || 'open';
+      return loan[loanSortBy as Extract<LoanSortField, 'loanDate' | 'personName' | 'principalAmount' | 'dueDate'>] || '';
+    };
+    const valA = getLoanSortValue(a);
+    const valB = getLoanSortValue(b);
+    let cmp = 0;
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      cmp = valA - valB;
+    } else {
+      cmp = String(valA).localeCompare(String(valB));
+    }
+    return isLoanSortAsc ? cmp : -cmp;
+  });
+  const filteredLoanedOut = filteredLoans
+    .filter(loan => loan.type === 'given')
+    .reduce((sum, loan) => sum + getLoanRemaining(loan), 0);
+  const filteredBorrowed = filteredLoans
+    .filter(loan => loan.type === 'received')
+    .reduce((sum, loan) => sum + getLoanRemaining(loan), 0);
+  const filteredRepaymentsTotal = filteredLoans.reduce((sum, loan) => sum + getLoanPaid(loan), 0);
+  const activeLoanFilterCount = [
+    loanTypeFilter !== 'All',
+    loanStatusFilter !== 'All',
+    loanAccountFilter !== 'All',
+    loanStaffFilter !== 'All',
+    Boolean(loanStartDate || loanEndDate),
+    Boolean(loanSearchQuery.trim())
+  ].filter(Boolean).length;
   const activeLedgerFilterCount = [
     selectedCategoryFilter !== 'All',
     selectedBankFilter !== 'All',
@@ -1381,7 +1683,7 @@ export default function PurchasesTab({
 
   return (
     <div
-      className={`purchase-mobile-fixed-stack space-y-2 md:space-y-6 animate-fadeIn ${!isMobileCategoriesCollapsed ? 'expense-categories-expanded' : ''}`}
+      className={`purchase-mobile-fixed-stack space-y-2 md:space-y-3 animate-fadeIn ${!isMobileCategoriesCollapsed ? 'expense-categories-expanded' : ''}`}
       id="purchases-tab-pnl"
     >
       <div className="md:hidden hidden items-center justify-between gap-1.5 pt-1 relative w-full h-8">
@@ -1462,7 +1764,42 @@ export default function PurchasesTab({
           )}
         </div>
       </div>
+
+      <div className="bg-[#121212] border border-[#262626] rounded-md p-2 font-sans flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div className="grid grid-cols-2 rounded-md border border-[#262626] bg-[#181818] p-1 w-full md:w-[222px]">
+          <button
+            type="button"
+            onClick={() => setFinanceView('purchases')}
+            className={`h-8 rounded text-[11px] font-bold uppercase tracking-wider transition-colors ${financeView === 'purchases' ? 'bg-[#ee317b] text-white' : 'text-gray-400 hover:text-white'}`}
+          >
+            Purchases
+          </button>
+          <button
+            type="button"
+            onClick={() => setFinanceView('loans')}
+            className={`h-8 rounded text-[11px] font-bold uppercase tracking-wider transition-colors ${financeView === 'loans' ? 'bg-[#71b536] text-black' : 'text-gray-400 hover:text-white'}`}
+          >
+            Loans
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-[10px] md:text-[11px] text-right">
+          <div>
+            <div className="text-gray-500 uppercase tracking-wider">Loaned Out</div>
+            <div className="font-bold text-[#ee317b]">{totalLoanedOut.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 uppercase tracking-wider">Borrowed</div>
+            <div className="font-bold text-[#71b536]">{totalBorrowed.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 uppercase tracking-wider">Active</div>
+            <div className="font-bold text-white">{activeLoans.length}</div>
+          </div>
+        </div>
+      </div>
       
+      {financeView === 'purchases' && (
+      <>
       <div className="purchase-mobile-summary-sticky md:hidden bg-[#121212] border border-[#262626] rounded-md px-2 py-2 font-sans text-xs flex items-center justify-between gap-3">
         <div className="text-gray-300 min-w-0">
           <div className="text-white font-bold truncate">Total expenses</div>
@@ -2928,6 +3265,537 @@ export default function PurchasesTab({
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {financeView === 'loans' && (
+        <div className="space-y-3 font-sans animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="bg-[#121212] border border-[#262626] rounded-md p-3">
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Receivable</div>
+              <div className="text-lg font-extrabold text-[#ee317b]">{filteredLoanedOut.toLocaleString()}</div>
+            </div>
+            <div className="bg-[#121212] border border-[#262626] rounded-md p-3">
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Payable</div>
+              <div className="text-lg font-extrabold text-[#71b536]">{filteredBorrowed.toLocaleString()}</div>
+            </div>
+            <div className="bg-[#121212] border border-[#262626] rounded-md p-3 flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wider">Repayments</div>
+                <div className="text-lg font-extrabold text-white">{filteredRepaymentsTotal.toLocaleString()}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 w-36 sm:w-40">
+                <button
+                  type="button"
+                  onClick={() => openAddLoanForm('given')}
+                  className="h-9 rounded-md bg-[#ee317b] px-2 text-[10px] font-bold uppercase text-white hover:bg-[#d61e63]"
+                >
+                  Give
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAddLoanForm('received')}
+                  className="h-9 rounded-md bg-[#71b536] px-2 text-[10px] font-bold uppercase text-black hover:bg-[#5f9c2d]"
+                >
+                  Receive
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <TableToolbar
+            searchQuery={loanSearchQuery}
+            setSearchQuery={setLoanSearchQuery}
+            mobileLeftControls={
+              <>
+                <button type="button" onClick={() => setLoanLayoutMode('grid')} className={`p-1.5 rounded cursor-pointer transition-colors ${loanLayoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`} title="Table view">
+                  <TableIcon className="w-3.5 h-3.5" />
+                </button>
+                <button type="button" onClick={() => setLoanLayoutMode('cards')} className={`p-1.5 rounded cursor-pointer transition-colors ${loanLayoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`} title="Gallery view">
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </>
+            }
+            mobileRightControls={
+              <>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowLoanFilters(prev => !prev); }}
+                    className="bg-transparent text-gray-300 p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center relative cursor-pointer"
+                    title="Refine loans"
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    {activeLoanFilterCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 bg-[#ee317b] text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                        {activeLoanFilterCount}
+                      </span>
+                    )}
+                  </button>
+                  {showLoanFilters && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowLoanFilters(false)} />
+                      <div className="absolute right-0 mt-1.5 w-72 z-50 rounded-lg border border-[#262626] bg-[#181818] p-2.5 text-xs font-sans text-gray-300 shadow-2xl flex flex-col gap-2.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-1">
+                          <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Loan Options</span>
+                          {activeLoanFilterCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoanSearchQuery('');
+                                setLoanTypeFilter('All');
+                                setLoanStatusFilter('All');
+                                setLoanAccountFilter('All');
+                                setLoanStaffFilter('All');
+                                setLoanStartDate('');
+                                setLoanEndDate('');
+                              }}
+                              className="text-[#ee317b] hover:text-[#ee317b]/80 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Clear All
+                            </button>
+                          )}
+                        </div>
+                        <div className="h-px bg-[#262626] my-0.5"></div>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Banknote className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Type</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanTypeFilter} onChange={(e) => setLoanTypeFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Types</option>
+                                <option value="given">Given</option>
+                                <option value="received">Received</option>
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Check className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Status</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanStatusFilter} onChange={(e) => setLoanStatusFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Statuses</option>
+                                <option value="open">Open</option>
+                                <option value="partially_paid">Partial</option>
+                                <option value="paid">Paid</option>
+                                <option value="written_off">Written Off</option>
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Account</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanAccountFilter} onChange={(e) => setLoanAccountFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Accounts</option>
+                                {bankAccounts.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <User className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Staff</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanStaffFilter} onChange={(e) => setLoanStaffFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Staff</option>
+                                {loanStaffOptions.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Dates</span>
+                            </div>
+                            <div className="flex-1 grid grid-cols-2 gap-1.5">
+                              <input type="date" value={loanStartDate} onChange={(e) => setLoanStartDate(e.target.value)} className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1" title="From date" />
+                              <input type="date" value={loanEndDate} onChange={(e) => setLoanEndDate(e.target.value)} className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1" title="To date" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowLoanSortPopover(prev => !prev); }}
+                    className={`bg-transparent p-1.5 rounded hover:bg-[#181818] transition-colors flex items-center justify-center cursor-pointer ${loanSortBy !== 'loanDate' || isLoanSortAsc ? 'text-[#ee317b]' : 'text-gray-300'}`}
+                    title="Sort options"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showLoanSortPopover && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowLoanSortPopover(false)} />
+                      <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                        {LOAN_SORT_FIELDS.map(field => (
+                          <button
+                            key={field}
+                            type="button"
+                            onClick={() => {
+                              if (loanSortBy === field) {
+                                setIsLoanSortAsc(prev => !prev);
+                              } else {
+                                setLoanSortBy(field);
+                                setIsLoanSortAsc(field === 'personName');
+                              }
+                              setShowLoanSortPopover(false);
+                            }}
+                            className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${loanSortBy === field ? 'text-[#ee317b] font-bold' : ''}`}
+                          >
+                            {loanSortLabels[field]} {loanSortBy === field ? (isLoanSortAsc ? '↑' : '↓') : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            }
+            desktopLeftControls={
+              <div className="border border-[#262626] rounded p-0.5 flex bg-transparent shrink-0">
+                <button type="button" onClick={() => setLoanLayoutMode('grid')} className={`p-1 rounded cursor-pointer transition-colors ${loanLayoutMode === 'grid' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`} title="Tabular Grid View">
+                  <TableIcon className="w-3.5 h-3.5" />
+                </button>
+                <button type="button" onClick={() => setLoanLayoutMode('cards')} className={`p-1 rounded cursor-pointer transition-colors ${loanLayoutMode === 'cards' ? 'bg-[#ee317b]/10 text-[#ee317b]' : 'text-gray-400 hover:text-white'}`} title="Responsive Cards View">
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <span className="hidden lg:inline-flex items-center px-2 text-[10px] text-gray-500">{sortedLoans.length} of {loans.length}</span>
+              </div>
+            }
+            desktopRightControls={
+              <>
+                <div className="relative z-40">
+                  <button
+                    type="button"
+                    onClick={() => setShowLoanFilters(prev => !prev)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-gray-300 hover:bg-[#202020] transition-colors cursor-pointer text-[11px] font-medium font-sans ${
+                      activeLoanFilterCount > 0 ? 'text-[#ee317b] bg-[#ee317b]/10' : ''
+                    }`}
+                    title="Refine loans"
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    {activeLoanFilterCount > 0 && (
+                      <span className="bg-[#ee317b] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                        {activeLoanFilterCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {showLoanFilters && (
+                    <>
+                      <div className="fixed inset-0 z-30 cursor-default" onClick={() => setShowLoanFilters(false)} />
+                      <div className="absolute right-0 mt-1.5 w-72 z-40 rounded-lg border border-[#262626] bg-[#181818] p-2.5 text-xs font-sans text-gray-300 shadow-2xl flex flex-col gap-2.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-1">
+                          <span className="font-bold text-gray-400 text-[10px] uppercase tracking-wider select-none">Loan Options</span>
+                          {activeLoanFilterCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoanSearchQuery('');
+                                setLoanTypeFilter('All');
+                                setLoanStatusFilter('All');
+                                setLoanAccountFilter('All');
+                                setLoanStaffFilter('All');
+                                setLoanStartDate('');
+                                setLoanEndDate('');
+                              }}
+                              className="text-[#ee317b] hover:text-[#ee317b]/80 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Clear All
+                            </button>
+                          )}
+                        </div>
+                        <div className="h-px bg-[#262626] my-0.5"></div>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Banknote className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Type</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanTypeFilter} onChange={(e) => setLoanTypeFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Types</option>
+                                <option value="given">Given</option>
+                                <option value="received">Received</option>
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Check className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Status</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanStatusFilter} onChange={(e) => setLoanStatusFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Statuses</option>
+                                <option value="open">Open</option>
+                                <option value="partially_paid">Partial</option>
+                                <option value="paid">Paid</option>
+                                <option value="written_off">Written Off</option>
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Account</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanAccountFilter} onChange={(e) => setLoanAccountFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Accounts</option>
+                                {bankAccounts.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <User className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Staff</span>
+                            </div>
+                            <div className="flex-1 min-w-0 bg-[#121212] rounded border border-[#262626] hover:border-gray-500 transition-colors">
+                              <SearchableSelect value={loanStaffFilter} onChange={(e) => setLoanStaffFilter(e.target.value)} className="bg-transparent text-xs text-white">
+                                <option value="All">All Staff</option>
+                                {loanStaffOptions.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                              </SearchableSelect>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 hover:bg-[#202020] rounded p-1 transition-colors">
+                            <div className="flex items-center gap-1.5 text-gray-400 w-20 flex-shrink-0 select-none">
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Dates</span>
+                            </div>
+                            <div className="flex-1 grid grid-cols-2 gap-1.5">
+                              <input type="date" value={loanStartDate} onChange={(e) => setLoanStartDate(e.target.value)} className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1" title="From date" />
+                              <input type="date" value={loanEndDate} onChange={(e) => setLoanEndDate(e.target.value)} className="w-full bg-[#121212] rounded border border-[#262626] text-white text-[11px] font-sans outline-none px-1.5 py-1" title="To date" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowLoanSortPopover(prev => !prev); }}
+                    className={`flex items-center justify-center p-1.5 rounded hover:bg-[#202020] transition-colors cursor-pointer ${
+                      loanSortBy !== 'loanDate' || isLoanSortAsc ? 'text-[#ee317b] bg-[#ee317b]/10' : 'text-gray-300'
+                    }`}
+                    title="Sort options"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                  </button>
+                  {showLoanSortPopover && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowLoanSortPopover(false)} />
+                      <div className="absolute right-0 mt-1.5 w-52 bg-[#181818] border border-[#262626] rounded-lg shadow-xl z-50 p-2 text-[11px] font-sans text-gray-300 flex flex-col gap-1 max-h-64 overflow-y-auto">
+                        {LOAN_SORT_FIELDS.map(field => (
+                          <button
+                            key={field}
+                            type="button"
+                            onClick={() => {
+                              if (loanSortBy === field) {
+                                setIsLoanSortAsc(prev => !prev);
+                              } else {
+                                setLoanSortBy(field);
+                                setIsLoanSortAsc(field === 'personName');
+                              }
+                              setShowLoanSortPopover(false);
+                            }}
+                            className={`text-left px-2 py-1.5 rounded hover:bg-[#202020] hover:text-white transition-colors ${loanSortBy === field ? 'text-[#ee317b] font-bold' : ''}`}
+                          >
+                            {loanSortLabels[field]} {loanSortBy === field ? (isLoanSortAsc ? '↑' : '↓') : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            }
+          />
+
+          <div className={`${loanLayoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden`}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-xs text-gray-300">
+                <thead>
+                  <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 text-left">Type</th>
+                    <th className="py-2.5 px-3 text-left">Person / Org</th>
+                    <th className="py-2.5 px-3 text-right">Principal</th>
+                    <th className="py-2.5 px-3 text-right">Paid</th>
+                    <th className="py-2.5 px-3 text-right">Remaining</th>
+                    <th className="py-2.5 px-3 text-left">Account</th>
+                    <th className="py-2.5 px-3 text-left">Dates</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#262626]">
+                  {sortedLoans.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-gray-500 italic">
+                        No loans recorded yet.
+                      </td>
+                    </tr>
+                  ) : sortedLoans.map(loan => {
+                    const bank = bankAccounts.find(account => account.id === loan.paymentMethodId);
+                    const status = getLoanStatus(loan);
+                    return (
+                      <tr key={loan.id} className={`hover:bg-[#181818] border-l-2 ${loan.type === 'given' ? 'border-l-[#ee317b]' : 'border-l-[#71b536]'}`}>
+                        <td className="py-2 px-3">
+                          <span className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${loan.type === 'given' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#112918] text-[#71b536]'}`}>
+                            {loan.type === 'given' ? 'Given' : 'Received'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="font-bold text-white">{loan.personName}</div>
+                          <div className="text-[10px] text-gray-500">{loan.phone || loan.notes || 'No contact'}</div>
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-white">{Number(loan.principalAmount).toLocaleString()} {loan.currency || 'ETB'}</td>
+                        <td className="py-2 px-3 text-right text-gray-300">{getLoanPaid(loan).toLocaleString()} {loan.currency || 'ETB'}</td>
+                        <td className="py-2 px-3 text-right font-bold text-[#ee317b]">{getLoanRemaining(loan).toLocaleString()} {loan.currency || 'ETB'}</td>
+                        <td className="py-2 px-3">{bank?.name || 'Unknown Account'}</td>
+                        <td className="py-2 px-3">
+                          <div>{loan.loanDate}</div>
+                          <div className="text-[10px] text-gray-500">Due: {loan.dueDate || 'Open'}</div>
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span className={`rounded border px-2 py-1 text-[10px] uppercase ${getLoanStatusClasses(status)}`}>
+                            {status?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openRepaymentForm(loan)}
+                              className="rounded-md border border-[#71b536]/30 bg-[#112918] px-2 py-1 text-[10px] font-bold uppercase text-[#71b536] hover:bg-[#18351f] inline-flex items-center gap-1"
+                              title="Record payment"
+                            >
+                              <Banknote className="w-3.5 h-3.5" />
+                              Paid
+                            </button>
+                            <button type="button" onClick={() => openEditLoanForm(loan)} className="rounded p-1 text-gray-400 hover:bg-[#262626] hover:text-[#ee317b]" title="Edit loan">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleDeleteLoan(loan.id)} className="rounded p-1 text-gray-500 hover:bg-[#2E181D] hover:text-red-400" title="Delete loan">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className={`${loanLayoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mobile-table-bottom-gap md:mb-0`}>
+            {sortedLoans.length === 0 ? (
+              <div className="col-span-full border border-[#262626] bg-[#121212] rounded-md p-8 text-center text-xs text-gray-500 italic">
+                No loans match the current filters.
+              </div>
+            ) : sortedLoans.map(loan => {
+              const bank = bankAccounts.find(account => account.id === loan.paymentMethodId);
+              const status = getLoanStatus(loan);
+              const remaining = getLoanRemaining(loan);
+              const paid = getLoanPaid(loan);
+              return (
+                <div
+                  key={loan.id}
+                  className={`border rounded-md p-3 shadow-none flex flex-col justify-between gap-3 min-h-[220px] ${
+                    loan.type === 'given'
+                      ? 'bg-[#121212] border-[#ee317b]/35 hover:border-[#ee317b]/70'
+                      : 'bg-[#121212] border-[#71b536]/35 hover:border-[#71b536]/70'
+                  } transition-colors`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`rounded px-2 py-1 text-[9px] font-bold uppercase ${loan.type === 'given' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#112918] text-[#71b536]'}`}>
+                            {loan.type === 'given' ? 'Given' : 'Received'}
+                          </span>
+                          <span className={`rounded border px-2 py-1 text-[9px] uppercase ${getLoanStatusClasses(status)}`}>
+                            {status?.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <h4 className="mt-2 text-sm font-bold text-white truncate">{loan.personName}</h4>
+                        <p className="text-[10px] text-gray-500 truncate">{loan.phone || loan.notes || 'No contact saved'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className={`text-sm font-extrabold ${loan.type === 'given' ? 'text-[#ee317b]' : 'text-[#71b536]'}`}>
+                          {remaining.toLocaleString()}
+                        </div>
+                        <div className="text-[9px] text-gray-500 uppercase">{loan.currency || 'ETB'} left</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-[#181818] border border-[#262626] rounded p-2 min-w-0">
+                        <span className="block text-gray-500 uppercase text-[9px] tracking-wider">Principal</span>
+                        <span className="font-bold text-white">{Number(loan.principalAmount).toLocaleString()} {loan.currency || 'ETB'}</span>
+                      </div>
+                      <div className="bg-[#181818] border border-[#262626] rounded p-2 min-w-0">
+                        <span className="block text-gray-500 uppercase text-[9px] tracking-wider">Paid</span>
+                        <span className="font-bold text-[#71b536]">{paid.toLocaleString()} {loan.currency || 'ETB'}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-500">Account</span>
+                        <span className="text-gray-300 font-semibold text-right truncate">{bank?.name || 'Unknown Account'}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-500">Loan Date</span>
+                        <span className="text-gray-300 font-semibold">{loan.loanDate}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-500">Due Date</span>
+                        <span className="text-gray-300 font-semibold">{loan.dueDate || 'Open'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#262626] flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openRepaymentForm(loan)}
+                      className="rounded-md border border-[#71b536]/30 bg-[#112918] px-2 py-1.5 text-[10px] font-bold uppercase text-[#71b536] hover:bg-[#18351f] inline-flex items-center gap-1"
+                      title="Record payment"
+                    >
+                      <Banknote className="w-3.5 h-3.5" />
+                      Paid
+                    </button>
+                    <button type="button" onClick={() => openEditLoanForm(loan)} className="rounded p-1.5 text-gray-400 hover:bg-[#262626] hover:text-[#ee317b]" title="Edit loan">
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => handleDeleteLoan(loan.id)} className="rounded p-1.5 text-gray-500 hover:bg-[#2E181D] hover:text-red-400" title="Delete loan">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {selectedPurchaseIds.length > 0 && (
@@ -2962,6 +3830,156 @@ export default function PurchasesTab({
       </AnimatePresence>
 
       <AppToast message={warningMessage} type={purchaseToastType} />
+
+      <AnimatePresence>
+        {isLoanFormOpen && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-4 font-sans">
+            <motion.div
+              initial={{ y: 60, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 60, opacity: 0, scale: 0.98 }}
+              className="w-full md:max-w-2xl bg-[#121212] border-t md:border border-[#262626] rounded-t-2xl md:rounded-md shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-[#262626] flex items-center justify-between bg-[#181818]">
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{editingLoan ? 'Edit Loan' : 'Record Loan'}</h3>
+                  <p className="text-[11px] text-gray-500">Loans affect account balances, not expense or income totals.</p>
+                </div>
+                <button type="button" onClick={() => setIsLoanFormOpen(false)} className="text-gray-500 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4">
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Loan Direction</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setLoanType('given')} className={`rounded-md border px-3 py-2 text-xs font-bold uppercase ${loanType === 'given' ? 'border-[#ee317b] bg-[#31111E] text-[#ee317b]' : 'border-[#262626] bg-[#181818] text-gray-400'}`}>
+                      Give Loan
+                    </button>
+                    <button type="button" onClick={() => setLoanType('received')} className={`rounded-md border px-3 py-2 text-xs font-bold uppercase ${loanType === 'received' ? 'border-[#71b536] bg-[#112918] text-[#71b536]' : 'border-[#262626] bg-[#181818] text-gray-400'}`}>
+                      Receive Loan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Person / Organization</label>
+                    <input value={loanPersonName} onChange={(e) => setLoanPersonName(e.target.value)} className={purchaseFormInputClass} placeholder="Name" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Phone / Contact</label>
+                    <input value={loanPhone} onChange={(e) => setLoanPhone(e.target.value)} className={purchaseFormInputClass} placeholder="Optional" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Principal Amount</label>
+                    <input value={loanPrincipalInput} onChange={(e) => setLoanPrincipalInput(cleanLeadingZeros(e.target.value))} className={purchaseFormInputClass} placeholder="0" />
+                    <div className="text-[10px] text-gray-500 mt-1">Parsed: {parseFractionOrExpression(loanPrincipalInput)}</div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Interest / Fee</label>
+                    <input value={loanInterestInput} onChange={(e) => setLoanInterestInput(cleanLeadingZeros(e.target.value))} className={purchaseFormInputClass} placeholder="Optional" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Bank / Cash Account</label>
+                    <SearchableSelect value={loanPaymentMethodId} onChange={(e) => handleLoanPaymentMethodChange(e.target.value)} className="w-full bg-[#121212] border border-[#262626] rounded-md text-white text-xs">
+                      <option value="">Select Account</option>
+                      {bankAccounts.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                    </SearchableSelect>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Currency</label>
+                    <SearchableSelect value={loanCurrency} onChange={(e) => setLoanCurrency(e.target.value)} className="w-full bg-[#121212] border border-[#262626] rounded-md text-white text-xs">
+                      <option value="">Select Currency</option>
+                      {availableCurrencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
+                    </SearchableSelect>
+                    <p className="mt-1 text-[10px] text-gray-500">Auto-filled from the selected account.</p>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Loan Date</label>
+                    <input type="date" value={loanDate} onChange={(e) => setLoanDate(e.target.value)} className={purchaseFormInputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Due Date</label>
+                    <input type="date" value={loanDueDate} onChange={(e) => setLoanDueDate(e.target.value)} className={purchaseFormInputClass} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notes</label>
+                  <textarea value={loanNotes} onChange={(e) => setLoanNotes(e.target.value)} className="w-full min-h-[90px] px-2.5 py-2 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none font-sans resize-none" placeholder="Reason, agreement details, collateral, etc." />
+                </div>
+              </div>
+
+              <div className="px-5 py-4 border-t border-[#262626] bg-[#181818] flex justify-end gap-2">
+                <button type="button" onClick={() => setIsLoanFormOpen(false)} className="rounded-md border border-[#262626] px-4 py-2 text-xs font-bold uppercase text-gray-300 hover:text-white">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleSaveLoan} className="rounded-md bg-[#ee317b] px-4 py-2 text-xs font-bold uppercase text-white hover:bg-[#d61e63]">
+                  Save Loan
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {repaymentLoan && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-4 font-sans">
+            <motion.div
+              initial={{ y: 60, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 60, opacity: 0, scale: 0.98 }}
+              className="w-full md:max-w-md bg-[#121212] border-t md:border border-[#262626] rounded-t-2xl md:rounded-md shadow-2xl p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#71b536]">Record Repayment</p>
+                  <h3 className="text-base font-bold text-white">{repaymentLoan.personName}</h3>
+                  <p className="text-[11px] text-gray-500">Remaining: {getLoanRemaining(repaymentLoan).toLocaleString()} {repaymentLoan.currency || 'ETB'}</p>
+                </div>
+                <button type="button" onClick={() => setRepaymentLoan(null)} className="text-gray-500 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Amount</label>
+                  <input value={repaymentAmountInput} onChange={(e) => setRepaymentAmountInput(cleanLeadingZeros(e.target.value))} className={purchaseFormInputClass} placeholder="0" />
+                  <div className="text-[10px] text-gray-500 mt-1">Parsed: {parseFractionOrExpression(repaymentAmountInput)} {repaymentLoan.currency || 'ETB'}</div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Date</label>
+                  <input type="date" value={repaymentDate} onChange={(e) => setRepaymentDate(e.target.value)} className={purchaseFormInputClass} />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Bank / Cash Account</label>
+                  <SearchableSelect value={repaymentMethodId} onChange={(e) => setRepaymentMethodId(e.target.value)} className="w-full bg-[#121212] border border-[#262626] rounded-md text-white text-xs">
+                    <option value="">Select Account</option>
+                    {bankAccounts.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                  </SearchableSelect>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notes</label>
+                  <textarea value={repaymentNotes} onChange={(e) => setRepaymentNotes(e.target.value)} className="w-full min-h-[76px] px-2.5 py-2 text-xs bg-[#121212] text-white border border-[#262626] focus:border-[#71b536] rounded-md outline-none resize-none" />
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setRepaymentLoan(null)} className="rounded-md border border-[#262626] px-4 py-2 text-xs font-bold uppercase text-gray-300 hover:text-white">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleSaveRepayment} className="rounded-md bg-[#71b536] px-4 py-2 text-xs font-bold uppercase text-black hover:bg-[#5f9c2d]">
+                  Save Repayment
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modal for Single Delete */}
       <AnimatePresence>
@@ -3850,7 +4868,10 @@ export default function PurchasesTab({
         )}
       </AnimatePresence>
 
-      <FloatingAddButton onClick={handleOpenAddForm} title="Add bulk purchases" />
+      <FloatingAddButton
+        onClick={financeView === 'loans' ? () => openAddLoanForm('given') : handleOpenAddForm}
+        title={financeView === 'loans' ? 'Add loan' : 'Add bulk purchases'}
+      />
 
     </div>
   );

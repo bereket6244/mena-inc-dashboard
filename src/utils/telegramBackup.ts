@@ -1,4 +1,4 @@
-import { BankAccount, ClientType, Customer, EmployeeUser, ExpenseCategory, PaperStock, ProductType, Purchase } from '../types';
+import { BankAccount, ClientType, Customer, EmployeeUser, ExpenseCategory, Loan, PaperStock, ProductType, Purchase } from '../types';
 import { createAllDataExcelBlob, getLocalBackupDate } from './excelExport';
 
 const TELEGRAM_BACKUP_SESSION_KEY = 'mena_inc_telegram_backup_session_date_v1';
@@ -6,6 +6,7 @@ const TELEGRAM_BACKUP_SESSION_KEY = 'mena_inc_telegram_backup_session_date_v1';
 interface TelegramBackupPayload {
   customers: Customer[];
   purchases: Purchase[];
+  loans: Loan[];
   bankAccounts: BankAccount[];
   paperStocks: PaperStock[];
   categories: ExpenseCategory[];
@@ -42,6 +43,7 @@ export async function sendDailyTelegramBackup(
     getBankName,
     {
       categories: data.categories,
+      loans: data.loans,
       productTypes: data.productTypes,
       clientTypes: data.clientTypes,
       employees: data.employees,
@@ -61,6 +63,7 @@ export async function sendDailyTelegramBackup(
       counts: {
         customers: data.customers.length,
         purchases: data.purchases.length,
+        loans: data.loans.length,
         bankAccounts: data.bankAccounts.length,
         paperStocks: data.paperStocks.length,
         categories: data.categories.length,

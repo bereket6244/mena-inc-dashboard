@@ -50,7 +50,9 @@ import {
   DEFAULT_PRODUCT_TYPES,
   ClientType,
   DEFAULT_CLIENT_TYPES,
-  AuditLogEntry
+  AuditLogEntry,
+  Loan,
+  INITIAL_LOANS
 } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import InventoryTab from './components/InventoryTab';
@@ -62,6 +64,7 @@ const LOCAL_STORAGE_STOCKS_KEY = 'mena_inc_stocks_v3';
 const LOCAL_STORAGE_CUSTOMERS_KEY = 'mena_inc_customers_v3';
 const LOCAL_STORAGE_BANKS_KEY = 'mena_inc_bank_accounts_v4';
 const LOCAL_STORAGE_PURCHASES_KEY = 'mena_inc_purchases_v2';
+const LOCAL_STORAGE_LOANS_KEY = 'mena_inc_loans_v1';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'mena_inc_categories_v2';
 const LOCAL_STORAGE_PRODUCT_TYPES_KEY = 'mena_inc_product_types_v3';
 const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
@@ -325,6 +328,13 @@ export default function App() {
       try { return JSON.parse(saved); } catch (_) {}
     }
     return INITIAL_PURCHASES;
+  });
+  const [loans, setLoans] = useState<Loan[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_LOANS_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (_) {}
+    }
+    return INITIAL_LOANS;
   });
   const [categories, setCategories] = useState<ExpenseCategory[]>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
@@ -659,6 +669,7 @@ export default function App() {
         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
         exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName, {
           categories,
+          loans,
           productTypes,
           clientTypes,
           employees
@@ -1237,6 +1248,7 @@ export default function App() {
       const savedCustomers = localStorage.getItem(LOCAL_STORAGE_CUSTOMERS_KEY);
       const savedBanks = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
       const savedPurchases = localStorage.getItem(LOCAL_STORAGE_PURCHASES_KEY);
+      const savedLoans = localStorage.getItem(LOCAL_STORAGE_LOANS_KEY);
       const savedCategories = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
       const savedProductTypes = localStorage.getItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY);
       const savedAuditLogs = localStorage.getItem(LOCAL_STORAGE_AUDIT_LOGS_KEY);
@@ -1245,6 +1257,7 @@ export default function App() {
       let initialC = INITIAL_CUSTOMERS;
       let initialB = DEFAULT_BANK_ACCOUNTS;
       let initialP = INITIAL_PURCHASES;
+      let initialLoans = INITIAL_LOANS;
       let initialCat = INITIAL_EXPENSE_CATEGORIES;
       let initialProd = DEFAULT_PRODUCT_TYPES;
       let initialAuditLogs: AuditLogEntry[] = [];
@@ -1267,6 +1280,11 @@ export default function App() {
       if (savedPurchases) {
         try {
           initialP = JSON.parse(savedPurchases);
+        } catch (_) {}
+      }
+      if (savedLoans) {
+        try {
+          initialLoans = JSON.parse(savedLoans);
         } catch (_) {}
       }
       if (savedCategories) {
@@ -1307,6 +1325,7 @@ export default function App() {
         fetchAllBankAccounts,
         saveBankAccountDoc,
         fetchAllPurchases,
+        fetchAllLoans,
         fetchAllExpenseCategories,
         fetchAllEmployees,
         saveEmployeeDoc,
@@ -1376,6 +1395,7 @@ export default function App() {
         }
       }
       const finalP = await fetchAllPurchases(initialP);
+      const finalLoans = await fetchAllLoans(initialLoans);
       const finalCat = await fetchAllExpenseCategories(initialCat);
       const finalEmployees = await fetchAllEmployees(initialEmployees);
       
@@ -1419,6 +1439,7 @@ export default function App() {
       updateIfChanged(setCustomers, finalC, LOCAL_STORAGE_CUSTOMERS_KEY);
       updateIfChanged(setBankAccounts, finalB, LOCAL_STORAGE_BANKS_KEY);
       updateIfChanged(setPurchases, finalP, LOCAL_STORAGE_PURCHASES_KEY);
+      updateIfChanged(setLoans, finalLoans, LOCAL_STORAGE_LOANS_KEY);
       updateIfChanged(setCategories, finalCat, LOCAL_STORAGE_CATEGORIES_KEY);
       updateIfChanged(setEmployees, finalEmployees);
       updateIfChanged(setProductTypes, finalProd, LOCAL_STORAGE_PRODUCT_TYPES_KEY);
@@ -1471,13 +1492,13 @@ export default function App() {
     telegramBackupAttemptDateRef.current = dateKey;
 
     sendDailyTelegramBackup(
-      { customers, purchases, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees },
+      { customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees },
       getBankName,
       currentUser
     ).catch((err) => {
       console.warn('Daily Telegram backup was not sent:', err);
     });
-  }, [dataLoadComplete, customers, purchases, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, currentUser]);
+  }, [dataLoadComplete, customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, currentUser]);
 
   // Sync state changes to Local Storage & Database
   const handleUpdateStocks = async (newStocks: PaperStock[]) => {
@@ -1653,7 +1674,7 @@ export default function App() {
     }
 
     handleUpdateCustomers(updatedList);
-    const previousById = new Map(customers.map(item => [item.id, item]));
+    const previousById = new Map<string, Customer>(customers.map(item => [item.id, item]));
     updatedList.forEach(item => {
       const previous = previousById.get(item.id);
       if (previous) {
@@ -1909,6 +1930,85 @@ export default function App() {
         }
       }
 
+      await Promise.allSettled(promises);
+    } catch (_) {} finally {
+      setTimeout(() => setIsBuffering(false), 400);
+    }
+  };
+
+  const handleUpdateLoans = async (newLoans: Loan[]) => {
+    setIsBuffering(true);
+    const oldIds = new Set<string>(loans.map(loan => loan.id));
+    const newIds = new Set<string>(newLoans.map(loan => loan.id));
+    const oldMap = new Map(loans.map(loan => [loan.id, loan]));
+
+    loans
+      .filter(loan => !newIds.has(loan.id))
+      .forEach(loan => logAuditEntry({
+        eventType: 'loan_delete',
+        entityType: 'loan',
+        entityId: loan.id,
+        entityLabel: loan.personName,
+        action: `Deleted ${loan.type === 'given' ? 'loan given to' : 'loan received from'} ${loan.personName}`,
+        details: {
+          type: loan.type,
+          principalAmount: loan.principalAmount,
+          paymentMethodId: loan.paymentMethodId,
+          loanDate: loan.loanDate
+        }
+      }));
+
+    newLoans.forEach(loan => {
+      const oldLoan = oldMap.get(loan.id);
+      if (!oldLoan) {
+        logAuditEntry({
+          eventType: 'loan_create',
+          entityType: 'loan',
+          entityId: loan.id,
+          entityLabel: loan.personName,
+          action: `Created ${loan.type === 'given' ? 'loan given to' : 'loan received from'} ${loan.personName}`,
+          details: {
+            type: loan.type,
+            principalAmount: loan.principalAmount,
+            paymentMethodId: loan.paymentMethodId,
+            loanDate: loan.loanDate,
+            dueDate: loan.dueDate || ''
+          }
+        });
+      } else if (JSON.stringify(oldLoan) !== JSON.stringify(loan)) {
+        const changedFields = getChangedFieldNames(oldLoan, loan);
+        if (changedFields.length > 0) {
+          logAuditEntry({
+            eventType: 'loan_update',
+            entityType: 'loan',
+            entityId: loan.id,
+            entityLabel: loan.personName,
+            action: `Updated loan for ${loan.personName}`,
+            details: {
+              detail: buildEditDetail(changedFields, oldLoan, loan),
+              changedFields: changedFields.join(', ')
+            }
+          });
+        }
+      }
+    });
+
+    setLoans(newLoans);
+    localStorage.setItem(LOCAL_STORAGE_LOANS_KEY, JSON.stringify(newLoans));
+    try {
+      const { saveLoanDoc, deleteLoanDoc } = await import('./lib/dbService');
+      const promises: Promise<any>[] = [];
+      for (const oldId of oldIds) {
+        if (!newIds.has(oldId)) {
+          promises.push(deleteLoanDoc(oldId, currentUser?.username).catch(() => {}));
+        }
+      }
+      for (const loan of newLoans) {
+        const oldLoan = oldMap.get(loan.id);
+        if (!oldLoan || JSON.stringify(oldLoan) !== JSON.stringify(loan)) {
+          promises.push(saveLoanDoc(loan).catch(() => {}));
+        }
+      }
       await Promise.allSettled(promises);
     } catch (_) {} finally {
       setTimeout(() => setIsBuffering(false), 400);
@@ -2204,6 +2304,25 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   "deletedBy" text
 );
 
+CREATE TABLE IF NOT EXISTS public.loans (
+  id text PRIMARY KEY,
+  type text NOT NULL CHECK (type IN ('given', 'received')),
+  "personName" text NOT NULL,
+  phone text,
+  "principalAmount" numeric DEFAULT 0,
+  currency text DEFAULT 'ETB',
+  "loanDate" text,
+  "dueDate" text,
+  "paymentMethodId" text,
+  "interestAmount" numeric DEFAULT 0,
+  notes text,
+  "recordedBy" text,
+  payments jsonb DEFAULT '[]'::jsonb,
+  status text DEFAULT 'open',
+  "isDeleted" boolean DEFAULT false,
+  "deletedBy" text
+);
+
 CREATE TABLE IF NOT EXISTS public.customers (
   id text PRIMARY KEY,
   "clientType" text,
@@ -2327,7 +2446,7 @@ DO $$
 DECLARE
   t text;
 BEGIN
-  FOR t IN SELECT unnest(ARRAY['paper_stocks', 'bank_accounts', 'expense_categories', 'purchases', 'customers', 'employees', 'product_types', 'client_types', 'lead_channels'])
+  FOR t IN SELECT unnest(ARRAY['paper_stocks', 'bank_accounts', 'expense_categories', 'purchases', 'loans', 'customers', 'employees', 'product_types', 'client_types', 'lead_channels'])
   LOOP
     EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "isDeleted" boolean DEFAULT false;', t);
     EXECUTE format('ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS "deletedBy" text;', t);
@@ -2339,6 +2458,7 @@ ALTER TABLE public.paper_stocks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loans DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employees DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_types DISABLE ROW LEVEL SECURITY;
@@ -2369,11 +2489,11 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
   }, []);
 
   // Keep a ref containing the latest state of all collections to avoid resetting the polling interval on changes
-  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs });
+  const collectionsRef = React.useRef({ paperStocks, customers, bankAccounts, purchases, loans, categories, employees, auditLogs });
   
   useEffect(() => {
-    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs };
-  }, [paperStocks, customers, bankAccounts, purchases, categories, employees, auditLogs]);
+    collectionsRef.current = { paperStocks, customers, bankAccounts, purchases, loans, categories, employees, auditLogs };
+  }, [paperStocks, customers, bankAccounts, purchases, loans, categories, employees, auditLogs]);
 
   // Background database polling to fetch updates when online and linked
   useEffect(() => {
@@ -2390,6 +2510,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
           fetchAllBankAccounts,
           saveBankAccountDoc,
           fetchAllPurchases,
+          fetchAllLoans,
           fetchAllExpenseCategories,
           fetchAllEmployees,
           fetchAllAuditLogs
@@ -2398,11 +2519,12 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
         const current = collectionsRef.current;
 
         // Fetch all tables concurrently in parallel
-        const [newS, newC, newB, newP, newCat, newE, newAuditLogs] = await Promise.all([
+        const [newS, newC, newB, newP, newLoans, newCat, newE, newAuditLogs] = await Promise.all([
           fetchAllPaperStocks(current.paperStocks),
           fetchAllCustomers(current.customers),
           fetchAllBankAccounts(current.bankAccounts),
           fetchAllPurchases(current.purchases),
+          fetchAllLoans(current.loans),
           fetchAllExpenseCategories(current.categories),
           fetchAllEmployees(current.employees),
           fetchAllAuditLogs(current.auditLogs)
@@ -2474,6 +2596,12 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
           localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(recP.list));
         }
 
+        const recLoans = reconcileCollection(current.loans, newLoans);
+        if (recLoans.hasChanges) {
+          setLoans(recLoans.list);
+          localStorage.setItem(LOCAL_STORAGE_LOANS_KEY, JSON.stringify(recLoans.list));
+        }
+
         const recCat = reconcileCollection(current.categories, newCat);
         if (recCat.hasChanges) {
           setCategories(recCat.list);
@@ -2532,6 +2660,9 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
     purchase_create: 'Purchase Created',
     purchase_update: 'Purchase Edited',
     purchase_delete: 'Purchase Deleted',
+    loan_create: 'Loan Created',
+    loan_update: 'Loan Edited',
+    loan_delete: 'Loan Deleted',
     order_completion: 'Order Completed'
   };
   const isAuditEditEvent = (log: AuditLogEntry) => (
@@ -2605,7 +2736,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
     });
   };
 
-  const auditFilterOptions = ['All', ...Array.from(new Set(auditLogs.map(log => log.eventType)))];
+  const auditFilterOptions: string[] = ['All', ...Array.from(new Set<string>(auditLogs.map(log => log.eventType)))];
   const visibleAuditLogs = auditLogs
     .filter(log => !isRedundantBankBalanceEdit(log, auditLogs))
     .filter(log => auditFilterType === 'All' || log.eventType === auditFilterType)
@@ -2931,6 +3062,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                             const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
                             exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName, {
                               categories,
+                              loans,
                               productTypes,
                               clientTypes,
                               employees
@@ -3150,6 +3282,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
               onUpdateBankAccount={handleEditBankAccount}
               onDeleteBankAccount={handleDeleteBankAccount}
               purchases={purchases}
+              loans={loans}
               categories={categories}
               paperStocks={paperStocks}
               currentUser={currentUser}
@@ -3189,10 +3322,13 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
             <PurchasesTab
               purchases={purchases}
               onUpdatePurchases={handleUpdatePurchases}
+              loans={loans}
+              onUpdateLoans={handleUpdateLoans}
               categories={categories}
               onUpdateCategories={handleUpdateCategories}
               bankAccounts={bankAccounts}
               currentUser={currentUser}
+              employees={employees}
               highlightedSearchResult={globalSearchTarget?.type === 'purchase' ? globalSearchTarget : null}
             />
           )}

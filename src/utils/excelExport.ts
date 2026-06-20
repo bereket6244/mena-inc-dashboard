@@ -1,9 +1,10 @@
 import * as XLSX from 'xlsx';
-import { Customer, Purchase, BankAccount, PaperStock, ExpenseCategory, ProductType, ClientType, EmployeeUser } from '../types';
+import { Customer, Purchase, BankAccount, PaperStock, ExpenseCategory, ProductType, ClientType, EmployeeUser, Loan } from '../types';
 import { computeStockConsumed, getCustomerStockDisplayName } from '../utils';
 
 interface FullBackupOptions {
   categories?: ExpenseCategory[];
+  loans?: Loan[];
   productTypes?: ProductType[];
   clientTypes?: ClientType[];
   employees?: EmployeeUser[];
@@ -90,12 +91,49 @@ export function buildAllDataWorkbook(
   const wsPurchases = XLSX.utils.aoa_to_sheet([purchaseHeaders, ...purchaseRows]);
   XLSX.utils.book_append_sheet(wb, wsPurchases, "Purchases Ledger");
 
+  const loans = options.loans || [];
+  const loanHeaders = [
+    'Loan ID', 'Type', 'Person / Organization', 'Phone', 'Principal Amount',
+    'Interest / Fee', 'Total Due', 'Total Repaid', 'Remaining Balance',
+    'Currency', 'Loan Date', 'Due Date', 'Payment Account', 'Recorded By',
+    'Status', 'Notes', 'Repayment History'
+  ];
+  const loanRows = loans.map(loan => {
+    const totalDue = Number(loan.principalAmount || 0) + Number(loan.interestAmount || 0);
+    const paid = (loan.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    const remaining = Math.max(0, totalDue - paid);
+    const repayments = (loan.payments || [])
+      .map(payment => `${payment.paymentDate}: ${payment.amount} via ${getBankName(payment.paymentMethodId)} (${payment.recordedBy})`)
+      .join(' | ');
+
+    return [
+      loan.id,
+      loan.type === 'given' ? 'Loan Given Out' : 'Loan Received',
+      loan.personName,
+      loan.phone || '',
+      loan.principalAmount,
+      loan.interestAmount || 0,
+      totalDue,
+      paid,
+      remaining,
+      loan.currency || 'ETB',
+      loan.loanDate,
+      loan.dueDate || '',
+      getBankName(loan.paymentMethodId),
+      loan.recordedBy,
+      loan.status || (remaining <= 0 ? 'paid' : paid > 0 ? 'partially_paid' : 'open'),
+      loan.notes || '',
+      repayments
+    ];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([loanHeaders, ...loanRows]), "Loans Ledger");
+
   // 3. Treasury Ledger Sheet
   const treasuryHeaders = [
     'Account ID', 'Account & Bank Name', 'Account Number',
     'Initial Capital Stockpile (ETB)', 'Client Advances Received (ETB)',
     'Client Delivery Balances Received (ETB)', 'Supplier Purchases Deducted (ETB)',
-    'Compute Current Liquidity Status'
+    'Loan Cash Movement (ETB)', 'Compute Current Liquidity Status'
   ];
 
   const treasuryRows = bankAccounts.map(b => {
@@ -116,12 +154,22 @@ export function buildAllDataWorkbook(
     const purchasesOutOfBank = purchases
       .filter(p => p.paymentMethodId === b.id)
       .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
+    const loanCashMovement = loans.reduce((sum, loan) => {
+      const principal = Number(loan.principalAmount || 0);
+      const initialMovement = loan.paymentMethodId === b.id
+        ? (loan.type === 'given' ? -principal : principal)
+        : 0;
+      const repaymentMovement = (loan.payments || [])
+        .filter(payment => payment.paymentMethodId === b.id)
+        .reduce((paymentSum, payment) => paymentSum + (loan.type === 'given' ? Number(payment.amount || 0) : -Number(payment.amount || 0)), 0);
+      return sum + initialMovement + repaymentMovement;
+    }, 0);
     
-    const netBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank;
+    const netBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
 
     return [
       b.id, b.name, b.accountNumber || 'None', b.initialBalance,
-      advancesForBank, completedRemainingForBank, purchasesOutOfBank, netBalance
+      advancesForBank, completedRemainingForBank, purchasesOutOfBank, loanCashMovement, netBalance
     ];
   });
   

@@ -43,6 +43,9 @@ export type AuditEventType =
   | 'purchase_create'
   | 'purchase_update'
   | 'purchase_delete'
+  | 'loan_create'
+  | 'loan_update'
+  | 'loan_delete'
   | 'order_completion';
 
 export interface AuditLogEntry {
@@ -197,3 +200,34 @@ export interface ExpenseCategory {
 export const INITIAL_EXPENSE_CATEGORIES: ExpenseCategory[] = [];
 
 export const INITIAL_PURCHASES: Purchase[] = [];
+
+export interface LoanPayment {
+  id: string;
+  loanId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethodId: string;
+  recordedBy: string;
+  notes?: string;
+}
+
+export interface Loan {
+  id: string;
+  type: 'given' | 'received';
+  personName: string;
+  phone?: string;
+  principalAmount: number;
+  currency?: string;
+  loanDate: string;
+  dueDate?: string;
+  paymentMethodId: string;
+  interestAmount?: number;
+  notes?: string;
+  recordedBy: string;
+  payments: LoanPayment[];
+  status?: 'open' | 'partially_paid' | 'paid' | 'written_off';
+  isDeleted?: boolean;
+  deletedBy?: string;
+}
+
+export const INITIAL_LOANS: Loan[] = [];
