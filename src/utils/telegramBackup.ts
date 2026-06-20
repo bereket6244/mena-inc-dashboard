@@ -1,4 +1,4 @@
-import { BankAccount, ClientType, Customer, EmployeeUser, ExpenseCategory, Loan, PaperStock, ProductType, Purchase } from '../types';
+import { AuditLogEntry, BankAccount, ClientType, Customer, EmployeeUser, ExpenseCategory, Loan, PaperStock, ProductType, Purchase } from '../types';
 import { createAllDataExcelBlob, getLocalBackupDate } from './excelExport';
 
 const TELEGRAM_BACKUP_SESSION_KEY = 'mena_inc_telegram_backup_session_date_v1';
@@ -13,6 +13,8 @@ interface TelegramBackupPayload {
   productTypes: ProductType[];
   clientTypes: ClientType[];
   employees: EmployeeUser[];
+  auditLogs: AuditLogEntry[];
+  leadChannels: string[];
 }
 
 const blobToBase64 = async (blob: Blob) => {
@@ -47,6 +49,8 @@ export async function sendDailyTelegramBackup(
       productTypes: data.productTypes,
       clientTypes: data.clientTypes,
       employees: data.employees,
+      auditLogs: data.auditLogs,
+      leadChannels: data.leadChannels,
       date
     }
   );
@@ -69,7 +73,9 @@ export async function sendDailyTelegramBackup(
         categories: data.categories.length,
         productTypes: data.productTypes.length,
         clientTypes: data.clientTypes.length,
-        employees: data.employees.length
+        employees: data.employees.length,
+        auditLogs: data.auditLogs.length,
+        leadChannels: data.leadChannels.length
       }
     })
   });

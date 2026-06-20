@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mena-inc-v2.1';
+const CACHE_NAME = 'mena-inc-v2.2-full-export-import';
 const ASSETS = [
   '/',
   '/index.html',

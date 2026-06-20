@@ -27,9 +27,10 @@ import {
   Type,
   MoreVertical,
   Printer,
-  Sliders
+  Sliders,
+  Upload
 } from 'lucide-react';
-import { exportAllDataToExcel } from './utils/excelExport';
+import { exportAllDataToExcel, parseAppDataImportFile, AppDataImportBundle } from './utils/excelExport';
 import { sendDailyTelegramBackup } from './utils/telegramBackup';
 import { resolveStockId } from './utils';
 import SearchableSelect from './components/SearchableSelect';
@@ -371,6 +372,7 @@ export default function App() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const appDataImportInputRef = useRef<HTMLInputElement>(null);
   const telegramBackupAttemptDateRef = useRef('');
 
   // Login & RBAC personnel state
@@ -526,10 +528,11 @@ export default function App() {
   };
   const logAuditEntry = (entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>) => {
     const performedAt = entry.performedAt || new Date().toISOString();
+    const normalizedEntry = normalizeAuditEntryForStorage(entry);
     const auditEntry: AuditLogEntry = {
-      ...entry,
+      ...normalizedEntry,
       id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      performedBy: getStaffDisplayName(entry.performedBy || getAuditActor()),
+      performedBy: getStaffDisplayName(normalizedEntry.performedBy || getAuditActor()),
       performedAt
     };
 
@@ -563,6 +566,115 @@ export default function App() {
       .filter(field => !areAuditValuesEqual(previous?.[field], next?.[field]));
   };
 
+  const summarizeAuditObject = (value: Record<string, any>): string => {
+    const primary =
+      value.clientName ||
+      value.itemOrService ||
+      value.personName ||
+      value.bankAccountName ||
+      value.name ||
+      value.username ||
+      value.productType ||
+      value.expenseCategory ||
+      value.accountNumber;
+    const secondaryParts = [
+      value.quantity !== undefined ? `qty ${value.quantity}` : '',
+      value.totalPrice !== undefined ? `${value.totalPrice} ${value.currency || ''}`.trim() : '',
+      value.purchaseDate || value.deliveryDate || value.loanDate || value.editedAt || ''
+    ].filter(Boolean);
+    if (primary) return secondaryParts.length ? `${primary} (${secondaryParts.join(', ')})` : String(primary);
+    return JSON.stringify(value);
+  };
+
+  const stockIdAuditFields = new Set([
+    'paperType1',
+    'paperType1Id',
+    'paperType2',
+    'paperType2Id',
+    'paperType3',
+    'paperType3Id',
+    'entrancePaper',
+    'entrancePaperId',
+    'ajabiPaper',
+    'ajabiPaperId'
+  ]);
+  const bankIdAuditFields = new Set(['paymentMethodId', 'bankRemainingId', 'remainingBank', 'bankAccountId']);
+  const staffAuditFields = new Set(['performedBy', 'recordedBy', 'editedBy', 'deletedBy', 'purchasedBy', 'orderTakenBy']);
+
+  const resolveKnownAuditRecordValue = (value: any): string | null => {
+    if (value === undefined || value === null || value === '') return null;
+    const stringValue = String(value);
+    const matchers: Array<[Array<Record<string, any>>, string[]]> = [
+      [paperStocks, ['name']],
+      [bankAccounts, ['name']],
+      [customers, ['clientName']],
+      [purchases, ['itemOrService']],
+      [loans, ['personName']],
+      [categories, ['name']],
+      [employees, ['name']],
+      [productTypes, ['name']],
+      [clientTypes, ['name']]
+    ];
+
+    for (const [collection, labelFields] of matchers) {
+      const matched = collection.find(item => item.id === stringValue || item.username === stringValue);
+      if (matched) {
+        const label = labelFields.map(field => matched[field]).find(Boolean);
+        return label ? String(label) : summarizeAuditObject(matched);
+      }
+    }
+
+    for (const loan of loans) {
+      const matchedPayment = (loan.payments || []).find(payment => payment.id === stringValue);
+      if (matchedPayment) {
+        const bankName = bankAccounts.find(bank => bank.id === matchedPayment.paymentMethodId)?.name || 'payment account';
+        return `Payment on ${matchedPayment.paymentDate} (${matchedPayment.amount} ${loan.currency || 'ETB'} via ${bankName})`;
+      }
+    }
+    return null;
+  };
+
+  const isDatabaseIdLike = (value: any) => (
+    typeof value === 'string' &&
+    /^[a-z][a-z0-9]*[-_][a-z0-9-]{6,}$/i.test(value.trim())
+  );
+
+  const getAuditEntityTypeLabel = (entityType: string) => (
+    ({
+      p: 'Paper stock',
+      c: 'Customer',
+      b: 'Bank account',
+      loan: 'Loan',
+      lp: 'Loan payment',
+      lc: 'Lead channel'
+    }[entityType] || getAuditFieldLabel(entityType))
+      .replace(/\b\w/g, char => char.toUpperCase())
+  );
+
+  const sanitizeAuditText = (value: string) => (
+    value.replace(/\b[a-z][a-z0-9]*[-_][a-z0-9-]{6,}\b/gi, token => (
+      resolveKnownAuditRecordValue(token) || `${getAuditEntityTypeLabel(token.split(/[-_]/)[0] || 'record')} record`
+    ))
+  );
+
+  const resolveAuditReferenceValue = (field: string, value: any): string | null => {
+    if (value === undefined || value === null || value === '') return null;
+    const stringValue = String(value);
+    if (stockIdAuditFields.has(field)) {
+      if (stringValue === 'None') return 'Empty';
+      return paperStocks.find(stock => stock.id === stringValue)?.name || resolveKnownAuditRecordValue(stringValue) || (isDatabaseIdLike(stringValue) ? 'Paper stock record' : stringValue);
+    }
+    if (bankIdAuditFields.has(field)) {
+      return bankAccounts.find(bank => bank.id === stringValue)?.name || resolveKnownAuditRecordValue(stringValue) || (isDatabaseIdLike(stringValue) ? 'Bank account record' : stringValue);
+    }
+    if (staffAuditFields.has(field)) {
+      return getStaffDisplayName(stringValue);
+    }
+    const knownRecordValue = resolveKnownAuditRecordValue(stringValue);
+    if (knownRecordValue) return knownRecordValue;
+    return null;
+  };
+
   const formatAuditValue = (value: any): string => {
     if (value === undefined || value === null || value === '') return 'Empty';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -570,13 +682,17 @@ export default function App() {
       if (value.length === 0) return 'Empty';
       return value.map(item => {
         if (item === undefined || item === null || item === '') return 'Empty';
-        if (typeof item === 'object') return item.name || item.id || JSON.stringify(item);
+        if (typeof item === 'object') return summarizeAuditObject(item);
         return String(item);
       }).join(', ');
     }
-    if (typeof value === 'object') return value.name || value.id || JSON.stringify(value);
+    if (typeof value === 'object') return summarizeAuditObject(value);
     return String(value);
   };
+
+  const formatAuditFieldValue = (field: string, value: any): string => (
+    resolveAuditReferenceValue(field, value) || formatAuditValue(value)
+  );
 
   const auditFieldLabels: Record<string, string> = {
     clientName: 'Client name',
@@ -594,6 +710,16 @@ export default function App() {
     advancePaymentDate: 'Advance payment date',
     bankRemainingId: 'Remaining bank',
     paymentMethodId: 'Payment bank',
+    paperType1: 'Paper type 1',
+    paperType1Id: 'Paper type 1',
+    paperType2: 'Paper type 2',
+    paperType2Id: 'Paper type 2',
+    paperType3: 'Paper type 3',
+    paperType3Id: 'Paper type 3',
+    entrancePaper: 'Entrance paper',
+    entrancePaperId: 'Entrance paper',
+    ajabiPaper: 'Ajabi paper',
+    ajabiPaperId: 'Ajabi paper',
     expenseCategory: 'Expense category',
     purchaseDate: 'Purchase date',
     itemOrService: 'Item or service',
@@ -621,10 +747,104 @@ export default function App() {
       .replace(/^./, char => char.toUpperCase())
   );
 
+  const normalizeAuditFieldToken = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const auditFieldAliases: Record<string, string> = {
+    papertype1: 'paperType1Id',
+    papertype2: 'paperType2Id',
+    papertype3: 'paperType3Id',
+    entrancepaper: 'entrancePaperId',
+    ajabipaper: 'ajabiPaperId',
+    paymentbank: 'paymentMethodId',
+    remainingbank: 'bankRemainingId'
+  };
+
+  const getAuditFieldFromLabel = (label: string) => {
+    const normalizedLabel = normalizeAuditFieldToken(label);
+    if (auditFieldAliases[normalizedLabel]) return auditFieldAliases[normalizedLabel];
+    return Object.entries(auditFieldLabels).find(([field, displayLabel]) => (
+      normalizeAuditFieldToken(field) === normalizedLabel ||
+      normalizeAuditFieldToken(displayLabel) === normalizedLabel
+    ))?.[0] || label;
+  };
+
+  const getResolvedAuditEntityLabel = (log: AuditLogEntry) => {
+    const savedLabel = (log.entityLabel || '').trim();
+    if (savedLabel && savedLabel !== log.entityId && !isDatabaseIdLike(savedLabel)) return sanitizeAuditText(savedLabel);
+
+    const collectionsByEntity: Record<string, Array<Record<string, any>>> = {
+      customer: customers,
+      stock: paperStocks,
+      bank_account: bankAccounts,
+      purchase: purchases,
+      loan: loans,
+      expense_category: categories,
+      staff: employees,
+      employee: employees,
+      product_type: productTypes,
+      client_type: clientTypes
+    };
+    const matched = collectionsByEntity[log.entityType]?.find(item => item.id === log.entityId || item.username === log.entityId);
+    if (matched) return summarizeAuditObject(matched);
+    const resolvedFromKnownRecords = resolveKnownAuditRecordValue(log.entityId) || resolveKnownAuditRecordValue(savedLabel);
+    if (resolvedFromKnownRecords) return resolvedFromKnownRecords;
+    const fallback = savedLabel || log.entityId;
+    return isDatabaseIdLike(fallback) ? `${getAuditEntityTypeLabel(log.entityType)} record` : sanitizeAuditText(fallback);
+  };
+
+  const getResolvedAuditAction = (log: AuditLogEntry) => {
+    const label = getResolvedAuditEntityLabel(log);
+    const savedLabel = (log.entityLabel || '').trim();
+    if (!log.action) return log.action;
+    if (label === log.entityId) return sanitizeAuditText(log.action);
+    if (savedLabel && savedLabel !== log.entityId) return sanitizeAuditText(log.action);
+    return sanitizeAuditText(log.action.replaceAll(log.entityId, label));
+  };
+
+  const normalizeChangedFieldsForAuditStorage = (changedFields: any) => {
+    if (typeof changedFields !== 'string') return changedFields;
+    return changedFields
+      .split(',')
+      .map(field => field.trim())
+      .filter(Boolean)
+      .map(field => getAuditFieldLabel(getAuditFieldFromLabel(field)))
+      .join(', ');
+  };
+
+  const normalizeAuditDetailValueForStorage = (field: string, value: any): any => {
+    if (value === undefined || value === null || value === '') return value;
+    if (field === 'changedFields') return normalizeChangedFieldsForAuditStorage(value);
+    if (Array.isArray(value)) {
+      return value.map(item => typeof item === 'object' && item !== null ? summarizeAuditObject(item) : formatAuditFieldValue(field, item));
+    }
+    if (typeof value === 'object') return summarizeAuditObject(value);
+    return sanitizeAuditText(formatAuditFieldValue(getAuditFieldFromLabel(field), value));
+  };
+
+  const normalizeAuditDetailsForStorage = (details?: Record<string, any>) => {
+    if (!details) return details;
+    return Object.fromEntries(
+      Object.entries(details).map(([key, value]) => [key, normalizeAuditDetailValueForStorage(key, value)])
+    );
+  };
+
+  const normalizeAuditEntryForStorage = (
+    entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>
+  ) => {
+    const entityLabel = entry.entityLabel || resolveKnownAuditRecordValue(entry.entityId) || entry.entityId;
+    const sanitizedEntityLabel = sanitizeAuditText(entityLabel);
+    return {
+      ...entry,
+      entityId: sanitizedEntityLabel,
+      entityLabel: sanitizedEntityLabel,
+      action: sanitizeAuditText(entry.action),
+      details: normalizeAuditDetailsForStorage(entry.details)
+    };
+  };
+
   const buildEditDetail = (changedFields: string[], previous?: Record<string, any>, next?: Record<string, any>) => {
     if (previous && next) {
       return changedFields
-        .map(field => `${getAuditFieldLabel(field)} changed from ${formatAuditValue(previous[field])} to ${formatAuditValue(next[field])}`)
+        .map(field => `${getAuditFieldLabel(field)} changed from ${formatAuditFieldValue(field, previous[field])} to ${formatAuditFieldValue(field, next[field])}`)
         .join('; ');
     }
     return changedFields.length === 1
@@ -637,14 +857,186 @@ export default function App() {
       .split(';')
       .map(part => {
         const trimmed = part.trim();
+        const readableMatch = trimmed.match(/^(.+?)\s+changed from\s+(.*?)\s+to\s+(.*)$/i);
+        if (readableMatch) {
+          const [, label, before, after] = readableMatch;
+          const field = getAuditFieldFromLabel(label);
+          return `${getAuditFieldLabel(field)} changed from ${formatAuditFieldValue(field, before)} to ${formatAuditFieldValue(field, after)}`;
+        }
         const match = trimmed.match(/^([A-Za-z0-9_]+):\s*(.*?)\s*->\s*(.*)$/);
         if (!match) return trimmed;
         const [, field, before, after] = match;
-        return `${getAuditFieldLabel(field)} changed from ${before || 'Empty'} to ${after || 'Empty'}`;
+        return `${getAuditFieldLabel(field)} changed from ${formatAuditFieldValue(field, before) || 'Empty'} to ${formatAuditFieldValue(field, after) || 'Empty'}`;
       })
       .filter(Boolean)
       .join('; ')
   );
+
+  const getLeadChannelsForBackup = () => {
+    try {
+      const saved = localStorage.getItem('mena_inc_acquisition_channels_v3');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.filter(channel => typeof channel === 'string') : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const mergeRecordsByKey = <T extends Record<string, any>>(current: T[], imported: T[], fallbackKey: keyof T | string = 'name') => {
+    const getKey = (item: T) => String(item.id || item.username || item[fallbackKey] || '').trim().toLowerCase();
+    const next = [...current];
+    const indexByKey = new Map<string, number>();
+    next.forEach((item, index) => {
+      const key = getKey(item);
+      if (key) indexByKey.set(key, index);
+    });
+    imported.forEach(item => {
+      const key = getKey(item);
+      if (!key) {
+        next.push(item);
+        return;
+      }
+      const existingIndex = indexByKey.get(key);
+      if (existingIndex === undefined) {
+        indexByKey.set(key, next.length);
+        next.push(item);
+      } else {
+        next[existingIndex] = { ...next[existingIndex], ...item };
+      }
+    });
+    return next;
+  };
+
+  const importAppDataBundle = async (bundle: AppDataImportBundle) => {
+    const importedCounts: string[] = [];
+    const countImported = (label: string, items?: any[]) => {
+      if (items?.length) importedCounts.push(`${items.length} ${label}`);
+    };
+
+    if (bundle.paperStocks?.length) {
+      const next = mergeRecordsByKey(paperStocks, bundle.paperStocks);
+      setPaperStocks(next);
+      localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(next));
+      countImported('paper stocks', bundle.paperStocks);
+    }
+    if (bundle.customers?.length) {
+      const next = mergeRecordsByKey(customers, bundle.customers, 'clientName');
+      setCustomers(next);
+      localStorage.setItem(LOCAL_STORAGE_CUSTOMERS_KEY, JSON.stringify(next));
+      countImported('customers', bundle.customers);
+    }
+    if (bundle.bankAccounts?.length) {
+      const next = mergeRecordsByKey(bankAccounts, bundle.bankAccounts);
+      setBankAccounts(next);
+      localStorage.setItem(LOCAL_STORAGE_BANKS_KEY, JSON.stringify(next));
+      countImported('bank accounts', bundle.bankAccounts);
+    }
+    if (bundle.purchases?.length) {
+      const next = mergeRecordsByKey(purchases, bundle.purchases, 'itemOrService');
+      setPurchases(next);
+      localStorage.setItem(LOCAL_STORAGE_PURCHASES_KEY, JSON.stringify(next));
+      countImported('purchases', bundle.purchases);
+    }
+    if (bundle.loans?.length) {
+      const next = mergeRecordsByKey(loans, bundle.loans, 'personName');
+      setLoans(next);
+      localStorage.setItem(LOCAL_STORAGE_LOANS_KEY, JSON.stringify(next));
+      countImported('loans', bundle.loans);
+    }
+    if (bundle.categories?.length) {
+      const next = mergeRecordsByKey(categories, bundle.categories);
+      setCategories(next);
+      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(next));
+      countImported('categories', bundle.categories);
+    }
+    if (bundle.productTypes?.length) {
+      const next = mergeRecordsByKey(productTypes, bundle.productTypes);
+      setProductTypes(next);
+      localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(next));
+      countImported('product types', bundle.productTypes);
+    }
+    if (bundle.clientTypes?.length) {
+      const next = mergeRecordsByKey(clientTypes, bundle.clientTypes);
+      setClientTypes(next);
+      localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(next));
+      countImported('client types', bundle.clientTypes);
+    }
+    if (bundle.employees?.length) {
+      const next = mergeRecordsByKey(employees, bundle.employees, 'username');
+      setEmployees(next);
+      localStorage.setItem('mena_inc_employees_v3', JSON.stringify(next));
+      countImported('staff records', bundle.employees);
+    }
+    if (bundle.auditLogs?.length) {
+      const next = mergeRecordsByKey(auditLogs, bundle.auditLogs);
+      setAuditLogs(next);
+      localStorage.setItem(LOCAL_STORAGE_AUDIT_LOGS_KEY, JSON.stringify(next));
+      countImported('audit logs', bundle.auditLogs);
+    }
+    if (bundle.leadChannels?.length) {
+      const next = Array.from(new Set([...getLeadChannelsForBackup(), ...bundle.leadChannels].map(channel => channel.trim()).filter(Boolean)));
+      localStorage.setItem('mena_inc_acquisition_channels_v3', JSON.stringify(next));
+      countImported('lead channels', bundle.leadChannels);
+    }
+
+    try {
+      const {
+        savePaperStockDoc,
+        saveCustomerDoc,
+        saveBankAccountDoc,
+        savePurchaseDoc,
+        saveLoanDoc,
+        saveExpenseCategoryDoc,
+        saveProductTypeDoc,
+        saveClientTypeDoc,
+        saveEmployeeDoc,
+        saveAuditLogDoc,
+        saveLeadChannelDoc
+      } = await import('./lib/dbService');
+      await Promise.allSettled([
+        ...(bundle.paperStocks || []).map(item => savePaperStockDoc(item)),
+        ...(bundle.customers || []).map(item => saveCustomerDoc(item)),
+        ...(bundle.bankAccounts || []).map(item => saveBankAccountDoc(item)),
+        ...(bundle.purchases || []).map(item => savePurchaseDoc(item)),
+        ...(bundle.loans || []).map(item => saveLoanDoc(item)),
+        ...(bundle.categories || []).map(item => saveExpenseCategoryDoc(item)),
+        ...(bundle.productTypes || []).map(item => saveProductTypeDoc(item)),
+        ...(bundle.clientTypes || []).map(item => saveClientTypeDoc(item)),
+        ...(bundle.employees || []).map(item => saveEmployeeDoc(item)),
+        ...(bundle.auditLogs || []).map(item => saveAuditLogDoc(item)),
+        ...(bundle.leadChannels || []).map(item => saveLeadChannelDoc(item))
+      ]);
+    } catch (_) {}
+
+    if (importedCounts.length === 0) {
+      alert('No importable app data was found in that file.');
+      return;
+    }
+    alert(`Import complete: ${importedCounts.join(', ')}.`);
+    logAuditEntry({
+      eventType: 'staff_update',
+      entityType: 'app_data',
+      entityId: 'App data import',
+      entityLabel: 'App data import',
+      action: `Imported app data from CSV/XLSX`,
+      details: { imported: importedCounts.join(', ') }
+    });
+  };
+
+  const handleImportAppDataFile = async (file?: File | null) => {
+    if (!file) return;
+    if (!window.confirm('Import this file into the app? Matching records will be updated and new records will be added.')) return;
+    setIsBuffering(true);
+    try {
+      const bundle = await parseAppDataImportFile(file);
+      await importAppDataBundle(bundle);
+    } catch (err: any) {
+      alert(`Import failed: ${err?.message || String(err)}`);
+    } finally {
+      setIsBuffering(false);
+      if (appDataImportInputRef.current) appDataImportInputRef.current.value = '';
+    }
+  };
 
   const isOrderCompleted = (customer?: Customer | null) => Boolean(customer?.deliveryDate);
   const commandItems: GlobalSearchItem[] = currentUser ? [
@@ -664,7 +1056,7 @@ export default function App() {
       id: 'command-export',
       title: 'Export all data',
       source: 'Command',
-      detail: 'Download customers, purchases, banks, inventory, catalogs, and staff',
+      detail: 'Download every app table, including audit logs and import-safe raw sheets',
       action: () => {
         const getBankName = (id?: string) => bankAccounts.find(b => b.id === id)?.name || 'CBE / System Default';
         exportAllDataToExcel(customers, purchases, bankAccounts, paperStocks, getBankName, {
@@ -672,9 +1064,19 @@ export default function App() {
           loans,
           productTypes,
           clientTypes,
-          employees
+          employees,
+          auditLogs,
+          leadChannels: getLeadChannelsForBackup()
         });
       },
+      disabled: currentUser.role !== 'admin'
+    },
+    {
+      id: 'command-import',
+      title: 'Import CSV or backup',
+      source: 'Command',
+      detail: 'Import a full backup workbook or a CSV from a raw app-data sheet',
+      action: () => appDataImportInputRef.current?.click(),
       disabled: currentUser.role !== 'admin'
     },
     { id: 'command-install', title: 'Install app / open install guide', source: 'Command', detail: 'Show phone installation options', action: triggerPwaInstall },
@@ -1492,13 +1894,13 @@ export default function App() {
     telegramBackupAttemptDateRef.current = dateKey;
 
     sendDailyTelegramBackup(
-      { customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees },
+      { customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, auditLogs, leadChannels: getLeadChannelsForBackup() },
       getBankName,
       currentUser
     ).catch((err) => {
       console.warn('Daily Telegram backup was not sent:', err);
     });
-  }, [dataLoadComplete, customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, currentUser]);
+  }, [dataLoadComplete, customers, purchases, loans, bankAccounts, paperStocks, categories, productTypes, clientTypes, employees, auditLogs, currentUser]);
 
   // Sync state changes to Local Storage & Database
   const handleUpdateStocks = async (newStocks: PaperStock[]) => {
@@ -2690,30 +3092,30 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
 
   const getAuditDetailText = (log: AuditLogEntry) => {
     const details = log.details || {};
-    if (typeof details.detail === 'string' && details.detail.trim()) return prettifyAuditDetailText(details.detail.trim());
-    if (isAuditEditEvent(log) && typeof details.reason === 'string' && details.reason.trim()) return prettifyAuditDetailText(details.reason.trim());
+    if (typeof details.detail === 'string' && details.detail.trim()) return sanitizeAuditText(prettifyAuditDetailText(details.detail.trim()));
+    if (isAuditEditEvent(log) && typeof details.reason === 'string' && details.reason.trim()) return sanitizeAuditText(prettifyAuditDetailText(details.reason.trim()));
     if (log.eventType === 'bank_adjustment') {
       const direction = details.adjustmentType === 'subtract' ? 'Subtracted' : 'Added';
       const amount = formatAuditValue(details.amount);
       const balanceText = details.previousInitialBalance !== undefined && details.newInitialBalance !== undefined
         ? ` Balance changed from ${formatAuditValue(details.previousInitialBalance)} to ${formatAuditValue(details.newInitialBalance)}.`
         : '';
-      return `${direction} ${amount}.${balanceText}`.trim();
+      return sanitizeAuditText(`${direction} ${amount}.${balanceText}`.trim());
     }
 
     const excludedKeys = new Set(['reason', 'adjustmentReason', 'deleteReason', 'completionReason', 'detail', 'previous', 'next']);
     const parts = Object.entries(details)
       .filter(([key, value]) => !excludedKeys.has(key) && value !== undefined && value !== null && value !== '')
-      .map(([key, value]) => `${getAuditFieldLabel(key)}: ${formatAuditValue(value)}`);
+      .map(([key, value]) => `${getAuditFieldLabel(key)}: ${formatAuditFieldValue(key, value)}`);
 
-    return parts.join('; ');
+    return sanitizeAuditText(parts.join('; '));
   };
 
   const isRedundantBankBalanceEdit = (log: AuditLogEntry, allLogs: AuditLogEntry[]) => {
     if (log.eventType !== 'bank_account_update') return false;
     const changedFields = String(log.details?.changedFields || '')
       .split(',')
-      .map(field => field.trim())
+      .map(field => getAuditFieldFromLabel(field.trim()))
       .filter(Boolean);
     if (changedFields.length !== 1 || changedFields[0] !== 'initialBalance') return false;
 
@@ -2747,8 +3149,8 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
         auditEventLabels[log.eventType] || log.eventType,
         log.entityType,
         log.entityId,
-        log.entityLabel,
-        log.action,
+        getResolvedAuditEntityLabel(log),
+        getResolvedAuditAction(log),
         getStaffDisplayName(log.performedBy),
         getAuditDetailText(log),
         getAuditReasonText(log),
@@ -2850,6 +3252,13 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#E2E8F0] flex flex-col font-sans antialiased" style={{ lineSpacing: "1.15" }}>
+      <input
+        ref={appDataImportInputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(event) => handleImportAppDataFile(event.target.files?.[0])}
+      />
       <AnimatePresence>
         {showCommandPalette && (
           <motion.div
@@ -3065,13 +3474,29 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                               loans,
                               productTypes,
                               clientTypes,
-                              employees
+                              employees,
+                              auditLogs,
+                              leadChannels: getLeadChannelsForBackup()
                             });
                           }}
                           className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
                         >
                           <FolderDown className="w-4 h-4 text-sky-400" />
                           Export All Data
+                        </button>
+                      )}
+
+                      {currentUser.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            appDataImportInputRef.current?.click();
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#202020] transition-colors flex items-center gap-2"
+                        >
+                          <Upload className="w-4 h-4 text-[#71b536]" />
+                          Import CSV / Backup
                         </button>
                       )}
 
@@ -3678,6 +4103,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                       visibleAuditLogs.map((log, index) => {
                         const detailText = getAuditDetailText(log);
                         const reasonText = getAuditReasonText(log);
+                        const entityLabel = getResolvedAuditEntityLabel(log);
                         return (
                           <tr key={log.id} className={`${index % 2 === 0 ? 'bg-[#101010]' : 'bg-[#161616]'} hover:bg-[#1f1f1f] text-gray-300 align-top transition-colors`}>
                             <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap text-gray-400">{formatAuditDate(log.performedAt)}</td>
@@ -3686,10 +4112,12 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                                 {auditEventLabels[log.eventType] || log.eventType}
                               </span>
                             </td>
-                            <td className="px-3 py-2 border-r border-[#262626] text-white font-semibold">{log.action}</td>
+                            <td className="px-3 py-2 border-r border-[#262626] text-white font-semibold">{getResolvedAuditAction(log)}</td>
                             <td className="px-3 py-2 border-r border-[#262626]">
-                              <div className="text-white">{log.entityLabel || log.entityId}</div>
-                              <div className="text-[10px] text-gray-500">{log.entityType} - {log.entityId}</div>
+                              <div className="text-white">{entityLabel}</div>
+                              <div className="text-[10px] text-gray-500">
+                                {log.entityType} record
+                              </div>
                             </td>
                             <td className="px-3 py-2 border-r border-[#262626] text-gray-400">{getStaffDisplayName(log.performedBy)}</td>
                             <td className="px-3 py-2 border-r border-[#262626] max-w-[420px] whitespace-pre-wrap break-words text-[11px] leading-relaxed text-gray-400">
