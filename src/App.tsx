@@ -504,14 +504,23 @@ export default function App() {
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
   const [auditFilterType, setAuditFilterType] = useState('All');
   const activeEmployees = employees.filter(emp => !emp.isDeleted);
-  const getAuditActor = () => currentUser?.username || currentUser?.name || 'system';
+  const getAuditActor = () => currentUser?.name || currentUser?.username || 'system';
+  const getStaffDisplayName = (actor?: string) => {
+    if (!actor) return 'Unknown staff';
+    const matched = employees.find(emp =>
+      emp.name === actor ||
+      emp.username === actor ||
+      emp.id === actor
+    );
+    return matched?.name || actor;
+  };
   const logAuditEntry = (entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>) => {
     const performedAt = entry.performedAt || new Date().toISOString();
     const auditEntry: AuditLogEntry = {
+      ...entry,
       id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      performedBy: entry.performedBy || getAuditActor(),
-      performedAt,
-      ...entry
+      performedBy: getStaffDisplayName(entry.performedBy || getAuditActor()),
+      performedAt
     };
 
     setAuditLogs(prev => {
@@ -524,6 +533,108 @@ export default function App() {
       saveAuditLogDoc(auditEntry).catch(() => {});
     }).catch(() => {});
   };
+
+  const getChangedFieldNames = (previous: Record<string, any>, next: Record<string, any>, ignoredFields: string[] = []) => {
+    const ignored = new Set(['isDeleted', 'deletedBy', ...ignoredFields]);
+    const isEmptyAuditValue = (value: any) => (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (Array.isArray(value) && value.length === 0)
+    );
+    const areAuditValuesEqual = (previousValue: any, nextValue: any) => {
+      if (isEmptyAuditValue(previousValue) && isEmptyAuditValue(nextValue)) return true;
+      if (isEmptyAuditValue(previousValue) && (nextValue === false || nextValue === 0)) return true;
+      if (isEmptyAuditValue(nextValue) && (previousValue === false || previousValue === 0)) return true;
+      return JSON.stringify(previousValue ?? null) === JSON.stringify(nextValue ?? null);
+    };
+    return Array.from(new Set([...Object.keys(previous || {}), ...Object.keys(next || {})]))
+      .filter(field => !ignored.has(field))
+      .filter(field => !areAuditValuesEqual(previous?.[field], next?.[field]));
+  };
+
+  const formatAuditValue = (value: any): string => {
+    if (value === undefined || value === null || value === '') return 'Empty';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (Array.isArray(value)) {
+      if (value.length === 0) return 'Empty';
+      return value.map(item => {
+        if (item === undefined || item === null || item === '') return 'Empty';
+        if (typeof item === 'object') return item.name || item.id || JSON.stringify(item);
+        return String(item);
+      }).join(', ');
+    }
+    if (typeof value === 'object') return value.name || value.id || JSON.stringify(value);
+    return String(value);
+  };
+
+  const auditFieldLabels: Record<string, string> = {
+    clientName: 'Client name',
+    phone: 'Phone number',
+    acquisitionSource: 'Lead source',
+    orderTakenBy: 'Agent',
+    productType: 'Product',
+    quantity: 'Quantity',
+    unitPrice: 'Unit price',
+    baseUnitPrice: 'Base unit price',
+    isVatAdded: 'VAT added',
+    totalPrice: 'Total price',
+    currency: 'Currency',
+    deliveryDate: 'Delivery date',
+    advancePaymentDate: 'Advance payment date',
+    bankRemainingId: 'Remaining bank',
+    paymentMethodId: 'Payment bank',
+    expenseCategory: 'Expense category',
+    purchaseDate: 'Purchase date',
+    itemOrService: 'Item or service',
+    initialStock: 'Stock quantity',
+    initialBalance: 'Current balance',
+    accountNumber: 'Account number',
+    name: 'Name',
+    username: 'Username',
+    role: 'Role',
+    allowedTabs: 'Allowed tabs',
+    items: 'Items',
+    amount: 'Amount',
+    adjustmentType: 'Adjustment type',
+    previousInitialBalance: 'Previous balance',
+    newInitialBalance: 'New balance',
+    changedFields: 'Changed fields'
+  };
+
+  const getAuditFieldLabel = (field: string) => (
+    auditFieldLabels[field] ||
+    field
+      .replace(/Id$/, '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .replace(/^./, char => char.toUpperCase())
+  );
+
+  const buildEditDetail = (changedFields: string[], previous?: Record<string, any>, next?: Record<string, any>) => {
+    if (previous && next) {
+      return changedFields
+        .map(field => `${getAuditFieldLabel(field)} changed from ${formatAuditValue(previous[field])} to ${formatAuditValue(next[field])}`)
+        .join('; ');
+    }
+    return changedFields.length === 1
+      ? `Changed ${getAuditFieldLabel(changedFields[0])}`
+      : `Changed ${changedFields.map(getAuditFieldLabel).join(', ')}`;
+  };
+
+  const prettifyAuditDetailText = (detail: string) => (
+    detail
+      .split(';')
+      .map(part => {
+        const trimmed = part.trim();
+        const match = trimmed.match(/^([A-Za-z0-9_]+):\s*(.*?)\s*->\s*(.*)$/);
+        if (!match) return trimmed;
+        const [, field, before, after] = match;
+        return `${getAuditFieldLabel(field)} changed from ${before || 'Empty'} to ${after || 'Empty'}`;
+      })
+      .filter(Boolean)
+      .join('; ')
+  );
 
   const isOrderCompleted = (customer?: Customer | null) => Boolean(customer?.deliveryDate);
   const commandItems: GlobalSearchItem[] = currentUser ? [
@@ -801,6 +912,9 @@ export default function App() {
         event.preventDefault();
         setShowStaffModal(false);
         setEditingEmployee(null);
+      } else if (showAuditLogModal) {
+        event.preventDefault();
+        setShowAuditLogModal(false);
       } else if (showDbConfigModal) {
         event.preventDefault();
         setShowDbConfigModal(false);
@@ -812,7 +926,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isMobileMenuOpen, showCommandPalette, showStaffModal, showDbConfigModal, showInstallGuideModal]);
+  }, [isMobileMenuOpen, showCommandPalette, showStaffModal, showAuditLogModal, showDbConfigModal, showInstallGuideModal]);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -955,27 +1069,41 @@ export default function App() {
         localStorage.setItem('mena_inc_current_user_v3', JSON.stringify(updatedCurrentUser));
       }
 
-      logAuditEntry({
-        eventType: 'staff_update',
-        entityType: 'staff',
-        entityId: updatedEmp.id,
-        entityLabel: updatedEmp.name,
-        action: `Updated staff member ${updatedEmp.name}`,
-        details: {
-          previous: {
-            name: editingEmployee.name,
-            username: editingEmployee.username,
-            role: editingEmployee.role,
-            allowedTabs: editingEmployee.allowedTabs || []
-          },
-          next: {
-            name: updatedEmp.name,
-            username: updatedEmp.username,
-            role: updatedEmp.role,
-            allowedTabs: updatedEmp.allowedTabs || []
+      const staffChangedFields = getChangedFieldNames(editingEmployee, updatedEmp, ['password']);
+      const didChangePassword = editingEmployee.password !== updatedEmp.password;
+      const staffReason = staffChangedFields.length > 0
+        ? buildEditDetail(staffChangedFields, editingEmployee, updatedEmp)
+        : didChangePassword
+          ? 'Changed credential'
+          : '';
+      if (staffReason) {
+        logAuditEntry({
+          eventType: 'staff_update',
+          entityType: 'staff',
+          entityId: updatedEmp.id,
+          entityLabel: updatedEmp.name,
+          action: `Updated staff member ${updatedEmp.name}`,
+          details: {
+            detail: staffReason,
+            changedFields: [
+              ...staffChangedFields,
+              ...(didChangePassword ? ['credential'] : [])
+            ].join(', '),
+            previous: {
+              name: editingEmployee.name,
+              username: editingEmployee.username,
+              role: editingEmployee.role,
+              allowedTabs: editingEmployee.allowedTabs || []
+            },
+            next: {
+              name: updatedEmp.name,
+              username: updatedEmp.username,
+              role: updatedEmp.role,
+              allowedTabs: updatedEmp.allowedTabs || []
+            }
           }
-        }
-      });
+        });
+      }
 
       setEditingEmployee(null);
       setNewStaffName('');
@@ -1373,6 +1501,24 @@ export default function App() {
         details: { initialStock: stock.initialStock }
       }));
     }
+    const stockById = new Map(paperStocks.map(stock => [stock.id, stock]));
+    newStocks.forEach(stock => {
+      const previousStock = stockById.get(stock.id);
+      if (!previousStock) return;
+      const changedFields = getChangedFieldNames(previousStock, stock);
+      if (changedFields.length === 0) return;
+      logAuditEntry({
+        eventType: 'stock_update',
+        entityType: 'stock',
+        entityId: stock.id,
+        entityLabel: stock.name,
+        action: `Updated stock item ${stock.name}`,
+        details: {
+          detail: buildEditDetail(changedFields, previousStock, stock),
+          changedFields: changedFields.join(', ')
+        }
+      });
+    });
 
     setPaperStocks(newStocks);
     localStorage.setItem(LOCAL_STORAGE_STOCKS_KEY, JSON.stringify(newStocks));
@@ -1411,6 +1557,22 @@ export default function App() {
     const previousCustomer = customers.find(item => item.id === c.id);
     const updated = customers.map(item => item.id === c.id ? c : item);
     handleUpdateCustomers(updated);
+    if (previousCustomer) {
+      const changedFields = getChangedFieldNames(previousCustomer, c);
+      if (changedFields.length > 0) {
+        logAuditEntry({
+          eventType: 'customer_update',
+          entityType: 'customer',
+          entityId: c.id,
+          entityLabel: c.clientName,
+          action: `Updated customer order for ${c.clientName}`,
+          details: {
+            detail: buildEditDetail(changedFields, previousCustomer, c),
+            changedFields: changedFields.join(', ')
+          }
+        });
+      }
+    }
     if (!isOrderCompleted(previousCustomer) && isOrderCompleted(c)) {
       logAuditEntry({
         eventType: 'order_completion',
@@ -1494,6 +1656,23 @@ export default function App() {
     const previousById = new Map(customers.map(item => [item.id, item]));
     updatedList.forEach(item => {
       const previous = previousById.get(item.id);
+      if (previous) {
+        const changedFields = getChangedFieldNames(previous, item);
+        if (changedFields.length > 0) {
+          logAuditEntry({
+            eventType: 'customer_update',
+            entityType: 'customer',
+            entityId: item.id,
+            entityLabel: item.clientName,
+            action: `Updated customer order for ${item.clientName}`,
+            details: {
+              detail: buildEditDetail(changedFields, previous, item),
+              changedFields: changedFields.join(', '),
+              source: 'bulk_update'
+            }
+          });
+        }
+      }
       if (!isOrderCompleted(previous) && isOrderCompleted(item)) {
         logAuditEntry({
           eventType: 'order_completion',
@@ -1550,7 +1729,7 @@ export default function App() {
       details: {
         username: target.username,
         role: target.role,
-        deletedBy: currentUser?.username || currentUser?.name || 'unknown'
+        deletedBy: currentUser?.name || currentUser?.username || 'unknown'
       }
     });
 
@@ -1592,6 +1771,24 @@ export default function App() {
 
   const handleEditBankAccount = async (bank: BankAccount) => {
     setIsBuffering(true);
+    const previousBank = bankAccounts.find(item => item.id === bank.id);
+    if (previousBank) {
+      const changedFields = getChangedFieldNames(previousBank, bank);
+      const profileChangedFields = changedFields.filter(field => field !== 'initialBalance');
+      if (profileChangedFields.length > 0) {
+        logAuditEntry({
+          eventType: 'bank_account_update',
+          entityType: 'bank_account',
+          entityId: bank.id,
+          entityLabel: bank.name,
+          action: `Updated bank account ${bank.name}`,
+          details: {
+            detail: buildEditDetail(profileChangedFields, previousBank, bank),
+            changedFields: profileChangedFields.join(', ')
+          }
+        });
+      }
+    }
     const updated = bankAccounts.map(item => item.id === bank.id ? bank : item);
     handleUpdateBankAccountsLocal(updated);
     try {
@@ -1675,17 +1872,20 @@ export default function App() {
           }
         });
       } else if (JSON.stringify(oldP) !== JSON.stringify(p)) {
-        logAuditEntry({
-          eventType: 'purchase_update',
-          entityType: 'purchase',
-          entityId: p.id,
-          entityLabel: p.itemOrService,
-          action: `Updated purchase ${p.itemOrService}`,
-          details: {
-            previous: oldP,
-            next: p
-          }
-        });
+        const changedFields = getChangedFieldNames(oldP, p);
+        if (changedFields.length > 0) {
+          logAuditEntry({
+            eventType: 'purchase_update',
+            entityType: 'purchase',
+            entityId: p.id,
+            entityLabel: p.itemOrService,
+            action: `Updated purchase ${p.itemOrService}`,
+            details: {
+              detail: buildEditDetail(changedFields, oldP, p),
+              changedFields: changedFields.join(', ')
+            }
+          });
+        }
       }
     });
     setPurchases(newPurchases);
@@ -1719,6 +1919,7 @@ export default function App() {
     setIsBuffering(true);
     // Find deleted categories by comparing state with newCategories list
     const deletedCats = categories.filter(oldCat => !newCategories.some(newCat => newCat.id === oldCat.id));
+    const categoryById = new Map(categories.map(cat => [cat.id, cat]));
     deletedCats.forEach(cat => logAuditEntry({
       eventType: 'delete',
       entityType: 'expense_category',
@@ -1727,6 +1928,23 @@ export default function App() {
       action: `Deleted expense category ${cat.name}`,
       details: { items: cat.items || [] }
     }));
+    newCategories.forEach(cat => {
+      const previousCat = categoryById.get(cat.id);
+      if (!previousCat) return;
+      const changedFields = getChangedFieldNames(previousCat, cat);
+      if (changedFields.length === 0) return;
+      logAuditEntry({
+        eventType: 'expense_category_update',
+        entityType: 'expense_category',
+        entityId: cat.id,
+        entityLabel: cat.name,
+        action: `Updated expense category ${cat.name}`,
+        details: {
+          detail: buildEditDetail(changedFields, previousCat, cat),
+          changedFields: changedFields.join(', ')
+        }
+      });
+    });
     
     setCategories(newCategories);
     localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(newCategories));
@@ -1807,6 +2025,23 @@ export default function App() {
   };
 
   const handleUpdateProductType = async (updatedProd: ProductType) => {
+    const previousProd = productTypes.find(prod => prod.id === updatedProd.id);
+    if (previousProd) {
+      const changedFields = getChangedFieldNames(previousProd, updatedProd);
+      if (changedFields.length > 0) {
+        logAuditEntry({
+          eventType: 'product_type_update',
+          entityType: 'product_type',
+          entityId: updatedProd.id,
+          entityLabel: updatedProd.name,
+          action: `Updated product type ${updatedProd.name}`,
+          details: {
+            detail: buildEditDetail(changedFields, previousProd, updatedProd),
+            changedFields: changedFields.join(', ')
+          }
+        });
+      }
+    }
     const updated = productTypes.map(prod => prod.id === updatedProd.id ? updatedProd : prod);
     setProductTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_PRODUCT_TYPES_KEY, JSON.stringify(updated));
@@ -1852,6 +2087,23 @@ export default function App() {
   };
 
   const handleUpdateClientType = (updatedType: ClientType) => {
+    const previousType = clientTypes.find(type => type.id === updatedType.id);
+    if (previousType) {
+      const changedFields = getChangedFieldNames(previousType, updatedType);
+      if (changedFields.length > 0) {
+        logAuditEntry({
+          eventType: 'client_type_update',
+          entityType: 'client_type',
+          entityId: updatedType.id,
+          entityLabel: updatedType.name,
+          action: `Updated client type ${updatedType.name}`,
+          details: {
+            detail: buildEditDetail(changedFields, previousType, updatedType),
+            changedFields: changedFields.join(', ')
+          }
+        });
+      }
+    }
     const updated = clientTypes.map(type => type.id === updatedType.id ? updatedType : type);
     setClientTypes(updated);
     localStorage.setItem(LOCAL_STORAGE_CLIENT_TYPES_KEY, JSON.stringify(updated));
@@ -2267,17 +2519,95 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
 
   const auditEventLabels: Record<string, string> = {
     delete: 'Deletion',
+    customer_update: 'Customer Edited',
+    stock_update: 'Stock Edited',
     staff_create: 'Staff Created',
     staff_update: 'Staff Edited',
     staff_delete: 'Staff Deleted',
+    bank_account_update: 'Bank Edited',
     bank_adjustment: 'Bank Adjustment',
+    expense_category_update: 'Category Edited',
+    product_type_update: 'Product Type Edited',
+    client_type_update: 'Client Type Edited',
     purchase_create: 'Purchase Created',
     purchase_update: 'Purchase Edited',
     purchase_delete: 'Purchase Deleted',
     order_completion: 'Order Completed'
   };
+  const isAuditEditEvent = (log: AuditLogEntry) => (
+    log.eventType.includes('update') ||
+    log.eventType === 'staff_update' ||
+    log.eventType === 'customer_update' ||
+    log.eventType === 'stock_update' ||
+    log.eventType === 'bank_account_update' ||
+    log.eventType === 'expense_category_update' ||
+    log.eventType === 'product_type_update' ||
+    log.eventType === 'client_type_update'
+  );
+
+  const getAuditReasonText = (log: AuditLogEntry) => {
+    const details = log.details || {};
+    const possibleReason = [
+      !isAuditEditEvent(log) ? details.reason : '',
+      details.adjustmentReason,
+      details.deleteReason,
+      details.completionReason
+    ].find(value => typeof value === 'string' && value.trim());
+
+    return typeof possibleReason === 'string' ? possibleReason.trim() : '';
+  };
+
+  const getAuditDetailText = (log: AuditLogEntry) => {
+    const details = log.details || {};
+    if (typeof details.detail === 'string' && details.detail.trim()) return prettifyAuditDetailText(details.detail.trim());
+    if (isAuditEditEvent(log) && typeof details.reason === 'string' && details.reason.trim()) return prettifyAuditDetailText(details.reason.trim());
+    if (log.eventType === 'bank_adjustment') {
+      const direction = details.adjustmentType === 'subtract' ? 'Subtracted' : 'Added';
+      const amount = formatAuditValue(details.amount);
+      const balanceText = details.previousInitialBalance !== undefined && details.newInitialBalance !== undefined
+        ? ` Balance changed from ${formatAuditValue(details.previousInitialBalance)} to ${formatAuditValue(details.newInitialBalance)}.`
+        : '';
+      return `${direction} ${amount}.${balanceText}`.trim();
+    }
+
+    const excludedKeys = new Set(['reason', 'adjustmentReason', 'deleteReason', 'completionReason', 'detail', 'previous', 'next']);
+    const parts = Object.entries(details)
+      .filter(([key, value]) => !excludedKeys.has(key) && value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${getAuditFieldLabel(key)}: ${formatAuditValue(value)}`);
+
+    return parts.join('; ');
+  };
+
+  const isRedundantBankBalanceEdit = (log: AuditLogEntry, allLogs: AuditLogEntry[]) => {
+    if (log.eventType !== 'bank_account_update') return false;
+    const changedFields = String(log.details?.changedFields || '')
+      .split(',')
+      .map(field => field.trim())
+      .filter(Boolean);
+    if (changedFields.length !== 1 || changedFields[0] !== 'initialBalance') return false;
+
+    const detailText = getAuditDetailText(log);
+    const balanceMatch = detailText.match(/(?:initialBalance|Current balance)\s*(?:changed from|:)\s*([\d.,-]+)\s*(?:to|->)\s*([\d.,-]+)/i);
+    const previousBalance = balanceMatch ? Number(balanceMatch[1].replace(/,/g, '')) : null;
+    const newBalance = balanceMatch ? Number(balanceMatch[2].replace(/,/g, '')) : null;
+    const logTime = new Date(log.performedAt).getTime();
+
+    return allLogs.some(candidate => {
+      if (candidate.eventType !== 'bank_adjustment') return false;
+      if (candidate.entityId !== log.entityId) return false;
+      if (getStaffDisplayName(candidate.performedBy) !== getStaffDisplayName(log.performedBy)) return false;
+      const candidateTime = new Date(candidate.performedAt).getTime();
+      if (!Number.isNaN(logTime) && !Number.isNaN(candidateTime) && Math.abs(candidateTime - logTime) > 2 * 60 * 1000) return false;
+      const details = candidate.details || {};
+      if (previousBalance !== null && Number(details.previousInitialBalance) !== previousBalance) return false;
+      if (newBalance !== null && Number(details.newInitialBalance) !== newBalance) return false;
+      return true;
+    });
+  };
+
   const auditFilterOptions = ['All', ...Array.from(new Set(auditLogs.map(log => log.eventType)))];
   const visibleAuditLogs = auditLogs
+    .filter(log => !isRedundantBankBalanceEdit(log, auditLogs))
     .filter(log => auditFilterType === 'All' || log.eventType === auditFilterType)
     .filter(log => {
       const query = auditSearchQuery.trim().toLowerCase();
@@ -2288,7 +2618,9 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
         log.entityId,
         log.entityLabel,
         log.action,
-        log.performedBy,
+        getStaffDisplayName(log.performedBy),
+        getAuditDetailText(log),
+        getAuditReasonText(log),
         JSON.stringify(log.details || {})
       ].join(' ').toLowerCase().includes(query);
     })
@@ -3143,12 +3475,18 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
       {/* Audit Log Modal */}
       <AnimatePresence>
         {showAuditLogModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowAuditLogModal(false);
+            }}
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-[#121212] border border-[#262626] w-full max-w-6xl overflow-hidden shadow-2xl flex flex-col relative rounded-2xl"
+              onMouseDown={(event) => event.stopPropagation()}
             >
               <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#71b536] to-[#ee317b]" />
               <div className="px-6 py-4 border-b border-[#262626] flex justify-between items-center bg-[#181818]/60">
@@ -3181,46 +3519,52 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                 </div>
               </div>
               <div className="max-h-[70vh] overflow-auto">
-                <table className="w-full min-w-[980px] text-xs font-sans">
+                <table className="w-full min-w-[1120px] text-xs font-sans">
                   <thead className="sticky top-0 z-10 bg-[#181818] border-b border-[#262626]">
                     <tr className="text-left text-gray-500 uppercase tracking-wider text-[10px]">
                       <th className="px-3 py-2 border-r border-[#262626]">Time</th>
                       <th className="px-3 py-2 border-r border-[#262626]">Event</th>
                       <th className="px-3 py-2 border-r border-[#262626]">Action</th>
                       <th className="px-3 py-2 border-r border-[#262626]">Entity</th>
-                      <th className="px-3 py-2 border-r border-[#262626]">User</th>
-                      <th className="px-3 py-2">Details</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">Staff</th>
+                      <th className="px-3 py-2 border-r border-[#262626]">Details</th>
+                      <th className="px-3 py-2">Reason</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#262626]">
                     {visibleAuditLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-3 py-10 text-center text-gray-500 italic">
+                        <td colSpan={7} className="px-3 py-10 text-center text-gray-500 italic">
                           No audit log entries match this view.
                         </td>
                       </tr>
                     ) : (
-                      visibleAuditLogs.map(log => (
-                        <tr key={log.id} className="hover:bg-[#181818] text-gray-300 align-top">
-                          <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap text-gray-400">{formatAuditDate(log.performedAt)}</td>
-                          <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap">
-                            <span className="inline-flex px-2 py-0.5 rounded border border-[#71b536]/25 bg-[#1b2b1a] text-[#71b536] text-[10px] font-bold uppercase">
-                              {auditEventLabels[log.eventType] || log.eventType}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 border-r border-[#262626] text-white font-semibold">{log.action}</td>
-                          <td className="px-3 py-2 border-r border-[#262626]">
-                            <div className="text-white">{log.entityLabel || log.entityId}</div>
-                            <div className="text-[10px] text-gray-500">{log.entityType} - {log.entityId}</div>
-                          </td>
-                          <td className="px-3 py-2 border-r border-[#262626] text-gray-400">{log.performedBy}</td>
-                          <td className="px-3 py-2">
-                            <pre className="max-w-[360px] whitespace-pre-wrap break-words text-[10px] leading-relaxed text-gray-500 bg-[#0d0d0d] border border-[#202020] rounded p-2">
-                              {JSON.stringify(log.details || {}, null, 2)}
-                            </pre>
-                          </td>
-                        </tr>
-                      ))
+                      visibleAuditLogs.map((log, index) => {
+                        const detailText = getAuditDetailText(log);
+                        const reasonText = getAuditReasonText(log);
+                        return (
+                          <tr key={log.id} className={`${index % 2 === 0 ? 'bg-[#101010]' : 'bg-[#161616]'} hover:bg-[#1f1f1f] text-gray-300 align-top transition-colors`}>
+                            <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap text-gray-400">{formatAuditDate(log.performedAt)}</td>
+                            <td className="px-3 py-2 border-r border-[#262626] whitespace-nowrap">
+                              <span className="inline-flex px-2 py-0.5 rounded border border-[#71b536]/25 bg-[#1b2b1a] text-[#71b536] text-[10px] font-bold uppercase">
+                                {auditEventLabels[log.eventType] || log.eventType}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 border-r border-[#262626] text-white font-semibold">{log.action}</td>
+                            <td className="px-3 py-2 border-r border-[#262626]">
+                              <div className="text-white">{log.entityLabel || log.entityId}</div>
+                              <div className="text-[10px] text-gray-500">{log.entityType} - {log.entityId}</div>
+                            </td>
+                            <td className="px-3 py-2 border-r border-[#262626] text-gray-400">{getStaffDisplayName(log.performedBy)}</td>
+                            <td className="px-3 py-2 border-r border-[#262626] max-w-[420px] whitespace-pre-wrap break-words text-[11px] leading-relaxed text-gray-400">
+                              {detailText || <span className="text-gray-600 italic">No details recorded</span>}
+                            </td>
+                            <td className="px-3 py-2 max-w-[300px] whitespace-pre-wrap break-words text-[11px] leading-relaxed text-gray-400">
+                              {reasonText || <span className="text-gray-600 italic">No reason recorded</span>}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -3624,3 +3968,5 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
     </div>
   );
 }
+
+

@@ -480,7 +480,7 @@ export default function PerformanceTab({
       previousInitialBalance,
       newInitialBalance,
       reason,
-      editedBy: currentUser?.username || currentUser?.name || 'unknown',
+      editedBy: currentUser?.name || currentUser?.username || 'unknown',
       editedAt: new Date().toISOString()
     };
 

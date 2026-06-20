@@ -30,10 +30,16 @@ export interface BankAccountAdjustment {
 
 export type AuditEventType =
   | 'delete'
+  | 'customer_update'
+  | 'stock_update'
   | 'staff_create'
   | 'staff_update'
   | 'staff_delete'
+  | 'bank_account_update'
   | 'bank_adjustment'
+  | 'expense_category_update'
+  | 'product_type_update'
+  | 'client_type_update'
   | 'purchase_create'
   | 'purchase_update'
   | 'purchase_delete'
