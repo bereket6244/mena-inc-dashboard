@@ -1818,6 +1818,17 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setIsFormOpen(true);
   };
 
+  const handleMarkPaid = (customer: Customer) => {
+    if (customer.deliveryDate && customer.bankRemainingId) return;
+
+    onUpdateCustomer({
+      ...customer,
+      deliveryDate: customer.deliveryDate || new Date().toISOString().split('T')[0],
+      bankRemainingId: customer.bankRemainingId || activeBankAccounts[0]?.id || 'b1',
+      incompletionReason: ''
+    });
+  };
+
   const validateAndFormatContactInput = (): string | null => {
     const contactValue = phone.trim();
     if (!contactValue) return '';
@@ -3206,6 +3217,15 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleMarkPaid(c)}
+                              disabled={isCompleted}
+                              className={`p-1.5 rounded-md transition-colors ${isCompleted ? 'text-[#71b536]/60 cursor-not-allowed' : 'text-gray-400 hover:text-[#71b536] hover:bg-[#262626] cursor-pointer'}`}
+                              title={isCompleted ? 'Already paid' : 'Mark as Paid'}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setDeletingCustomerId(c.id)}
                               className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                               title="Delete Record"
@@ -3215,7 +3235,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           </div>
                         </div>
                       </td>
-                      
+
                       {/* Order Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
@@ -3230,7 +3250,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           {c.isVatAdded && <span className="col-span-2 text-[8px] text-[#ee317b] uppercase font-bold tracking-tight">15% VAT Inc.</span>}
                         </div>
                       </td>
-                      
+
                       {/* Material Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] bg-[#31111E]/10 font-sans align-top min-w-[210px]">
                         <div className="space-y-0.5">
@@ -3241,52 +3261,52 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           {materialLine('Ajabi', getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks), c.amount9)}
                         </div>
                       </td>
-                      
+
                       {/* Payment Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[230px]">
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
-                            {miniLabel('Advance', formatMoney(c.advancePayment, c.currency), '', 'text-[#71b536]')}
-                            <div>
-                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
-                              <input
-                                type="date"
-                                value={c.advancePaymentDate || ''}
-                                onChange={(e) => onUpdateCustomer({ ...c, advancePaymentDate: e.target.value })}
-                                className="w-full max-w-[118px] bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
-                                title="Change Advance Payment Date directly"
-                              />
-                            </div>
-                            {miniLabel('Advance Bank', getBankName(c.paymentMethodId), '', 'text-gray-400')}
-                            {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal, c.currency), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
-                            {miniLabel('Full', formatMoney(fullVal, c.currency), '', 'text-white font-bold')}
+                          {miniLabel('Advance', formatMoney(c.advancePayment, c.currency), '', 'text-[#71b536]')}
+                          <div>
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
+                            <input
+                              type="date"
+                              value={c.advancePaymentDate || ''}
+                              onChange={(e) => onUpdateCustomer({ ...c, advancePaymentDate: e.target.value })}
+                              className="w-full max-w-[118px] bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
+                              title="Change Advance Payment Date directly"
+                            />
+                          </div>
+                          {miniLabel('Advance Bank', getBankName(c.paymentMethodId), '', 'text-gray-400')}
+                          {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal, c.currency), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
+                          {miniLabel('Full', formatMoney(fullVal, c.currency), '', 'text-white font-bold')}
                         </div>
                       </td>
-                      
+
                       {/* Delivery / Status */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[245px]">
-                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
-                          <div className="min-w-0">
-                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="date"
-                                value={c.deliveryDate || ''}
-                                onChange={(e) => onUpdateCustomer({ ...c, deliveryDate: e.target.value })}
-                                className="min-w-0 w-full max-w-[128px] bg-[#121212] text-[11px] font-semibold text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
-                                title="Change Delivery Date directly"
-                              />
-                              {c.deliveryDate && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateCustomer({ ...c, deliveryDate: '', bankRemainingId: '' })}
-                                  className="text-red-500 hover:text-red-400 font-extrabold px-1 py-0 cursor-pointer text-xs leading-none"
-                                  title="Clear Delivery Date"
-                                >
-                                  x
-                                </button>
-                              )}
+                          <div className="flex flex-wrap items-end gap-2 pt-1">
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="date"
+                                  value={c.deliveryDate || ''}
+                                  onChange={(e) => onUpdateCustomer({ ...c, deliveryDate: e.target.value })}
+                                  className="min-w-0 w-full max-w-[128px] bg-[#121212] text-[11px] font-semibold text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
+                                  title="Change Delivery Date directly"
+                                />
+                                {c.deliveryDate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateCustomer({ ...c, deliveryDate: '', bankRemainingId: '' })}
+                                    className="text-red-500 hover:text-red-400 font-extrabold px-1 py-0 cursor-pointer text-xs leading-none"
+                                    title="Clear Delivery Date"
+                                  >
+                                    x
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
                           <div className="min-w-0">
                             <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining Bank</span>
                             <SearchableSelect
@@ -3637,6 +3657,16 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     Modify
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkPaid(c)}
+                    disabled={isCompleted}
+                    className={`text-xs font-sans font-medium px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 ${isCompleted ? 'text-[#71b536]/60 cursor-not-allowed' : 'text-[#71b536] hover:text-white hover:bg-[#262626] cursor-pointer'}`}
+                    title={isCompleted ? 'Already paid' : 'Mark as Paid'}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Paid
                   </button>
                   <button
                     type="button"
@@ -4030,7 +4060,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               }}
                               className="flex-1 px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-l-md rounded-r-none outline-none focus:border-[#ee317b] disabled:opacity-60 disabled:cursor-not-allowed min-w-0"
                             />
-                            <select
+                            <SearchableSelect
                               value={orderCurrency}
                               onChange={(e) => setOrderCurrency(e.target.value)}
                               className="bg-[#121212] border border-[#262626] text-white px-3 py-2 text-xs rounded-r-md outline-none focus:border-[#ee317b] w-20 font-bold font-sans cursor-pointer border-l-0"
@@ -4040,7 +4070,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                   {curr}
                                 </option>
                               ))}
-                            </select>
+                            </SearchableSelect>
                           </div>
                         </div>
 
@@ -5966,54 +5996,62 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 
                 <div>
                   <label className="block text-gray-500 text-[10px] uppercase mb-1">Lead Channel</label>
-                  <select
+                  <div className="w-full bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus-within:border-[#ee317b]">
+                  <SearchableSelect
                     value={filterSource}
                     onChange={(e) => setFilterSource(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full"
                   >
                     <option value="All">All Leads</option>
                     {acquisitionChannels.map(source => <option key={source} value={source}>{source}</option>)}
-                  </select>
+                  </SearchableSelect>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-gray-500 text-[10px] uppercase mb-1">Debt Status</label>
-                  <select
+                  <div className="w-full bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus-within:border-[#ee317b]">
+                  <SearchableSelect
                     value={filterPayment}
                     onChange={(e) => setFilterPayment(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full"
                   >
                     <option value="All">Any Payment</option>
                     <option value="Debt">Outstanding Debt</option>
                     <option value="Paid">Paid in Full</option>
-                  </select>
+                  </SearchableSelect>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-gray-500 text-[10px] uppercase mb-1">Completion Status</label>
-                  <select
+                  <div className="w-full bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus-within:border-[#ee317b]">
+                  <SearchableSelect
                     value={filterCompletion}
                     onChange={(e) => setFilterCompletion(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full"
                   >
                     <option value="All">All Job Statuses</option>
                     <option value="Completed">Completed Only</option>
                     <option value="Pending">Pending Only</option>
                     <option value="Incomplete">Incomplete / Problematic</option>
-                  </select>
+                  </SearchableSelect>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-gray-500 text-[10px] uppercase mb-1">Receipt Needed</label>
-                  <select
+                  <div className="w-full bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus-within:border-[#ee317b]">
+                  <SearchableSelect
                     value={filterReceipt}
                     onChange={(e) => setFilterReceipt(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#181818] border border-[#262626] text-gray-200 rounded-md outline-none focus:border-[#ee317b]"
+                    className="w-full"
                   >
                     <option value="All">All Receipts</option>
                     <option value="NeedsReceipt">Needs Receipts (VAT)</option>
                     <option value="WithoutReceipt">Without Receipt</option>
-                  </select>
+                  </SearchableSelect>
+                  </div>
                 </div>
 
                 <div className="pt-1.5">

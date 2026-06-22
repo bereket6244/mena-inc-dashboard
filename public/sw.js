@@ -1,9 +1,25 @@
-const CACHE_NAME = 'mena-inc-v2.2-full-export-import';
+const CACHE_NAME = 'mena-inc-v2.3-offline-launch-shell';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/mena-logo.png',
+  '/mena-favicon-light.png',
+  '/mena-favicon-dark.png'
 ];
+
+const cacheFreshResponse = async (request) => {
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.status === 200 && request.method === 'GET') {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (_) {
+    return undefined;
+  }
+};
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -36,20 +52,26 @@ self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) {
     return;
   }
-  
+
+  if (e.request.method !== 'GET') {
+    return;
+  }
+
   e.respondWith(
-    fetch(e.request).then((networkResponse) => {
-      // Cache dynamic local assets on-the-fly to support offline functionality
-      if (networkResponse.status === 200 && e.request.method === 'GET') {
-        const cacheCopy = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, cacheCopy);
-        });
+    caches.match(e.request).then(async (cachedResponse) => {
+      const requestForCache = e.request.mode === 'navigate' ? new Request('/index.html') : e.request;
+      const cachedNavigateResponse = e.request.mode === 'navigate'
+        ? await caches.match(requestForCache)
+        : undefined;
+      const usableCachedResponse = cachedResponse || cachedNavigateResponse;
+
+      if (usableCachedResponse) {
+        e.waitUntil(cacheFreshResponse(requestForCache));
+        return usableCachedResponse;
       }
-      return networkResponse;
-    }).catch(() => {
-      // Fall back to cached local files if the network request fails (offline)
-      return caches.match(e.request);
+
+      const freshResponse = await cacheFreshResponse(requestForCache);
+      return freshResponse || caches.match('/index.html');
     })
   );
 });
