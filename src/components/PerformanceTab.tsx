@@ -833,28 +833,26 @@ export default function PerformanceTab({
           {/* Row 1 */}
           <div className="flex items-center justify-between w-full h-10 gap-2">
             {/* Currency Selector (No dropdown arrow/chevron, text centered) */}
-            {!(isSearchExpanded || summarySearch) && (
-              <div className="relative flex-shrink-0">
-                <select
-                  value={selectedCurrency}
-                  onChange={(e) => {
-                    setSelectedCurrency(e.target.value);
-                    setShowAllCurrencies(false);
-                  }}
-                  style={{ textAlign: 'center', textAlignLast: 'center' }}
-                  className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 text-center shadow-xs focus:outline-none focus:border-[#ee317b] cursor-pointer"
-                >
-                  {newAccountCurrencies.map(curr => (
-                    <option key={curr} value={curr}>
-                      {curr}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="relative flex-shrink-0">
+              <select
+                value={selectedCurrency}
+                onChange={(e) => {
+                  setSelectedCurrency(e.target.value);
+                  setShowAllCurrencies(false);
+                }}
+                style={{ textAlign: 'center', textAlignLast: 'center' }}
+                className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 text-center shadow-xs focus:outline-none focus:border-[#ee317b] cursor-pointer"
+              >
+                {newAccountCurrencies.map(curr => (
+                  <option key={curr} value={curr}>
+                    {curr}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Search & Filter Controls on Right */}
-            <div ref={mobileSearchWrapperRef} className={`flex items-center gap-2 ${isSearchExpanded || summarySearch ? 'w-full flex-1' : ''}`}>
+            <div ref={mobileSearchWrapperRef} className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
               <AnimatePresence initial={false} mode="wait">
                 {!(isSearchExpanded || summarySearch) ? (
                   <motion.div
@@ -992,11 +990,11 @@ export default function PerformanceTab({
                 ) : (
                   <motion.div
                     key="search-input-wrapper"
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: "100%", opacity: 1 }}
-                    exit={{ width: 0, opacity: 0 }}
-                    transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                    className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] py-1.5 px-2.5 shadow-xs focus-within:border-[#ee317b] w-full overflow-hidden"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] py-1.5 px-2.5 shadow-xs focus-within:border-[#ee317b] w-full max-w-[190px] xs:max-w-[220px] overflow-hidden"
                   >
                     <Search className="h-3.5 w-3.5 text-[#6B6258] mr-2 flex-shrink-0" />
                     <input
