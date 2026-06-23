@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mena-inc-v2.5-offline-launch-shell';
+const CACHE_NAME = 'mena-inc-v2.6-offline-launch-shell';
 const ASSETS = [
   '/',
   '/index.html',

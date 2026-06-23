@@ -3285,18 +3285,18 @@ tr.global-search-highlight > th,
 .skeleton-line {
   position: relative;
   overflow: hidden;
-  background: #1b1816;
+  background-color: #1c1816;
   border-radius: 6px;
   width: var(--w, 100%);
   display: inline-block;
   vertical-align: middle;
-  animation: skeletonPulse 2.4s ease-in-out infinite;
 }
 
 .light-theme .skeleton-line {
-  background: #ece7e1;
+  background-color: #e5dfd5;
 }
 
+/* Stable static base shape, only animate the inner reflection shimmer */
 .skeleton-line::before {
   content: "";
   display: block;
@@ -3304,25 +3304,25 @@ tr.global-search-highlight > th,
   inset: 0;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    rgba(238, 49, 123, 0.08) 35%,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(238, 49, 123, 0.09) 30%,
     rgba(113, 181, 54, 0.08) 50%,
-    rgba(238, 49, 123, 0.08) 65%,
-    transparent 100%
+    rgba(238, 49, 123, 0.09) 70%,
+    rgba(255, 255, 255, 0) 100%
   );
   transform: translateX(-100%);
-  animation: skeletonShimmer 1.6s infinite;
+  animation: skeletonShimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .light-theme .skeleton-line::before {
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    rgba(238, 49, 123, 0.06) 35%,
-    rgba(44, 99, 183, 0.06) 50%,
-    rgba(238, 49, 123, 0.06) 65%,
-    transparent 100%
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 40%,
+    rgba(255, 255, 255, 0.45) 60%,
+    rgba(255, 255, 255, 0) 100%
   );
+  animation: skeletonShimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes skeletonShimmer {
@@ -3334,22 +3334,10 @@ tr.global-search-highlight > th,
   }
 }
 
-@keyframes skeletonPulse {
-  0%, 100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .skeleton-line::before {
     animation: none !important;
     display: none !important;
-  }
-  .skeleton-line {
-    animation: none !important;
   }
 }
 
