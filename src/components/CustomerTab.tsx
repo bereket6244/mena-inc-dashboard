@@ -3728,7 +3728,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   {/* Dates & Method 3-column Grid */}
                   <div className="grid grid-cols-3 divide-x divide-[#262626]/50 border-t border-[#262626] mt-3 pt-3 text-xs font-sans">
                     {/* Advance Date Column */}
-                    <div className="flex flex-col gap-1 pr-2">
+                    <div className="flex flex-col gap-1 pr-3.5">
                       <div className="flex items-center justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
                         <div className="flex items-center gap-1 min-w-0">
                           <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
@@ -3766,7 +3766,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </div>
 
                     {/* Final Payment Date Column */}
-                    <div className="flex flex-col gap-1 px-2">
+                    <div className="flex flex-col gap-1 px-3.5">
                       <div className="flex items-center justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
                         <div className="flex items-center gap-1 min-w-0">
                           <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
@@ -3805,7 +3805,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </div>
 
                     {/* Final Method Column */}
-                    <div className="flex flex-col gap-1 pl-2">
+                    <div className="flex flex-col gap-1 pl-3.5">
                       <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-wider mb-1 h-3.5">
                         <CreditCard className="w-3 h-3 text-gray-500 shrink-0" />
                         <span className="truncate">Final Method</span>

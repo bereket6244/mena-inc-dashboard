@@ -170,7 +170,7 @@ export default function SearchableSelect({
   };
 
   return (
-    <div className={`relative font-sans min-h-[30px] ${className}`} ref={wrapperRef}>
+    <div className={`relative font-sans ${className.includes('min-h-') || className.includes('h-') ? '' : 'min-h-[30px]'} ${className}`} ref={wrapperRef}>
       {/* Trigger / Input Field */}
       <div 
         className={`relative w-full h-full min-h-[inherit] flex items-center transition-colors bg-transparent ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}

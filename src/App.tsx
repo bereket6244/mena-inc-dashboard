@@ -483,12 +483,11 @@ export default function App() {
 
   // 30-second deletion undo states & timer integration
   const [deletedHistory, setDeletedHistory] = useState<{
-    type: 'customer' | 'bulk-customers' | 'bank' | 'stock' | 'employee';
+    type: 'customer' | 'bulk-customers' | 'bank' | 'stock' | 'employee' | 'loan' | 'bulk-loans';
     data: any;
     timestamp: number;
   } | null>(null);
-  const [undoCountdown, setUndoCountdown] = useState(30);
-
+  const [undoCountdown, setUndoCountdown] = useState<number>(30);
   useEffect(() => {
     if (!deletedHistory) return;
     setUndoCountdown(30);
@@ -2352,6 +2351,24 @@ export default function App() {
     const newIds = new Set<string>(newLoans.map(loan => loan.id));
     const oldMap = new Map(loans.map(loan => [loan.id, loan]));
 
+    // Track deleted loans for 30s undo
+    const deletedLoans = loans.filter(loan => !newIds.has(loan.id));
+    if (deletedLoans.length > 0) {
+      if (deletedLoans.length === 1) {
+        setDeletedHistory({
+          type: 'loan',
+          data: deletedLoans[0],
+          timestamp: Date.now()
+        });
+      } else {
+        setDeletedHistory({
+          type: 'bulk-loans',
+          data: deletedLoans,
+          timestamp: Date.now()
+        });
+      }
+    }
+
     loans
       .filter(loan => !newIds.has(loan.id))
       .forEach(loan => logAuditEntry({
@@ -2514,6 +2531,20 @@ export default function App() {
         localStorage.setItem('mena_inc_employees_v3', JSON.stringify(updated));
         const { saveEmployeeDoc } = await import('./lib/dbService');
         await saveEmployeeDoc(restored);
+      } else if (type === 'loan') {
+        const item = data as Loan;
+        const updated = [item, ...loans];
+        handleUpdateLoans(updated);
+        const { saveLoanDoc } = await import('./lib/dbService');
+        await saveLoanDoc({ ...item, isDeleted: false, deletedBy: undefined });
+      } else if (type === 'bulk-loans') {
+        const items = data as Loan[];
+        const updated = [...items, ...loans];
+        handleUpdateLoans(updated);
+        const { saveLoanDoc } = await import('./lib/dbService');
+        for (const item of items) {
+          await saveLoanDoc({ ...item, isDeleted: false, deletedBy: undefined });
+        }
       }
     } catch (e) {
       console.error("Undo action failed", e);
@@ -3795,7 +3826,11 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-bold text-[#ee317b] tracking-wider uppercase text-[11px]">
-                  {deletedHistory.type === 'bulk-customers' ? 'Multiple Orders Disposed' : deletedHistory.type === 'employee' ? 'Staff Member Deleted' : 'Ledger Record Disposed'}
+                  {deletedHistory.type === 'bulk-customers' ? 'Multiple Orders Disposed' : 
+                   deletedHistory.type === 'bulk-loans' ? 'Multiple Loans Deleted' : 
+                   deletedHistory.type === 'employee' ? 'Staff Member Deleted' : 
+                   deletedHistory.type === 'loan' ? 'Loan Record Deleted' : 
+                   'Ledger Record Disposed'}
                 </p>
                 <p className="text-gray-400 text-[10px] mt-1">
                   {deletedHistory.type === 'customer' && `Deleted "${deletedHistory.data.clientName}"`}
@@ -3803,6 +3838,8 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
                   {deletedHistory.type === 'bank' && `Deleted account "${deletedHistory.data.name}"`}
                   {deletedHistory.type === 'stock' && `Deleted ${deletedHistory.data.length} stock items`}
                   {deletedHistory.type === 'employee' && `Deleted "${deletedHistory.data.name}" in app and marked deleted in database by ${deletedHistory.data.deletedBy || 'unknown user'}`}
+                  {deletedHistory.type === 'loan' && `Deleted loan for "${deletedHistory.data.personName}"`}
+                  {deletedHistory.type === 'bulk-loans' && `Deleted ${deletedHistory.data.length} loan records`}
                 </p>
               </div>
               <span className="text-[10px] bg-[#ee317b]/10 text-[#ee317b] border border-[#ee317b]/25 px-1.5 py-0.5 font-bold">

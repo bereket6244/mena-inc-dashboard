@@ -406,6 +406,39 @@ export default function PurchasesTab({
   const [warningMessage, setWarningMessage] = useState('');
   const [purchaseToastType, setPurchaseToastType] = useState<AppToastType>('info');
 
+  // Loan Selection and Deletion States
+  const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>([]);
+  const [lastSelectedLoanId, setLastSelectedLoanId] = useState<string | null>(null);
+  const [deletingLoanId, setDeletingLoanId] = useState<string | null>(null);
+  const [showBulkLoanDeleteConfirm, setShowBulkLoanDeleteConfirm] = useState(false);
+
+  const toggleLoanSelection = (loanId: string) => {
+    setSelectedLoanIds(prev => (
+      prev.includes(loanId)
+        ? prev.filter(id => id !== loanId)
+        : [...prev, loanId]
+    ));
+    setLastSelectedLoanId(loanId);
+  };
+
+  const handleLoanRowClick = (loanId: string, event: React.MouseEvent) => {
+    if (selectedLoanIds.length === 0 && !event.shiftKey) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    if (event.shiftKey && lastSelectedLoanId) {
+      const start = sortedLoans.findIndex(loan => loan.id === lastSelectedLoanId);
+      const end = sortedLoans.findIndex(loan => loan.id === loanId);
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start];
+        const rangeIds = sortedLoans.slice(from, to + 1).map(loan => loan.id);
+        setSelectedLoanIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedLoanId(loanId);
+        return;
+      }
+    }
+    toggleLoanSelection(loanId);
+  };
+
   const isAdmin = currentUser?.role === 'admin';
   const showPurchaseToast = (message: string, type: AppToastType = 'success') => {
     setWarningMessage(message);
@@ -1111,8 +1144,20 @@ export default function PurchasesTab({
   };
 
   const handleDeleteLoan = (loanId: string) => {
+    setDeletingLoanId(loanId);
+  };
+
+  const handleConfirmDeleteSingleLoan = (loanId: string) => {
     onUpdateLoans(loans.filter(loan => loan.id !== loanId));
+    setSelectedLoanIds(prev => prev.filter(id => id !== loanId));
+    setDeletingLoanId(null);
     showPurchaseToast('Loan deleted successfully.');
+  };
+
+  const handleBulkLoanDelete = () => {
+    const remaining = loans.filter(l => !selectedLoanIds.includes(l.id));
+    onUpdateLoans(remaining);
+    setSelectedLoanIds([]);
   };
 
   // --- EDITABLE CATEGORIES AND CASCADE CONTROLS ---
@@ -1449,6 +1494,12 @@ export default function PurchasesTab({
         } else if (deletingPurchaseId) {
           event.preventDefault();
           setDeletingPurchaseId(null);
+        } else if (showBulkLoanDeleteConfirm) {
+          event.preventDefault();
+          setShowBulkLoanDeleteConfirm(false);
+        } else if (deletingLoanId) {
+          event.preventDefault();
+          setDeletingLoanId(null);
         } else if (movingCategoryItem) {
           event.preventDefault();
           setMovingCategoryItem(null);
@@ -1471,6 +1522,13 @@ export default function PurchasesTab({
         } else if (deletingPurchaseId) {
           event.preventDefault();
           handleDeleteSingle(deletingPurchaseId);
+        } else if (showBulkLoanDeleteConfirm) {
+          event.preventDefault();
+          handleBulkLoanDelete();
+          setShowBulkLoanDeleteConfirm(false);
+        } else if (deletingLoanId) {
+          event.preventDefault();
+          handleConfirmDeleteSingleLoan(deletingLoanId);
         } else if (movingCategoryItem) {
           event.preventDefault();
           handleConfirmMoveCategoryItem();
@@ -1507,6 +1565,8 @@ export default function PurchasesTab({
     isNewCategoryModeInModal,
     modalNewCategoryName,
     newItemTargetCategory,
+    selectedLoanIds,
+    loans
   ]);
 
   // Filter Purchase Records
@@ -3303,6 +3363,33 @@ export default function PurchasesTab({
             </div>
           </div>
 
+          {/* Loan Bulk Action Ribbon */}
+          {selectedLoanIds.length > 0 && (
+            <div className="hidden md:flex bg-[#121212] border border-[#ee317b]/35 p-3 rounded-md items-center justify-between text-xs font-sans animate-fadeIn shadow-[0_0_18px_rgba(238,49,123,0.08)] mb-3">
+              <div className="text-white font-bold inline-flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#ee317b]" />
+                <span>{selectedLoanIds.length} loan records selected</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLoanIds([])}
+                  className="ml-1 inline-flex items-center justify-center px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
+                >
+                  Deselect All
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkLoanDeleteConfirm(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-400 hover:text-[#F87171] hover:bg-[#262626] border border-[#262626] font-bold cursor-pointer text-[10px] tracking-wider uppercase transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Selected
+                </button>
+              </div>
+            </div>
+          )}
+
           <TableToolbar
             searchQuery={loanSearchQuery}
             setSearchQuery={setLoanSearchQuery}
@@ -3628,11 +3715,34 @@ export default function PurchasesTab({
             }
           />
 
-          <div className={`${loanLayoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden`}>
+          <div className={`${loanLayoutMode === 'grid' ? 'block' : 'hidden'} bg-[#121212] border border-[#262626] rounded-md overflow-hidden ${selectedLoanIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-xs text-gray-300">
                 <thead>
                   <tr className="bg-[#181818] border-b border-[#262626] text-gray-400 uppercase tracking-wider">
+                    <th className="py-1.5 md:py-2.5 px-2.5 md:px-3 border-r border-[#262626] bg-[#1C1C1C] font-bold text-gray-500 font-sans text-center w-8 text-[11px] md:text-xs">#</th>
+                    <th className="py-2.5 px-3 text-center w-12 border-r border-[#262626]">
+                      <input
+                        type="checkbox"
+                        checked={sortedLoans.length > 0 && sortedLoans.every(l => selectedLoanIds.includes(l.id))}
+                        onChange={(e) => {
+                          const allFilteredIds = sortedLoans.map(l => l.id);
+                          if (e.target.checked) {
+                            setSelectedLoanIds(prev => {
+                              const next = [...prev];
+                              allFilteredIds.forEach(id => {
+                                if (!next.includes(id)) next.push(id);
+                              });
+                              return next;
+                            });
+                          } else {
+                            setSelectedLoanIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                          }
+                        }}
+                        className="accent-[#ee317b] cursor-pointer"
+                        title="Select all page loans"
+                      />
+                    </th>
                     <th className="py-2.5 px-3 text-left">Type</th>
                     <th className="py-2.5 px-3 text-left">Person / Org</th>
                     <th className="py-2.5 px-3 text-right">Principal</th>
@@ -3647,15 +3757,38 @@ export default function PurchasesTab({
                 <tbody className="divide-y divide-[#262626]">
                   {sortedLoans.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-gray-500 italic">
+                      <td colSpan={11} className="py-12 text-center text-gray-500 italic">
                         No loans recorded yet.
                       </td>
                     </tr>
-                  ) : sortedLoans.map(loan => {
+                  ) : sortedLoans.map((loan, index) => {
                     const bank = bankAccounts.find(account => account.id === loan.paymentMethodId);
                     const status = getLoanStatus(loan);
+                    const isSelected = selectedLoanIds.includes(loan.id);
                     return (
-                      <tr key={loan.id} className={`hover:bg-[#181818] border-l-2 ${loan.type === 'given' ? 'border-l-[#ee317b]' : 'border-l-[#71b536]'}`}>
+                      <tr 
+                        key={loan.id} 
+                        className={`transition-colors border-l-2 ${loan.type === 'given' ? 'border-l-[#ee317b]' : 'border-l-[#71b536]'} ${
+                          isSelected ? 'selected-row' : 'hover:bg-[#181818]'
+                        }`}
+                        onClick={(e) => handleLoanRowClick(loan.id, e)}
+                      >
+                        <td className="py-2 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">{index + 1}</td>
+                        <td className="py-2 px-3 text-center border-r border-[#262626]">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              setLastSelectedLoanId(loan.id);
+                              if (e.target.checked) {
+                                setSelectedLoanIds(prev => [...prev, loan.id]);
+                              } else {
+                                setSelectedLoanIds(prev => prev.filter(id => id !== loan.id));
+                              }
+                            }}
+                            className="accent-[#ee317b] cursor-pointer"
+                          />
+                        </td>
                         <td className="py-2 px-3">
                           <span className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${loan.type === 'given' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#112918] text-[#71b536]'}`}>
                             {loan.type === 'given' ? 'Given' : 'Received'}
@@ -3715,19 +3848,37 @@ export default function PurchasesTab({
               const status = getLoanStatus(loan);
               const remaining = getLoanRemaining(loan);
               const paid = getLoanPaid(loan);
+              const isSelected = selectedLoanIds.includes(loan.id);
               return (
                 <div
                   key={loan.id}
-                  className={`border rounded-md p-3 shadow-none flex flex-col justify-between gap-3 min-h-[220px] ${
-                    loan.type === 'given'
+                  className={`border rounded-md p-3 shadow-none flex flex-col justify-between gap-3 min-h-[220px] transition-colors ${
+                    isSelected
+                      ? 'selected-row border-[#ee317b]'
+                      : loan.type === 'given'
                       ? 'bg-[#121212] border-[#ee317b]/35 hover:border-[#ee317b]/70'
                       : 'bg-[#121212] border-[#71b536]/35 hover:border-[#71b536]/70'
-                  } transition-colors`}
+                  }`}
+                  onClick={(e) => handleLoanRowClick(loan.id, e)}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              setLastSelectedLoanId(loan.id);
+                              if (e.target.checked) {
+                                setSelectedLoanIds(prev => [...prev, loan.id]);
+                              } else {
+                                setSelectedLoanIds(prev => prev.filter(id => id !== loan.id));
+                              }
+                            }}
+                            className="accent-[#ee317b] cursor-pointer"
+                            title="Select loan"
+                          />
                           <span className={`rounded px-2 py-1 text-[9px] font-bold uppercase ${loan.type === 'given' ? 'bg-[#31111E] text-[#ee317b]' : 'bg-[#112918] text-[#71b536]'}`}>
                             {loan.type === 'given' ? 'Given' : 'Received'}
                           </span>
@@ -3826,6 +3977,123 @@ export default function PurchasesTab({
               </button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bulk Action Ribbon for Loans */}
+      <AnimatePresence>
+        {selectedLoanIds.length > 0 && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-[#121212] border-t border-[#ee317b] text-white z-40 p-3 flex flex-col gap-2 shadow-[0_-4px_15px_rgba(238,49,123,0.15)] pb-5"
+          >
+            <div className="flex justify-between items-center text-xs font-bold text-[#ee317b] mb-1 px-1">
+              <span>{selectedLoanIds.length} Selected Loans</span>
+              <button
+                type="button"
+                onClick={() => setSelectedLoanIds([])}
+                className="text-gray-400 font-normal underline"
+              >
+                Clear Selection
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkLoanDeleteConfirm(true)}
+                className="bg-[#2E181D] border border-red-900/40 text-red-400 py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Selected
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal for Single Loan Delete */}
+      <AnimatePresence>
+        {deletingLoanId && (() => {
+          const target = loans.find(l => l.id === deletingLoanId);
+          if (!target) return null;
+          return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+              <motion.div 
+                initial={{ y: 36, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 36, opacity: 0 }}
+                className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
+              >
+                <div className="space-y-2">
+                  <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Delete Loan Record</h3>
+                  <p className="text-stone-400 text-xs leading-relaxed font-sans">
+                    Are you sure you want to permanently delete the loan record for <strong className="text-white">"{target.personName}"</strong> registered on {target.loanDate} for {target.principalAmount} {target.currency || 'ETB'}?
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
+                  <button
+                    type="button"
+                    onClick={() => setDeletingLoanId(null)}
+                    className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmDeleteSingleLoan(deletingLoanId)}
+                    className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
+                  >
+                    Confirm Delete
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Confirmation Modal for Bulk Loan Delete */}
+      <AnimatePresence>
+        {showBulkLoanDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/85 backdrop-blur-sm ">
+            <motion.div
+              initial={{ y: 36, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 36, opacity: 0 }}
+              className="bg-[#121212] border border-[#ee317b]/40 md:max-w-md w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:p-6 text-left space-y-4 rounded-t-2xl md:rounded-md"
+            >
+              <div className="space-y-2">
+                <h3 className="font-sans text-white font-bold uppercase tracking-wider text-sm">Delete Selected Loans</h3>
+                <p className="text-stone-400 text-xs leading-relaxed font-sans">
+                  Are you absolutely sure you want to permanently delete the <span className="text-white font-bold font-sans">{selectedLoanIds.length}</span> selected loan records?
+                </p>
+                <p className="text-stone-500 text-[11px] leading-relaxed font-sans">
+                  Warning: This action will permanently remove these loans. It cannot be undone.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#262626] font-sans">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkLoanDeleteConfirm(false)}
+                  className="px-4 py-1.5 bg-[#1a1a1a] border border-[#2d2d2d] text-gray-300 hover:text-white hover:bg-[#232323] cursor-pointer text-xs rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleBulkLoanDelete();
+                    setShowBulkLoanDeleteConfirm(false);
+                  }}
+                  className="px-4 py-1.5 bg-[#ee317b] hover:bg-[#d61e63] text-white font-bold cursor-pointer text-xs uppercase rounded-md"
+                >
+                  Delete Selected
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
