@@ -39,7 +39,8 @@ import {
   CheckCircle2,
   RotateCcw,
   Megaphone,
-  ArrowUpDown
+  ArrowUpDown,
+  Calendar
 } from 'lucide-react';
 
 import { 
@@ -187,6 +188,27 @@ interface CustomerTabProps {
   setShowGlobalProforma?: (val: boolean) => void;
   highlightedSearchResult?: { type: string; id: string } | null;
 }
+
+const formatDateFriendly = (dateStr?: string) => {
+  if (!dateStr) return 'Not set';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const dateObj = new Date(year, month, day);
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    }
+  } catch (e) {}
+  return dateStr;
+};
 
 export default function CustomerTab({ 
   isLoading = false,
@@ -3527,7 +3549,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       </DataTableWrapper>
 
       {/* RESPONSIVE CARDS VIEW */}
-      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap md:mb-0 ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
+      <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap pb-32 md:pb-0 ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
         {filteredCustomers.map((c) => {
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
             const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
@@ -3536,17 +3558,55 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             const isSelected = selectedCustomerIds.includes(c.id);
             const isSearchHighlighted = highlightedSearchResult?.id === c.id;
 
-            return (
+             // Collect deductions for table display
+             const deductionsList: Array<{ location: string; item: string; qty: string }> = [];
+             if (getCustomerStockId(c, 'paperType1', paperStocks) !== 'None') {
+               deductionsList.push({
+                 location: 'PAPER 1',
+                 item: getCustomerStockDisplayName(c, 'paperType1', paperStocks),
+                 qty: `${Math.ceil(c.amount1 * c.quantity)} sheets`
+               });
+             }
+             if (getCustomerStockId(c, 'paperType2', paperStocks) !== 'None') {
+               deductionsList.push({
+                 location: 'PAPER 2',
+                 item: getCustomerStockDisplayName(c, 'paperType2', paperStocks),
+                 qty: `${Math.ceil(c.amount2 * c.quantity)} sheets`
+               });
+             }
+             if (getCustomerStockId(c, 'paperType3', paperStocks) !== 'None') {
+               deductionsList.push({
+                 location: 'PAPER 3',
+                 item: getCustomerStockDisplayName(c, 'paperType3', paperStocks),
+                 qty: `${Math.ceil(c.amount3 * c.quantity)} sheets`
+               });
+             }
+             if (getCustomerStockId(c, 'entrancePaper', paperStocks) !== 'None') {
+               deductionsList.push({
+                 location: 'ENTRANCE',
+                 item: getCustomerStockDisplayName(c, 'entrancePaper', paperStocks),
+                 qty: `${Math.ceil(c.amount16 / 16)} sheets`
+               });
+             }
+             if (getCustomerStockId(c, 'ajabiPaper', paperStocks) !== 'None') {
+               deductionsList.push({
+                 location: 'AJABI',
+                 item: getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks),
+                 qty: `${Math.ceil(c.amount9 / 9)} sheets`
+               });
+             }
+
+             return (
               <div 
                 key={c.id} 
                 data-global-search-id={`customer-${c.id}`}
-                className={`border rounded-md p-3 shadow-none flex flex-col justify-between transition-all duration-300 text-gray-300 ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
-                  isCompleted 
-                    ? 'bg-[#112918]/25 border-green-800/60 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.15)] text-green-300' 
-                    : c.incompletionReason
-                      ? 'bg-[#2E181D]/60 border-red-900/60 shadow-[inset_0_1px_0_0_rgba(239,68,68,0.15)] text-red-300'
-                      : isSelected 
-                        ? 'bg-sky-950/20 border-sky-600/60 shadow-[inset_0_1px_0_0_rgba(56,189,248,0.15)] text-sky-300'
+                className={`border rounded-xl p-3.5 shadow-sm flex flex-col justify-between transition-all duration-300 ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
+                  isSelected 
+                    ? 'bg-sky-950/20 border-sky-600/60 text-sky-300'
+                    : isCompleted 
+                      ? 'bg-[#112918]/25 border-green-800/40 text-green-300' 
+                      : c.incompletionReason
+                        ? 'bg-[#2E181D]/30 border-red-800/40 text-red-300'
                         : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]'
                 }`}
                 onClick={(e) => handleCustomerRowClick(c.id, e)}
@@ -3558,8 +3618,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 <div className="space-y-2.5">
                   
                   {/* Top Header Card */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -3571,283 +3631,302 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             setSelectedCustomerIds(prev => prev.filter(id => id !== c.id));
                           }
                         }}
-                        className="accent-[#ee317b] w-4.5 h-4.5 mt-0.5 cursor-pointer rounded-md border border-[#262626]"
+                        className="accent-[#ee317b] w-4 h-4 cursor-pointer rounded-md border border-[#262626] shrink-0"
                         title="Select/Deselect order item"
                       />
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`text-[10px] uppercase font-sans font-bold px-2 py-0.5 rounded-md border ${
-                            c.clientType === 'Organization' ? 'bg-[#2E181D] text-[#F87171] border-[#5D2D35]' : c.clientType === 'Individual' ? 'bg-[#181818] text-gray-300 border-[#262626]' : 'bg-[#1e1e1e] text-[#ee317b] border-[#ee317b]/30'
-                          }`}>
-                            {c.clientType}
-                          </span>
-                          
-                          {isCompleted && (
-                            <span className="text-[10px] bg-green-900/40 text-green-300 px-2 py-0.5 font-sans border border-green-800/40 rounded-md font-bold uppercase">
-                              ✓ COMPLETED
-                            </span>
-                          )}
-
-                          <span className="text-[10px] bg-[#181818] text-gray-400 px-1.5 py-0.5 font-sans border border-[#262626] rounded-md">
-                            AGENT: {c.orderTakenBy.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="mt-2.5 flex items-center gap-1.5 min-w-0">
-                          <h3
-                            data-row-action="true"
-                            className="min-w-0 truncate font-sans font-bold text-white text-base cursor-pointer hover:text-[#ee317b] hover:underline transition-colors"
-                            title="Click to copy and share order message details"
-                            onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
-                          >
-                            {c.clientName}
-                          </h3>
-                          {copiedOrderMessageIds.includes(c.id) && (
-                            <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
-                              Copied
-                            </span>
-                          )}
-                          {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
-                            <div
-                              ref={orderMessageMenuRef}
-                              className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
-                              style={{
-                                top: Math.max(8, orderMessageMenuPosition.top),
-                                left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
-                              }}
-                            >
-                              <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
-                              <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
-                              <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
-                              {formatContactDisplay(c.phone || '').type === 'phone' && (
-                                <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
-                              )}
-                            </div>,
-                            document.body
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2 text-xs font-sans font-bold text-gray-500">
+                        <span>#{c.id.substring(c.id.length - 4)}</span>
+                        <span className="w-px h-3 bg-[#262626]"></span>
+                        <span className="text-[9px] uppercase font-sans font-bold px-1.5 py-0.5 rounded-md border bg-[#181818] border-[#262626] text-gray-300">
+                          {c.clientType}
+                        </span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 font-sans">
-                        #{c.id.substring(c.id.length - 4)}
+                    <div>
+                      {isCompleted ? (
+                        <span className="text-[9px] bg-green-950/20 text-green-400 border border-green-800/40 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                          Completed
+                        </span>
+                      ) : c.incompletionReason ? (
+                        <span className="text-[9px] bg-red-950/20 text-red-400 border border-red-800/40 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                          Issue
+                        </span>
+                      ) : (
+                        <span className="text-[9px] bg-[#2D210F]/40 text-amber-400 border border-[#5A4515] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                          Pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer name and Contact/Agent Row */}
+                  <div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3
+                        data-row-action="true"
+                        className="min-w-0 truncate font-sans font-bold text-white text-lg cursor-pointer hover:text-[#ee317b] hover:underline transition-colors animate-fade-in"
+                        title="Click to copy and share order message details"
+                        onClick={(event) => handleCustomerNameClick(c, event.currentTarget)}
+                      >
+                        {c.clientName}
+                      </h3>
+                      {copiedOrderMessageIds.includes(c.id) && (
+                        <span className="shrink-0 rounded border border-[#71b536]/40 bg-[#112918] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#71b536] shadow-sm">
+                          Copied
+                        </span>
+                      )}
+                      {activeOrderMessageMenuId === c.id && orderMessageMenuPosition && createPortal(
+                        <div
+                          ref={orderMessageMenuRef}
+                          className="fixed z-[9999] w-48 rounded-md border border-[#262626] bg-[#181818] p-1 shadow-2xl"
+                          style={{
+                            top: Math.max(8, orderMessageMenuPosition.top),
+                            left: Math.max(8, Math.min(orderMessageMenuPosition.left, window.innerWidth - 200)),
+                          }}
+                        >
+                          <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
+                          <button type="button" onClick={() => handleOrderMessageShare(c, 'whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><Send className="w-3 h-3" /> WhatsApp</button>
+                          <button type="button" onClick={() => handleOrderMessageShare(c, 'telegram')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> Telegram</button>
+                          {formatContactDisplay(c.phone || '').type === 'phone' && (
+                            <button type="button" onClick={() => handleOrderMessageShare(c, 'sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]"><MessageCircle className="w-3 h-3" /> SMS</button>
+                          )}
+                        </div>,
+                        document.body
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-[#181818] border border-[#262626] flex items-center justify-center shrink-0">
+                          <User className="w-3 h-3 text-gray-500" />
+                        </div>
+                        <ContactInfoControl customer={c} />
+                      </div>
+                      <span className="text-xs text-gray-400 font-sans shrink-0">
+                        Agent: {c.orderTakenBy}
                       </span>
                     </div>
                   </div>
 
-                  {/* Detail Info */}
-                  <div className="text-xs text-gray-300 space-y-1.5 font-sans animate-fade-in">
-                    <div className="flex items-center gap-2">
-                       <ContactInfoControl customer={c} />
+                  {/* Product Details Section */}
+                  <div className="flex items-center gap-2.5 mt-3">
+                    <div className="w-8 h-8 rounded-full bg-[#2a111a] flex items-center justify-center shrink-0">
+                      <Layers className="w-4 h-4 text-[#ee317b]" />
                     </div>
-                     <div className="flex flex-col gap-2">
-                       <div className="flex items-center gap-2 font-sans text-xs">
-                          <span className="text-[#ee317b] font-bold text-xs">📅</span>
-                          <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
-                            Final Payment Date:
-                            <input
-                              type="date"
-                              value={c.deliveryDate || ''}
-                              onChange={(e) => {
-                                onUpdateCustomer({
-                                  ...c,
-                                  deliveryDate: e.target.value
-                                });
-                              }}
-                              className="bg-[#161616] text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer"
-                            />
-                            {c.deliveryDate && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  onUpdateCustomer({
-                                    ...c,
-                                    deliveryDate: '',
-                                    bankRemainingId: '' // Reset completion status
-                                  });
-                                }}
-                                className="text-red-500 hover:text-red-400 font-extrabold px-1.5 py-0.5 cursor-pointer text-xs"
-                                title="Clear Final Payment Date"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </span>
-                       </div>
-                       
-                       <div className="flex items-center gap-2 font-sans text-xs">
-                          <span className="text-[#ee317b] font-bold text-xs">🏦</span>
-                          <span className="text-gray-400 flex items-center gap-1.5 flex-wrap">
-                            Final Method:
-                            <SearchableSelect
-                              value={c.bankRemainingId || ''}
-                              onChange={(e) => {
-                                onUpdateCustomer({
-                                  ...c,
-                                  bankRemainingId: e.target.value || undefined
-                                });
-                              }}
-                              className="bg-[#161616] text-[#ee317b] hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] font-sans px-1.5 py-0.5 rounded-md outline-none cursor-pointer max-w-[150px] truncate"
-                            >
-                              <option value="">- Unpaid -</option>
-                              {activeBankAccounts.map(b => (
-                                <option key={b.id} value={b.id}>
-                                  {b.name}
-                                </option>
-                              ))}
-                            </SearchableSelect>
-                          </span>
-                       </div>
-                     </div>
-                    <div className="flex items-center gap-2">
-                       <Layers className="w-3.5 h-3.5 text-[#ee317b]" />
-                       <span>Product: <strong className="text-white font-sans">{c.productType} ({c.quantity} pcs)</strong></span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[8px] text-gray-400 block uppercase tracking-wider font-bold">PRODUCT</span>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        <span className="font-bold text-white text-sm truncate">{c.productType}</span>
+                        <span className="bg-[#181818] text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#262626] shrink-0">
+                          {c.quantity} pcs
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Deductions breakdown */}
-                  <div className="bg-[#181818] border border-[#262626] rounded-md p-3 text-xs space-y-2">
-                    <span className="font-sans text-[10px] text-gray-500 uppercase tracking-wider block font-bold">STOCK ROOM DEDUCTIONS</span>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 font-sans">
-                      {getCustomerStockId(c, 'paperType1', paperStocks) !== 'None' && (() => {
-                        const sheets = Math.ceil(c.amount1 * c.quantity);
-                        return (
-                          <div>
-                            <span className="text-gray-500 block text-[10px]">PAPER 1 (x Qty):</span>
-                            <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {getCustomerStockDisplayName(c, 'paperType1', paperStocks)} ({sheets} sheets)
-                            </span>
-                          </div>
-                        );
-                      })()}
+                  {/* Dates & Method 3-column Grid */}
+                  <div className="grid grid-cols-3 divide-x divide-[#262626]/50 border-t border-[#262626] mt-3 pt-3 text-xs font-sans">
+                    {/* Advance Date Column */}
+                    <div className="flex flex-col gap-1 pr-2">
+                      <div className="flex items-center justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
+                          <span className="truncate">Advance Date</span>
+                        </div>
+                        {c.advancePaymentDate && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateCustomer({
+                                ...c,
+                                advancePaymentDate: ''
+                              });
+                            }}
+                            className="text-red-500 hover:text-red-400 font-sans font-extrabold cursor-pointer text-[9px] px-1 hover:bg-red-500/10 rounded shrink-0"
+                            title="Clear Advance Date"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="date"
+                        value={c.advancePaymentDate || ''}
+                        onChange={(e) => {
+                          onUpdateCustomer({
+                            ...c,
+                            advancePaymentDate: e.target.value
+                          });
+                        }}
+                        className="bg-[#161616] text-[#71b536] border border-[#262626] hover:border-[#71b536] focus:border-[#71b536] rounded-md px-1 h-7 text-[10px] font-sans font-bold w-full mt-1 outline-none cursor-pointer text-center"
+                        title="Choose Advance Payment Date"
+                      />
+                    </div>
 
-                      {getCustomerStockId(c, 'paperType2', paperStocks) !== 'None' && (() => {
-                        const sheets = Math.ceil(c.amount2 * c.quantity);
-                        return (
-                          <div>
-                            <span className="text-gray-500 block text-[10px]">PAPER 2 (x Qty):</span>
-                            <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {getCustomerStockDisplayName(c, 'paperType2', paperStocks)} ({sheets} sheets)
-                            </span>
-                          </div>
-                        );
-                      })()}
+                    {/* Final Payment Date Column */}
+                    <div className="flex flex-col gap-1 px-2">
+                      <div className="flex items-center justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
+                          <span className="truncate">Final Payment</span>
+                        </div>
+                        {c.deliveryDate && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateCustomer({
+                                ...c,
+                                deliveryDate: '',
+                                bankRemainingId: '' // Reset completion status
+                              });
+                            }}
+                            className="text-red-500 hover:text-red-400 font-sans font-extrabold cursor-pointer text-[9px] px-1 hover:bg-red-500/10 rounded shrink-0"
+                            title="Clear Final Payment Date"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="date"
+                        value={c.deliveryDate || ''}
+                        onChange={(e) => {
+                          onUpdateCustomer({
+                            ...c,
+                            deliveryDate: e.target.value
+                          });
+                        }}
+                        className="bg-[#161616] text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] rounded-md px-1 h-7 text-[10px] font-sans font-bold w-full mt-1 outline-none cursor-pointer text-center"
+                        title="Choose Final Payment Date"
+                      />
+                    </div>
 
-                      {getCustomerStockId(c, 'paperType3', paperStocks) !== 'None' && (() => {
-                        const sheets = Math.ceil(c.amount3 * c.quantity);
-                        return (
-                          <div>
-                            <span className="text-gray-500 block text-[10px]">PAPER 3 (x Qty):</span>
-                            <span className="font-medium text-stone-200" title="Sheets per card multiplied by card quantity, rounded up to next integer">
-                              {getCustomerStockDisplayName(c, 'paperType3', paperStocks)} ({sheets} sheets)
-                            </span>
-                          </div>
-                        );
-                      })()}
-
-                      {getCustomerStockId(c, 'entrancePaper', paperStocks) !== 'None' && (() => {
-                        const sheets = Math.ceil(c.amount16 / 16);
-                        return (
-                          <div>
-                            <span className="text-gray-500 block text-[10px]">ENTRANCE (Pieces / 16):</span>
-                            <span className="font-medium text-stone-200" title="Entrance pieces divided by 16, rounded up">
-                              {getCustomerStockDisplayName(c, 'entrancePaper', paperStocks)} ({sheets} sheets)
-                            </span>
-                          </div>
-                        );
-                      })()}
-
-                      {getCustomerStockId(c, 'ajabiPaper', paperStocks) !== 'None' && (() => {
-                        const sheets = Math.ceil(c.amount9 / 9);
-                        return (
-                          <div>
-                            <span className="text-gray-500 block text-[10px]">AJABI (Pieces / 9):</span>
-                            <span className="font-medium text-stone-200" title="Ajabi pieces divided by 9, rounded up">
-                              {getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks)} ({sheets} sheets)
-                            </span>
-                          </div>
-                        );
-                      })()}
+                    {/* Final Method Column */}
+                    <div className="flex flex-col gap-1 pl-2">
+                      <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-wider mb-1 h-3.5">
+                        <CreditCard className="w-3 h-3 text-gray-500 shrink-0" />
+                        <span className="truncate">Final Method</span>
+                      </div>
+                      <SearchableSelect
+                        value={c.bankRemainingId || ''}
+                        onChange={(e) => {
+                          onUpdateCustomer({
+                            ...c,
+                            bankRemainingId: e.target.value || undefined
+                          });
+                        }}
+                        className="bg-[#161616] text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] rounded-md px-1 h-7 min-h-0 text-[10px] font-sans font-bold w-full truncate"
+                        inputClassName="text-center text-[10px] py-0"
+                        placeholder="Unpaid"
+                      >
+                        <option value="">Unpaid</option>
+                        {activeBankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </SearchableSelect>
                     </div>
                   </div>
 
-                  {/* Finance Calculations */}
-                  <div className="border-t border-[#262626] pt-3 grid grid-cols-3 gap-1 text-center font-sans text-xs">
-                    <div>
-                      <span className="text-gray-500 block text-[9px] uppercase">Full Value</span>
-                      <span className="font-bold text-white">{fullVal.toLocaleString()} ETB</span>
+                  {/* Finance Calculations Card */}
+                  <div className="bg-[#151515] border border-[#262626] rounded-xl p-2.5 mt-3 grid grid-cols-3 divide-x divide-[#262626] text-center font-sans">
+                    <div className="px-1">
+                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">Full Value</span>
+                      <span className="font-bold text-white text-xs mt-1 block whitespace-nowrap">{fullVal.toLocaleString()} ETB</span>
                     </div>
-                    <div>
-                      <span className="text-gray-500 block text-[9px] uppercase">Received</span>
-                      <span className="font-bold text-[#71b536]">{c.advancePayment.toLocaleString()} ETB</span>
+                    <div className="px-1">
+                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">Received</span>
+                      <span className="font-bold text-[#71b536] text-xs mt-1 block whitespace-nowrap">{c.advancePayment.toLocaleString()} ETB</span>
                     </div>
-                    <div>
-                      <span className="text-gray-500 block text-[9px] uppercase">Debt Due</span>
-                      <span className={`font-bold ${remainingVal > 0 ? 'text-[#F87171]' : 'text-gray-400'}`}>
+                    <div className="px-1">
+                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">Debt Due</span>
+                      <span className={`font-bold text-xs mt-1 block whitespace-nowrap ${remainingVal > 0 ? 'text-red-400' : 'text-gray-400'}`}>
                         {remainingVal === 0 ? 'None' : `${remainingVal.toLocaleString()} ETB`}
                       </span>
                     </div>
                   </div>
 
-                  {/* Dynamic Treasury Deposit Indicators */}
-                  <div className="mt-3.5 pt-2.5 border-t border-[#262626]/60 flex flex-col gap-1.5 text-[10px] font-sans">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 uppercase text-[8px] tracking-wider">Deposit A/C (Advance)</span>
-                      <span className="text-gray-300 font-medium truncate max-w-[180px]">
-                        {!c.paymentMethodId ? 'Empty / Unpaid' : (bankAccounts.find(ac => ac.id === c.paymentMethodId)?.name || 'Empty / Unpaid')}
+                  {/* Stock Room Deductions Card */}
+                  {deductionsList.length > 0 && (
+                    <div className="bg-[#181818] border border-[#262626] rounded-xl p-3 mt-3 text-[11px] font-sans">
+                      <span className="font-sans text-[8px] text-gray-400 uppercase tracking-wider block font-bold mb-2">
+                        STOCK ROOM DEDUCTIONS ({deductionsList.length})
                       </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 uppercase text-[8px] tracking-wider">A/C for Remaining Due</span>
-                      <span className="text-[#ee317b] font-medium truncate max-w-[180px]">
-                        {c.bankRemainingId === '' ? 'Unpaid / Pending' : (bankAccounts.find(ac => ac.id === (c.bankRemainingId || 'b1'))?.name || 'CBE')}
-                      </span>
-                    </div>
-                    {c.incompletionReason && (
-                      <div className="pt-2 border-t border-[#262626]/40 text-left">
-                        <span className="text-gray-500 uppercase text-[8px] tracking-wider block mb-0.5">Incompletion Reason / Notes:</span>
-                        <p className="text-stone-400 leading-normal text-xs">{c.incompletionReason}</p>
+                      <div className="w-full">
+                        <div className="grid grid-cols-[1fr_1.5fr_1fr] text-gray-400 font-bold border-b border-[#262626] pb-0.5 uppercase tracking-wider text-[8px]">
+                          <div>Location</div>
+                          <div>Item</div>
+                          <div className="text-right">Qty</div>
+                        </div>
+                        <div className="divide-y divide-[#262626]/40 mt-1">
+                          {deductionsList.map((d, index) => (
+                            <div key={index} className="grid grid-cols-[1fr_1.5fr_1fr] py-1.5 text-gray-300 font-semibold">
+                              <div className="text-gray-400">{d.location}</div>
+                              <div className="truncate pr-2">{d.item}</div>
+                              <div className="text-right text-white font-bold">{d.qty}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {c.incompletionReason && (
+                    <div className="pt-2 border-t border-[#262626]/40 text-left text-[9px] font-sans">
+                      <span className="text-gray-400 uppercase text-[8px] tracking-wider block mb-0.5">Incompletion Reason / Notes:</span>
+                      <p className="text-gray-300 leading-normal text-xs">{c.incompletionReason}</p>
+                    </div>
+                  )}
 
                 </div>
 
                 {/* Card footer buttons */}
-                <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-[#262626]">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDuplicate(c)}
-                    className="text-xs text-sky-400 hover:text-white font-sans font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer"
-                    title="Copy details to add another order for this client"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    +Order
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(c)}
-                    className="text-xs text-[#ee317b] hover:text-white font-sans font-medium hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    Modify
-                  </button>
+                <div className="grid grid-cols-4 gap-1.5 mt-3.5 pt-3 border-t border-[#262626]">
                   <button
                     type="button"
                     onClick={() => handleMarkPaid(c)}
                     disabled={isCompleted}
-                    className={`text-xs font-sans font-medium px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 ${isCompleted ? 'text-[#71b536]/60 cursor-not-allowed' : 'text-[#71b536] hover:text-white hover:bg-[#262626] cursor-pointer'}`}
+                    className={`text-[10px] font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                      isCompleted 
+                        ? 'bg-[#1c1c1c] text-gray-500 border border-[#262626] cursor-not-allowed' 
+                        : 'bg-[#116e33] hover:bg-[#0e5c2a] text-white keep-text-white cursor-pointer'
+                    }`}
                     title={isCompleted ? 'Already paid' : 'Mark as Paid'}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Paid
+                    <CheckCircle2 className={`w-3 h-3 shrink-0 ${isCompleted ? 'text-gray-500' : 'text-white keep-text-white'}`} />
+                    <span className="truncate">Mark Paid</span>
                   </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(c)}
+                    className="text-[10px] border border-rose-900/40 hover:bg-rose-950/10 text-rose-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                  >
+                    <Edit3 className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Modify</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDuplicate(c)}
+                    className="text-[10px] border border-blue-900/40 hover:bg-blue-950/10 text-blue-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                    title="Copy details to add another order for this client"
+                  >
+                    <Plus className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Order</span>
+                  </button>
+                  
                   <button
                     type="button"
                     onClick={() => setDeletingCustomerId(c.id)}
-                    className="text-xs text-gray-400 hover:text-[#F87171] font-sans hover:bg-[#262626] px-2.5 py-1.5 rounded-md transition-all cursor-pointer"
+                    className="text-[10px] bg-[#a61f17] hover:bg-[#8f1a13] text-white keep-text-white font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    Remove
+                    <Trash2 className="w-3 h-3 shrink-0 text-white keep-text-white" />
+                    <span className="truncate">Remove</span>
                   </button>
                 </div>
               </div>

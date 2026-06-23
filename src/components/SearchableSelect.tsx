@@ -170,10 +170,10 @@ export default function SearchableSelect({
   };
 
   return (
-    <div className={`relative font-sans ${className}`} ref={wrapperRef}>
+    <div className={`relative font-sans min-h-[30px] ${className}`} ref={wrapperRef}>
       {/* Trigger / Input Field */}
       <div 
-        className={`relative w-full h-full min-h-[30px] flex items-center transition-colors bg-transparent ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
+        className={`relative w-full h-full min-h-[inherit] flex items-center transition-colors bg-transparent ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
         style={{ backgroundColor: 'inherit' }}
         onClick={() => {
           if (!disabled && !isOpen) setIsOpen(true);
