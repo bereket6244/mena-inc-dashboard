@@ -1394,7 +1394,7 @@ tr.out-of-stock-row td:first-child {
   background-color: var(--danger-soft) !important;
 }
 .light-theme .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3), td, th) {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 .light-theme .freeze-pane-table tbody tr.low-stock-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #ffe9a8 !important;
@@ -2100,8 +2100,8 @@ option {
 
 .light-theme .selected-row,
 .light-theme tr.selected-row td {
-  background-color: #e8e0c9 !important;
-  border-left-color: #b9aa85 !important;
+  background-color: #eef5ff !important;
+  border-left-color: #2c63b7 !important;
 }
 
 .light-theme .text-\[\#ee317b\],
@@ -2295,8 +2295,8 @@ option {
 
 .light-theme .selected-row,
 .light-theme tr.selected-row td {
-  background-color: #e8e0c9 !important;
-  border-left-color: #b9aa85 !important;
+  background-color: #eef5ff !important;
+  border-left-color: #2c63b7 !important;
 }
 
 .light-theme .text-\[\#ee317b\],
@@ -2759,6 +2759,16 @@ textarea:disabled {
     padding-bottom: 1rem !important;
   }
 
+  .mobile-loans-container {
+    height: calc(100dvh - var(--mobile-bottom-nav-height) - 7.5rem) !important;
+    max-height: calc(100dvh - var(--mobile-bottom-nav-height) - 7.5rem) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-bottom: 5.5rem !important;
+  }
+
   .shared-gallery-scroll.mobile-selection-lift,
   .customer-gallery-scroll.mobile-selection-lift {
     padding-bottom: 240px !important;
@@ -2880,7 +2890,7 @@ tr.selected-row.out-of-stock-row td,
 .light-theme .freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 
 tr.selected-row td,
@@ -2895,7 +2905,7 @@ tr.selected-row th::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-color: rgba(232, 224, 201, 0.72);
+  background-color: rgba(219, 234, 254, 0.65);
   mix-blend-mode: multiply;
 }
 
@@ -2933,22 +2943,22 @@ tr.selected-row th > * {
 
 .light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row:nth-child(odd) td {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row:nth-child(odd) td {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 
 .light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(even) td,
 .light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row:nth-child(odd) td {
-  background-color: #e8e0c9 !important;
+  background-color: #eef5ff !important;
 }
 
 .global-search-highlight {

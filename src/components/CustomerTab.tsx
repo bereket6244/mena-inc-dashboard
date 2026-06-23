@@ -164,6 +164,7 @@ function convertColorStringToRgb(str: string): string {
 
 
 interface CustomerTabProps {
+  isLoading?: boolean;
   customers: Customer[];
   paperStocks: PaperStock[];
   bankAccounts: BankAccount[];
@@ -188,6 +189,7 @@ interface CustomerTabProps {
 }
 
 export default function CustomerTab({ 
+  isLoading = false,
   customers, 
   paperStocks, 
   bankAccounts,
@@ -1232,6 +1234,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false);
   const [bulkCompleteDate, setBulkCompleteDate] = useState<string>('');
   const [bulkCompleteBankId, setBulkCompleteBankId] = useState<string>('b1');
+  const [singleMarkPaidId, setSingleMarkPaidId] = useState<string | null>(null);
 
   useEffect(() => {
     if (
@@ -1820,13 +1823,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const handleMarkPaid = (customer: Customer) => {
     if (customer.deliveryDate && customer.bankRemainingId) return;
-
-    onUpdateCustomer({
-      ...customer,
-      deliveryDate: customer.deliveryDate || new Date().toISOString().split('T')[0],
-      bankRemainingId: customer.bankRemainingId || activeBankAccounts[0]?.id || 'b1',
-      incompletionReason: ''
-    });
+    setSingleMarkPaidId(customer.id);
+    setBulkCompleteDate(new Date().toISOString().split('T')[0]);
+    setBulkCompleteBankId('b1');
+    setShowBulkCompleteModal(true);
   };
 
   const validateAndFormatContactInput = (): string | null => {
@@ -2015,8 +2015,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   };
 
   const executeBulkCompleteConfirmed = () => {
+    const targetIds = singleMarkPaidId ? [singleMarkPaidId] : selectedCustomerIds;
     const updatedList = customers.map(c => {
-      if (selectedCustomerIds.includes(c.id)) {
+      if (targetIds.includes(c.id)) {
         return {
           ...c,
           deliveryDate: c.deliveryDate || bulkCompleteDate,
@@ -2026,7 +2027,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       return c;
     });
     onBulkUpdateCustomers(updatedList);
-    setSelectedCustomerIds([]);
+    if (!singleMarkPaidId) {
+      setSelectedCustomerIds([]);
+    }
+    setSingleMarkPaidId(null);
     setShowBulkCompleteModal(false);
   };
 
@@ -3103,7 +3107,138 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
-                {filteredCustomers.map((c, index) => {
+                {isLoading ? (
+                  <>
+                    {Array.from({ length: 7 }).map((_, rowIndex) => (
+                      <tr 
+                        key={`skeleton-row-${rowIndex}`}
+                        className="border-b border-[#262626] vertical-top align-top"
+                      >
+                        {/* 1. Row number / checkbox */}
+                        <td className="p-3 border-r border-[#262626] text-center w-8 text-xs text-gray-500 font-sans">
+                          {rowIndex + 1}
+                        </td>
+                        <td className="p-3 border-r border-[#262626] text-center w-10">
+                          <input type="checkbox" disabled className="opacity-30 accent-[#ee317b]" />
+                        </td>
+
+                        {/* 2. Client Info */}
+                        <td className="p-3 border-r border-[#262626] min-w-[190px]">
+                          <div className="flex gap-2.5 items-start">
+                            {/* Circular Avatar Placeholder */}
+                            <div className="w-8 h-8 rounded-full skeleton-line shrink-0" style={{ '--w': '32px' } as React.CSSProperties} />
+                            <div className="space-y-2 flex-1">
+                              {/* Name bar */}
+                              <div className="skeleton-line h-3" style={{ '--w': '85%' } as React.CSSProperties} />
+                              {/* Contact bar */}
+                              <div className="skeleton-line h-2.5" style={{ '--w': '60%' } as React.CSSProperties} />
+                              {/* Small icon placeholders */}
+                              <div className="flex gap-1.5 pt-1">
+                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
+                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
+                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 3. Order Info */}
+                        <td className="p-3 border-r border-[#262626] min-w-[190px]">
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 text-[10px] font-sans">
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                              <span className="text-gray-500 uppercase font-bold">By</span>
+                              <div className="skeleton-line h-2.5" style={{ '--w': '40px' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                              <span className="text-gray-500 uppercase font-bold">Product</span>
+                              <div className="skeleton-line h-2.5" style={{ '--w': '45px' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                              <span className="text-gray-500 uppercase font-bold">Qty</span>
+                              <div className="skeleton-line h-2.5" style={{ '--w': '30px' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                              <span className="text-gray-500 uppercase font-bold">Unit</span>
+                              <div className="skeleton-line h-2.5" style={{ '--w': '35px' } as React.CSSProperties} />
+                            </div>
+                            <div className="col-span-2 flex justify-between items-center border-t border-[#262626] pt-1.5 mt-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Total</span>
+                              <div className="skeleton-line h-3" style={{ '--w': '60px' } as React.CSSProperties} />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 4. Material Info */}
+                        <td className="p-3 border-r border-[#262626] min-w-[210px] bg-[#31111E]/5">
+                          <div className="space-y-2 font-sans">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5" style={{ '--w': '70%' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5" style={{ '--w': '50%' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5" style={{ '--w': '60%' } as React.CSSProperties} />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 5. Payment Info */}
+                        <td className="p-3 border-r border-[#262626] min-w-[230px]">
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-[10px] font-sans">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Advance</span>
+                              <div className="skeleton-line h-3 bg-[#71b536]/15" style={{ '--w': '50px' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Advance Date</span>
+                              <div className="w-full h-4 rounded skeleton-line" />
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Advance Bank</span>
+                              <div className="skeleton-line h-2.5" style={{ '--w': '60px' } as React.CSSProperties} />
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Remaining</span>
+                              <div className="skeleton-line h-3 bg-[#ee317b]/15" style={{ '--w': '55px' } as React.CSSProperties} />
+                            </div>
+                            <div className="col-span-2 flex justify-between items-center border-t border-[#262626] pt-1.5 mt-0.5">
+                              <span className="text-gray-500 uppercase font-bold">Full Val</span>
+                              <div className="skeleton-line h-3" style={{ '--w': '70px' } as React.CSSProperties} />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 6. Delivery / Status */}
+                        <td className="p-3 min-w-[210px] bg-[#31111E]/5">
+                          <div className="flex flex-wrap gap-2.5 items-end">
+                            <div className="flex-1 min-w-[90px] flex flex-col gap-0.5">
+                              <span className="text-[8px] text-gray-500 uppercase font-bold">Delivery Date</span>
+                              <div className="w-full h-4 rounded skeleton-line" />
+                            </div>
+                            <div className="flex-1 min-w-[90px] flex flex-col gap-0.5">
+                              <span className="text-[8px] text-gray-500 uppercase font-bold">Remaining Bank</span>
+                              <div className="w-full h-4 rounded skeleton-line" />
+                            </div>
+                            <div className="flex-1 min-w-[60px] flex flex-col gap-0.5">
+                              <span className="text-[8px] text-gray-500 uppercase font-bold">Status</span>
+                              <div className="w-full h-4 rounded-full skeleton-line bg-[#ee317b]/10" />
+                            </div>
+                            <div className="flex-[1.2] min-w-[100px] flex flex-col gap-0.5">
+                              <span className="text-[8px] text-gray-500 uppercase font-bold">Incomplete Reason</span>
+                              <div className="w-full h-4 rounded skeleton-line" />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {filteredCustomers.map((c, index) => {
                   const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
                   const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
                   const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
@@ -3347,6 +3482,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       No customer ledger logs matching this criteria.
                     </td>
                   </tr>
+                )}
+                </>
                 )}
               </tbody>
             </DataTable>
@@ -4699,20 +4836,27 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={() => {
+              setShowBulkCompleteModal(false);
+              setSingleMarkPaidId(null);
+            }}
             className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-[#121212] border border-[#71b536]/60 max-w-md w-full p-6 text-left space-y-5 rounded-md"
             >
               <div className="flex items-start gap-3.5">
                 <div className="text-[#71b536] text-3xl">✓</div>
                 <div className="space-y-1.5 font-semibold text-white w-full">
-                  <h3 className="text-white text-sm font-bold uppercase tracking-wider">Confirm Bulk Completion</h3>
+                  <h3 className="text-white text-sm font-bold uppercase tracking-wider">
+                    {singleMarkPaidId || selectedCustomerIds.length === 1 ? 'Confirm Completion' : 'Confirm Bulk Completion'}
+                  </h3>
                   <p className="text-xs text-gray-400 font-sans font-normal leading-relaxed">
-                    You are marking <span className="text-white font-bold font-sans">{selectedCustomerIds.length}</span> orders as Paid/Completed.
+                    You are marking <span className="text-white font-bold font-sans">{singleMarkPaidId ? 1 : selectedCustomerIds.length}</span> {singleMarkPaidId || selectedCustomerIds.length === 1 ? 'order' : 'orders'} as Paid/Completed.
                   </p>
                   
                   <div className="mt-4 space-y-3">
@@ -4744,7 +4888,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
                 <button
-                  onClick={() => setShowBulkCompleteModal(false)}
+                  onClick={() => {
+                    setShowBulkCompleteModal(false);
+                    setSingleMarkPaidId(null);
+                  }}
                   className="px-3.5 py-1.5 text-xs text-gray-400 hover:text-white border border-[#262626] bg-[#181818] uppercase tracking-wider cursor-pointer font-sans rounded-md"
                 >
                   Cancel

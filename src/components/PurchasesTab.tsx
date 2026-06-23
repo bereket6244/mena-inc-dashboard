@@ -3269,7 +3269,7 @@ export default function PurchasesTab({
       )}
 
       {financeView === 'loans' && (
-        <div className="space-y-3 font-sans animate-fadeIn">
+        <div className="space-y-3 font-sans animate-fadeIn mobile-loans-container">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="bg-[#121212] border border-[#262626] rounded-md p-3">
               <div className="text-[10px] text-gray-500 uppercase tracking-wider">Receivable</div>
@@ -3705,7 +3705,7 @@ export default function PurchasesTab({
             </div>
           </div>
 
-          <div className={`${loanLayoutMode === 'cards' ? 'grid' : 'hidden'} shared-gallery-scroll grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mobile-table-bottom-gap md:mb-0`}>
+          <div className={`${loanLayoutMode === 'cards' ? 'grid' : 'hidden'} loans-gallery-view grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mobile-table-bottom-gap md:mb-0`}>
             {sortedLoans.length === 0 ? (
               <div className="col-span-full border border-[#262626] bg-[#121212] rounded-md p-8 text-center text-xs text-gray-500 italic">
                 No loans match the current filters.

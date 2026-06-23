@@ -316,6 +316,14 @@ export default function App() {
     }
     return INITIAL_CUSTOMERS;
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_BANKS_KEY);
     if (saved) {
@@ -3719,6 +3727,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
 
           <div className={activeTab === 'customers' ? 'block' : 'hidden'}>
             <CustomerTab
+              isLoading={isLoading}
               customers={customers}
               paperStocks={paperStocks}
               bankAccounts={bankAccounts}
