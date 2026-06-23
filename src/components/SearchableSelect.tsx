@@ -83,11 +83,23 @@ export default function SearchableSelect({
         top += 4; // 4px margin below
       }
 
+      const dropdownWidth = Math.max(rect.width, 200);
+      let left = rect.left + window.scrollX;
+      
+      // If it overflows the right edge of the screen, align it to open to the left (right-aligned to trigger)
+      if (rect.left + dropdownWidth > window.innerWidth) {
+        left = rect.right + window.scrollX - dropdownWidth;
+        // Bound it on the left edge of the viewport
+        if (left < window.scrollX + 4) {
+          left = window.scrollX + 4;
+        }
+      }
+
       setDropdownStyle({
         position: 'absolute',
         top: `${top}px`,
-        left: `${rect.left + window.scrollX}px`,
-        width: `${Math.max(rect.width, 200)}px`,
+        left: `${left}px`,
+        width: `${dropdownWidth}px`,
         zIndex: 99999,
       });
     }
