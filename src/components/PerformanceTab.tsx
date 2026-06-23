@@ -831,28 +831,30 @@ export default function PerformanceTab({
         {/* Mobile Top Section & Control Area */}
         <div className="flex flex-col gap-1.5 py-1">
           {/* Row 1 */}
-          <div className="flex items-center justify-between w-full h-10">
+          <div className="flex items-center justify-between w-full h-10 gap-2">
             {/* Currency Selector (No dropdown arrow/chevron, text centered) */}
-            <div className="relative">
-              <select
-                value={selectedCurrency}
-                onChange={(e) => {
-                  setSelectedCurrency(e.target.value);
-                  setShowAllCurrencies(false);
-                }}
-                style={{ textAlign: 'center', textAlignLast: 'center' }}
-                className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 text-center shadow-xs focus:outline-none focus:border-[#ee317b]"
-              >
-                {newAccountCurrencies.map(curr => (
-                  <option key={curr} value={curr}>
-                    {curr}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!(isSearchExpanded || summarySearch) && (
+              <div className="relative flex-shrink-0">
+                <select
+                  value={selectedCurrency}
+                  onChange={(e) => {
+                    setSelectedCurrency(e.target.value);
+                    setShowAllCurrencies(false);
+                  }}
+                  style={{ textAlign: 'center', textAlignLast: 'center' }}
+                  className="appearance-none bg-[#FAF8F2] border border-[#E7E3D4] text-black text-xs font-bold font-sans rounded-[8px] py-2 px-3 text-center shadow-xs focus:outline-none focus:border-[#ee317b] cursor-pointer"
+                >
+                  {newAccountCurrencies.map(curr => (
+                    <option key={curr} value={curr}>
+                      {curr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Search & Filter Controls on Right */}
-            <div ref={mobileSearchWrapperRef} className="flex items-center gap-2">
+            <div ref={mobileSearchWrapperRef} className={`flex items-center gap-2 ${isSearchExpanded || summarySearch ? 'w-full flex-1' : ''}`}>
               <AnimatePresence initial={false} mode="wait">
                 {!(isSearchExpanded || summarySearch) ? (
                   <motion.div
@@ -866,7 +868,7 @@ export default function PerformanceTab({
                     <button
                       type="button"
                       onClick={() => setIsSearchExpanded(true)}
-                      className="flex items-center justify-center p-1.5 rounded text-gray-300 hover:bg-[#181818] transition-colors cursor-pointer"
+                      className="flex items-center justify-center p-1.5 rounded text-[#6B6258] hover:bg-[#dfdccf]/35 hover:text-black transition-colors cursor-pointer"
                       title="Search database"
                     >
                       <Search className="w-3.5 h-3.5" />
@@ -991,16 +993,15 @@ export default function PerformanceTab({
                   <motion.div
                     key="search-input-wrapper"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 280, opacity: 1 }}
+                    animate={{ width: "100%", opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                    className="relative flex items-center bg-transparent overflow-hidden"
+                    className="relative flex items-center bg-[#FAF8F2] border border-[#E7E3D4] rounded-[8px] py-1.5 px-2.5 shadow-xs focus-within:border-[#ee317b] w-full overflow-hidden"
                   >
-                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#252525] text-gray-400 mr-1 flex-shrink-0">
-                      <Search className="h-3.5 w-3.5" />
-                    </div>
+                    <Search className="h-3.5 w-3.5 text-[#6B6258] mr-2 flex-shrink-0" />
                     <input
                       ref={mobileSearchInputRef}
+                      autoFocus
                       type="text"
                       placeholder="Type to search..."
                       value={summarySearch}
@@ -1010,21 +1011,19 @@ export default function PerformanceTab({
                           setIsSearchExpanded(false);
                         }
                       }}
-                      className="bg-transparent text-[11px] text-white border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5"
+                      className="bg-transparent text-[11px] text-[#111111] border-none outline-none focus:outline-none focus:ring-0 no-focus-outline shadow-none p-0 m-0 font-sans w-full pl-0.5 placeholder-[#6B6258]"
                     />
-                    {summarySearch && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSummarySearch('');
-                          setIsSearchExpanded(false);
-                        }}
-                        className="ml-1 text-gray-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
-                        title="Clear search"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSummarySearch('');
+                        setIsSearchExpanded(false);
+                      }}
+                      className="ml-1 text-[#6B6258] hover:text-[#ee317b] transition-colors focus:outline-none flex-shrink-0"
+                      title="Close search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
