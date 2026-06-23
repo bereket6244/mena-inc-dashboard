@@ -3290,7 +3290,7 @@ tr.global-search-highlight > th,
   width: var(--w, 100%);
   display: inline-block;
   vertical-align: middle;
-  animation: skeletonPulse 2s ease-in-out infinite;
+  animation: skeletonPulse 2.4s ease-in-out infinite;
 }
 
 .light-theme .skeleton-line {
@@ -3336,7 +3336,7 @@ tr.global-search-highlight > th,
 
 @keyframes skeletonPulse {
   0%, 100% {
-    opacity: 0.65;
+    opacity: 0.4;
   }
   50% {
     opacity: 1;

@@ -3112,124 +3112,161 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     {Array.from({ length: 7 }).map((_, rowIndex) => (
                       <tr 
                         key={`skeleton-row-${rowIndex}`}
-                        className="border-b border-[#262626] vertical-top align-top"
+                        className="border-b border-[#262626] vertical-top align-top hover:bg-[#1a1a1a]"
                       >
-                        {/* 1. Row number / checkbox */}
-                        <td className="p-3 border-r border-[#262626] text-center w-8 text-xs text-gray-500 font-sans">
+                        {/* 1. Row number */}
+                        <td className="py-1.5 px-1 text-center font-sans text-gray-500 border-r border-[#262626] bg-[#181818]">
                           {rowIndex + 1}
                         </td>
-                        <td className="p-3 border-r border-[#262626] text-center w-10">
+                        
+                        {/* 2. Checkbox */}
+                        <td className="py-1.5 px-2 border-r border-[#262626] text-center bg-[#151515]/45">
                           <input type="checkbox" disabled className="opacity-30 accent-[#ee317b]" />
                         </td>
 
-                        {/* 2. Client Info */}
-                        <td className="p-3 border-r border-[#262626] min-w-[190px]">
-                          <div className="flex gap-2.5 items-start">
-                            {/* Circular Avatar Placeholder */}
-                            <div className="w-8 h-8 rounded-full skeleton-line shrink-0" style={{ '--w': '32px' } as React.CSSProperties} />
-                            <div className="space-y-2 flex-1">
-                              {/* Name bar */}
-                              <div className="skeleton-line h-3" style={{ '--w': '85%' } as React.CSSProperties} />
-                              {/* Contact bar */}
-                              <div className="skeleton-line h-2.5" style={{ '--w': '60%' } as React.CSSProperties} />
-                              {/* Small icon placeholders */}
-                              <div className="flex gap-1.5 pt-1">
-                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
-                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
-                                <div className="w-5 h-5 rounded skeleton-line" style={{ '--w': '20px' } as React.CSSProperties} />
-                              </div>
+                        {/* 3. Client Info */}
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
+                          <div className="space-y-1">
+                            <div className="flex items-baseline gap-1.5 min-w-0">
+                              {/* Client Name placeholder */}
+                              <div className="skeleton-line h-[14px]" style={{ '--w': '95px' } as React.CSSProperties} />
+                              {/* Client Type placeholder */}
+                              <div className="skeleton-line h-[9px]" style={{ '--w': '50px' } as React.CSSProperties} />
+                            </div>
+                            {/* Contact Info placeholder button */}
+                            <div className="flex items-center gap-1.5 max-w-full rounded-md border border-[#262626] bg-[#181818] px-1.5 py-0.5" style={{ width: '110px' }}>
+                              <div className="w-3 h-3 rounded skeleton-line shrink-0" style={{ '--w': '12px' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 flex-1" style={{ '--w': '100%' } as React.CSSProperties} />
+                            </div>
+                            {/* Source placeholder tag */}
+                            <div className="inline-flex max-w-[150px] w-[80px] bg-[#181818] border border-[#2DA2D2D]/10 px-1.5 py-0.5 rounded-md">
+                              <div className="skeleton-line h-[10px] w-full" />
+                            </div>
+                            {/* Action buttons placeholders */}
+                            <div className="flex items-center gap-1 pt-0.5 font-sans">
+                              <div className="w-[26px] h-[26px] rounded-md skeleton-line" style={{ '--w': '26px' } as React.CSSProperties} />
+                              <div className="w-[26px] h-[26px] rounded-md skeleton-line" style={{ '--w': '26px' } as React.CSSProperties} />
+                              <div className="w-[26px] h-[26px] rounded-md skeleton-line" style={{ '--w': '26px' } as React.CSSProperties} />
+                              <div className="w-[26px] h-[26px] rounded-md skeleton-line" style={{ '--w': '26px' } as React.CSSProperties} />
                             </div>
                           </div>
                         </td>
 
-                        {/* 3. Order Info */}
-                        <td className="p-3 border-r border-[#262626] min-w-[190px]">
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 text-[10px] font-sans">
-                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                              <span className="text-gray-500 uppercase font-bold">By</span>
-                              <div className="skeleton-line h-2.5" style={{ '--w': '40px' } as React.CSSProperties} />
+                        {/* 4. Order Info */}
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[190px]">
+                          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                            {/* By */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">By</span>
+                              <div className="skeleton-line h-[11px]" style={{ '--w': '45px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                              <span className="text-gray-500 uppercase font-bold">Product</span>
-                              <div className="skeleton-line h-2.5" style={{ '--w': '45px' } as React.CSSProperties} />
+                            {/* Product */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Product</span>
+                              <div className="skeleton-line h-[11px]" style={{ '--w': '55px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                              <span className="text-gray-500 uppercase font-bold">Qty</span>
-                              <div className="skeleton-line h-2.5" style={{ '--w': '30px' } as React.CSSProperties} />
+                            {/* Qty */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Qty</span>
+                              <div className="skeleton-line h-[11px]" style={{ '--w': '30px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                              <span className="text-gray-500 uppercase font-bold">Unit</span>
-                              <div className="skeleton-line h-2.5" style={{ '--w': '35px' } as React.CSSProperties} />
+                            {/* Unit */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Unit</span>
+                              <div className="skeleton-line h-[11px]" style={{ '--w': '40px' } as React.CSSProperties} />
                             </div>
-                            <div className="col-span-2 flex justify-between items-center border-t border-[#262626] pt-1.5 mt-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Total</span>
-                              <div className="skeleton-line h-3" style={{ '--w': '60px' } as React.CSSProperties} />
+                            {/* Total */}
+                            <div className="col-span-2 flex items-center justify-between gap-2 border-t border-[#262626]/80 pt-0.5">
+                              <span className="text-[8px] uppercase tracking-wider text-gray-500">Total</span>
+                              <div className="skeleton-line h-[12px]" style={{ '--w': '65px' } as React.CSSProperties} />
                             </div>
                           </div>
                         </td>
 
-                        {/* 4. Material Info */}
-                        <td className="p-3 border-r border-[#262626] min-w-[210px] bg-[#31111E]/5">
-                          <div className="space-y-2 font-sans">
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
+                        {/* 5. Material Info */}
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] bg-[#31111E]/10 font-sans align-top min-w-[210px]">
+                          <div className="space-y-0.5">
+                            {/* P1 */}
+                            <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
                               <div className="skeleton-line h-2.5" style={{ '--w': '70%' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 shrink-0" style={{ '--w': '15px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
-                              <div className="skeleton-line h-2.5" style={{ '--w': '50%' } as React.CSSProperties} />
+                            {/* P2 */}
+                            <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
+                              <div className="skeleton-line h-2.5" style={{ '--w': '55%' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 shrink-0" style={{ '--w': '15px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 rounded skeleton-line shrink-0" style={{ '--w': '16px' } as React.CSSProperties} />
+                            {/* P3 */}
+                            <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
                               <div className="skeleton-line h-2.5" style={{ '--w': '60%' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 shrink-0" style={{ '--w': '15px' } as React.CSSProperties} />
+                            </div>
+                            {/* Entrance */}
+                            <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
+                              <div className="skeleton-line h-2.5" style={{ '--w': '50%' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 shrink-0" style={{ '--w': '15px' } as React.CSSProperties} />
+                            </div>
+                            {/* Ajabi */}
+                            <div className="flex items-center justify-between gap-2 min-w-0 leading-tight">
+                              <div className="skeleton-line h-2.5" style={{ '--w': '65%' } as React.CSSProperties} />
+                              <div className="skeleton-line h-2.5 shrink-0" style={{ '--w': '15px' } as React.CSSProperties} />
                             </div>
                           </div>
                         </td>
 
-                        {/* 5. Payment Info */}
-                        <td className="p-3 border-r border-[#262626] min-w-[230px]">
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-[10px] font-sans">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Advance</span>
-                              <div className="skeleton-line h-3 bg-[#71b536]/15" style={{ '--w': '50px' } as React.CSSProperties} />
+                        {/* 6. Payment Info */}
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[230px]">
+                          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
+                            {/* Advance */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance</span>
+                              <div className="skeleton-line h-[11px] bg-[#71b536]/15" style={{ '--w': '45px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Advance Date</span>
-                              <div className="w-full h-4 rounded skeleton-line" />
+                            {/* Advance Date */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
+                              <div className="w-full max-w-[118px] h-[21px] rounded-md skeleton-line" />
                             </div>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Advance Bank</span>
-                              <div className="skeleton-line h-2.5" style={{ '--w': '60px' } as React.CSSProperties} />
+                            {/* Advance Bank */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Bank</span>
+                              <div className="skeleton-line h-[11px]" style={{ '--w': '55px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Remaining</span>
-                              <div className="skeleton-line h-3 bg-[#ee317b]/15" style={{ '--w': '55px' } as React.CSSProperties} />
+                            {/* Remaining */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining</span>
+                              <div className="skeleton-line h-[11px] bg-[#ee317b]/15" style={{ '--w': '50px' } as React.CSSProperties} />
                             </div>
-                            <div className="col-span-2 flex justify-between items-center border-t border-[#262626] pt-1.5 mt-0.5">
-                              <span className="text-gray-500 uppercase font-bold">Full Val</span>
-                              <div className="skeleton-line h-3" style={{ '--w': '70px' } as React.CSSProperties} />
+                            {/* Full Val */}
+                            <div className="col-span-2 flex items-center justify-between gap-2 border-t border-[#262626]/80 pt-0.5">
+                              <span className="text-[8px] uppercase tracking-wider text-gray-500">Full</span>
+                              <div className="skeleton-line h-[12px]" style={{ '--w': '70px' } as React.CSSProperties} />
                             </div>
                           </div>
                         </td>
 
-                        {/* 6. Delivery / Status */}
-                        <td className="p-3 min-w-[210px] bg-[#31111E]/5">
-                          <div className="flex flex-wrap gap-2.5 items-end">
-                            <div className="flex-1 min-w-[90px] flex flex-col gap-0.5">
-                              <span className="text-[8px] text-gray-500 uppercase font-bold">Delivery Date</span>
-                              <div className="w-full h-4 rounded skeleton-line" />
+                        {/* 7. Delivery / Status */}
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[245px]">
+                          <div className="flex flex-wrap items-end gap-2 pt-1">
+                            {/* Delivery Date */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
+                              <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex-1 min-w-[90px] flex flex-col gap-0.5">
-                              <span className="text-[8px] text-gray-500 uppercase font-bold">Remaining Bank</span>
-                              <div className="w-full h-4 rounded skeleton-line" />
+                            {/* Remaining Bank */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining Bank</span>
+                              <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex-1 min-w-[60px] flex flex-col gap-0.5">
-                              <span className="text-[8px] text-gray-500 uppercase font-bold">Status</span>
-                              <div className="w-full h-4 rounded-full skeleton-line bg-[#ee317b]/10" />
+                            {/* Status */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Status</span>
+                              <div className="w-[64px] h-[21px] rounded-md skeleton-line bg-[#ee317b]/10" style={{ '--w': '64px' } as React.CSSProperties} />
                             </div>
-                            <div className="flex-[1.2] min-w-[100px] flex flex-col gap-0.5">
-                              <span className="text-[8px] text-gray-500 uppercase font-bold">Incomplete Reason</span>
-                              <div className="w-full h-4 rounded skeleton-line" />
+                            {/* Incomplete Reason */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Incomplete Reason</span>
+                              <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
                             </div>
                           </div>
                         </td>
