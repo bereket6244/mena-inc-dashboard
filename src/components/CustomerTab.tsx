@@ -40,7 +40,9 @@ import {
   RotateCcw,
   Megaphone,
   ArrowUpDown,
-  Calendar
+  Calendar,
+  Banknote,
+  TrendingUp
 } from 'lucide-react';
 
 import { 
@@ -210,6 +212,22 @@ const formatDateFriendly = (dateStr?: string) => {
   return dateStr;
 };
 
+export function computeCustomerTotalInvoice(customer: Customer): number {
+  const baseQty = customer.quantity || 0;
+  
+  // Base cost calculation
+  const baseCost = baseQty * (customer.unitPrice || 0);
+  const adjustCost = (customer.orderAdjustments || []).reduce((sum, adj) => sum + (adj.additionalQuantity * adj.unitPrice), 0);
+  
+  const base = baseCost + adjustCost;
+  const vat = customer.isVatAdded ? base * 0.15 : 0;
+  return base + vat;
+}
+
+export function computeCustomerTotalPaid(customer: Customer): number {
+  return (customer.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+}
+
 export default function CustomerTab({ 
   isLoading = false,
   customers, 
@@ -366,7 +384,7 @@ export default function CustomerTab({
 
   const buildCustomerOrderMessage = (c: Customer) => {
     const totalAmount = c.quantity * c.unitPrice;
-    const advancePaid = c.advancePayment || 0;
+    const advancePaid = computeCustomerTotalPaid(c);
     const remainingBalance = Math.max(0, totalAmount - advancePaid);
     const downPaymentPercent = totalAmount > 0 ? Math.round((advancePaid / totalAmount) * 100) : 0;
     
@@ -457,7 +475,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     
     selectedItems.forEach(c => {
       totalSum += c.quantity * c.unitPrice;
-      totalAdvance += c.advancePayment || 0;
+      totalAdvance += computeCustomerTotalPaid(c);
     });
     
     const paymentLines = selectedItems.map(c => {
@@ -593,6 +611,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const mobileSearchWrapperRef = useRef<HTMLDivElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [showProformaModal, setShowProformaModal] = useState(false);
+  const [managingPaymentsFor, setManagingPaymentsFor] = useState<Customer | null>(null);
+  const [managingAdjustmentsFor, setManagingAdjustmentsFor] = useState<Customer | null>(null);
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
   const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: string; unitPrice: string; advancePayment: string; }>>([]);
 
@@ -1087,7 +1107,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   // Lock body scroll when customer form or proforma modal is open
   useEffect(() => {
-    if (isFormOpen || showProformaModal) {
+    if (isFormOpen || showProformaModal || managingPaymentsFor || managingAdjustmentsFor) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -1095,7 +1115,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isFormOpen, showProformaModal]);
+  }, [isFormOpen, showProformaModal, managingPaymentsFor, managingAdjustmentsFor]);
 
   // Sync showGlobalProforma with local proforma modal states
   useEffect(() => {
@@ -2165,9 +2185,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   ]);
 
   const getCustomerSortValue = (customer: Customer, field: CustomerColumnSortField) => {
-    const fullValue = Number(customer.quantity || 0) * Number(customer.unitPrice || 0);
+    const fullValue = computeCustomerTotalInvoice(customer);
     const isCompleted = !!(customer.deliveryDate && customer.bankRemainingId);
-    const remainingBalance = isCompleted ? 0 : Math.max(0, fullValue - Number(customer.advancePayment || 0));
+    const remainingBalance = isCompleted ? 0 : Math.max(0, fullValue - computeCustomerTotalPaid(customer));
 
     switch (field) {
       case 'remainingBalance':
@@ -2202,8 +2222,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const matchesAgent = filterAgent === 'All' || normalizedOrderAgent === normalizedFilterAgent;
     const matchesSource = filterSource === 'All' || c.acquisitionSource === filterSource;
 
-    const full = Number(c.quantity || 0) * Number(c.unitPrice || 0);
-    const advance = Number(c.advancePayment || 0);
+    const full = computeCustomerTotalInvoice(c);
+    const advance = computeCustomerTotalPaid(c);
     const remaining = Math.max(0, full - advance);
     const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
     const hasOutstandingDebt = !isCompleted && remaining > 0;
@@ -3299,8 +3319,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <>
                     {filteredCustomers.map((c, index) => {
                   const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
-                  const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
-                  const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
+                  const fullVal = computeCustomerTotalInvoice(c);
+                  const rawRemainingVal = Math.max(0, fullVal - computeCustomerTotalPaid(c));
                   const remainingVal = isCompleted ? 0 : rawRemainingVal;
                   
                   const isSelected = selectedCustomerIds.includes(c.id);
@@ -3403,6 +3423,22 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             </button>
                             <button
                               type="button"
+                              onClick={() => setManagingPaymentsFor(c)}
+                              className="text-gray-400 hover:text-[#71b536] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Add Payment"
+                            >
+                              <Banknote className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setManagingAdjustmentsFor(c)}
+                              className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Increase Order"
+                            >
+                              <TrendingUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleOpenEdit(c)}
                               className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                               title="Edit Record"
@@ -3459,7 +3495,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       {/* Payment Info */}
                       <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top min-w-[230px]">
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
-                          {miniLabel('Advance', formatMoney(c.advancePayment, c.currency), '', 'text-[#71b536]')}
+                          {miniLabel('Paid', formatMoney(computeCustomerTotalPaid(c), c.currency), '', 'text-[#71b536]')}
                           <div>
                             <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
                             <input
@@ -3552,8 +3588,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap pb-32 md:pb-0 ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
         {filteredCustomers.map((c) => {
             const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
-            const fullVal = Number(c.quantity || 0) * Number(c.unitPrice || 0);
-            const rawRemainingVal = Math.max(0, fullVal - Number(c.advancePayment || 0));
+            const fullVal = computeCustomerTotalInvoice(c);
+            const rawRemainingVal = Math.max(0, fullVal - computeCustomerTotalPaid(c));
             const remainingVal = isCompleted ? 0 : rawRemainingVal;
             const isSelected = selectedCustomerIds.includes(c.id);
             const isSearchHighlighted = highlightedSearchResult?.id === c.id;
@@ -3840,7 +3876,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </div>
                     <div className="px-1">
                       <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">Received</span>
-                      <span className="font-bold text-[#71b536] text-xs mt-1 block whitespace-nowrap">{c.advancePayment.toLocaleString()} ETB</span>
+                      <span className="font-bold text-[#71b536] text-xs mt-1 block whitespace-nowrap">{computeCustomerTotalPaid(c).toLocaleString()} {c.currency || 'ETB'}</span>
                     </div>
                     <div className="px-1">
                       <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">Debt Due</span>
@@ -3901,6 +3937,24 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     <span className="truncate">Mark Paid</span>
                   </button>
                   
+                  <button
+                    type="button"
+                    onClick={() => setManagingPaymentsFor(c)}
+                    className="text-[10px] border border-green-900/40 hover:bg-green-950/10 text-green-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                  >
+                    <Banknote className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Pay</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setManagingAdjustmentsFor(c)}
+                    className="text-[10px] border border-pink-900/40 hover:bg-pink-950/10 text-pink-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                  >
+                    <TrendingUp className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Adjust</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(c)}

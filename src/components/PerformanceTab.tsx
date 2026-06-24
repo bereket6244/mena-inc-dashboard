@@ -49,6 +49,8 @@ interface PerformanceTabProps {
   highlightedSearchResult?: { type: string; id: string } | null;
   onNavigateFromSummary?: (target: 'customers' | 'customers-debt' | 'purchases') => void;
   onAuditLog?: (entry: Omit<AuditLogEntry, 'id' | 'performedBy' | 'performedAt'> & Partial<Pick<AuditLogEntry, 'performedBy' | 'performedAt'>>) => void;
+  auditLogs?: AuditLogEntry[];
+  onHighlightGlobalItem?: (type: 'customer' | 'purchase', id: string) => void;
 }
 
 export default function PerformanceTab({ 
@@ -64,7 +66,9 @@ export default function PerformanceTab({
   currentUser = null,
   highlightedSearchResult = null,
   onNavigateFromSummary,
-  onAuditLog
+  onAuditLog,
+  auditLogs = [],
+  onHighlightGlobalItem
 }: PerformanceTabProps) {
   const formatMockupValue = (val: number) => {
     if (val === 0) return '0';
@@ -176,6 +180,7 @@ export default function PerformanceTab({
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const [activeMenuBankId, setActiveMenuBankId] = useState<string | null>(null);
+  const [viewingTransactionsForId, setViewingTransactionsForId] = useState<string | null>(null);
   const [copiedAmountId, setCopiedAmountId] = useState<string | null>(null);
   const copiedAmountTimerRef = useRef<number | null>(null);
 
@@ -229,25 +234,20 @@ export default function PerformanceTab({
   };
 
   const getBankCurrentBalance = (bank: BankAccount) => {
-    const advancesForBank = customers
-      .filter(c => c.paymentMethodId === bank.id || (!c.paymentMethodId && bank.id === 'b1'))
-      .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
-
-    const completedRemainingForBank = customers
-      .filter(c => !!c.deliveryDate && (c.bankRemainingId === bank.id || (!c.bankRemainingId && bank.id === 'b1' && c.paymentMethodId === bank.id)))
-      .reduce((sum, c) => {
-        const base = c.quantity * c.unitPrice;
-        const vat = c.isVatAdded ? base * 0.15 : 0;
-        const totalInvoice = base + vat;
-        const remaining = totalInvoice - c.advancePayment;
-        return sum + Math.max(0, remaining);
-      }, 0);
+    let customerPaymentsForBank = 0;
+    customers.forEach(c => {
+      (c.payments || []).forEach(p => {
+        if (p.paymentMethodId === bank.id || (!p.paymentMethodId && bank.id === 'b1')) {
+          customerPaymentsForBank += Number(p.amount) || 0;
+        }
+      });
+    });
 
     const purchasesOutOfBank = purchases
       .filter(p => p.paymentMethodId === bank.id)
       .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
 
-    return bank.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + getLoanCashMovementForBank(bank.id);
+    return bank.initialBalance + customerPaymentsForBank - purchasesOutOfBank + getLoanCashMovementForBank(bank.id);
   };
 
   const getLoanCashMovementForBank = (bankId: string) => loans.reduce((sum, loan) => {
@@ -437,6 +437,105 @@ export default function PerformanceTab({
     if (summaryEndDate && (!payment.paymentDate || payment.paymentDate > summaryEndDate)) return false;
     if (!loanMatchesSummarySearch(loan)) return false;
     return true;
+  };
+
+  const getTransactionsForBank = (bankId: string) => {
+    const txs: Array<{
+      id: string;
+      date: string;
+      description: string;
+      amount: number;
+      type: 'add' | 'subtract' | 'modify_add' | 'modify_subtract';
+      source: string;
+      user?: string;
+      targetType?: 'customer' | 'purchase';
+      targetId?: string;
+    }> = [];
+
+    customers.forEach(c => {
+      (c.payments || []).forEach((p, index) => {
+        if (p.paymentMethodId === bankId || (!p.paymentMethodId && bankId === 'b1')) {
+          txs.push({
+            id: p.id || `pay_${c.id}_${index}`,
+            date: p.date,
+            description: `Payment from ${c.clientName}`,
+            amount: p.amount,
+            type: 'add',
+            source: 'Customer Payment',
+            user: p.recordedBy || c.orderTakenBy,
+            targetType: 'customer',
+            targetId: c.id
+          });
+        }
+      });
+    });
+
+    purchases.forEach(p => {
+      if (p.paymentMethodId === bankId) {
+        txs.push({
+          id: `pur_${p.id}`,
+          date: p.purchaseDate || '',
+          description: `Expense: ${p.itemOrService}`,
+          amount: p.totalPrice,
+          type: 'subtract',
+          source: 'Expense',
+          user: p.purchasedBy || p.recordedBy,
+          targetType: 'purchase',
+          targetId: p.id
+        });
+      }
+    });
+
+    loans.forEach(l => {
+      if (l.paymentMethodId === bankId) {
+        txs.push({
+          id: `loan_${l.id}`,
+          date: l.loanDate || '',
+          description: l.type === 'given' ? `Loan given to ${l.personName}` : `Loan received from ${l.personName}`,
+          amount: l.principalAmount,
+          type: l.type === 'given' ? 'subtract' : 'add',
+          source: 'Loan Principal',
+          user: l.recordedBy
+        });
+      }
+      (l.payments || []).forEach(p => {
+        if (p.paymentMethodId === bankId) {
+          txs.push({
+            id: `lp_${p.id}`,
+            date: p.paymentDate || '',
+            description: l.type === 'given' ? `Loan repayment from ${l.personName}` : `Loan repayment to ${l.personName}`,
+            amount: p.amount,
+            type: l.type === 'given' ? 'add' : 'subtract',
+            source: 'Loan Payment',
+            user: p.recordedBy
+          });
+        }
+      });
+    });
+
+    auditLogs.forEach(a => {
+      if (a.eventType === 'bank_adjustment' && a.entityId === bankId) {
+        const amt = a.details?.amount || 0;
+        const adjType = a.details?.adjustmentType;
+        const reason = a.details?.reason || 'Manual Adjustment';
+        txs.push({
+          id: `adj_${a.id}`,
+          date: a.performedAt || '',
+          description: `Adjustment: ${reason}`,
+          amount: amt,
+          type: adjType === 'add' ? 'modify_add' : 'modify_subtract',
+          source: 'Manual Adjustment',
+          user: a.performedBy
+        });
+      }
+    });
+
+    return txs.sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
   };
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -1274,6 +1373,28 @@ export default function PerformanceTab({
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuBankId(null);
+                                    setViewingTransactionsForId(b.id);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-stone-50 text-black flex items-center gap-1.5 font-medium"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  View Transactions
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuBankId(null);
+                                    openAdjustmentModal(b);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-stone-50 text-black flex items-center gap-1.5 font-medium"
+                                >
+                                  <ArrowUpDown className="w-3 h-3" />
+                                  Adjust Balance
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuBankId(null);
                                     startEditing(b);
                                   }}
                                   className="w-full text-left px-3 py-2 hover:bg-stone-50 text-black flex items-center gap-1.5 font-medium"
@@ -1336,13 +1457,6 @@ export default function PerformanceTab({
                         <div className="py-3 pr-2">
                           <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Opening Balance</span>
                           <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-semibold" />
-                          <button
-                            type="button"
-                            onClick={() => openAdjustmentModal(b)}
-                            className="mt-1 rounded border border-[#E5D8C5] bg-[#FAF7F0] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6258] hover:border-[#166534] hover:text-[#111111]"
-                          >
-                            Adjust
-                          </button>
                         </div>
                         <div className="py-3 px-2">
                           <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Received</span>
@@ -1990,6 +2104,28 @@ export default function PerformanceTab({
                                 type="button"
                                 onClick={() => {
                                   setActiveMenuBankId(null);
+                                  setViewingTransactionsForId(b.id);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#FAF7F0] text-[#111111] flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3 h-3" />
+                                View Transactions
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuBankId(null);
+                                  openAdjustmentModal(b);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#FAF7F0] text-[#111111] flex items-center gap-1.5"
+                              >
+                                <ArrowUpDown className="w-3 h-3" />
+                                Adjust Balance
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuBankId(null);
                                   startEditing(b);
                                 }}
                                 className="w-full text-left px-3 py-1.5 hover:bg-[#FAF7F0] text-[#111111] flex items-center gap-1.5"
@@ -2065,13 +2201,6 @@ export default function PerformanceTab({
                       <div className="py-3 pr-3">
                         <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Opening Balance</span>
                         <CopyableAmount value={b.initialBalance} displayValue={formatMockupValue(b.initialBalance)} copyValue={formatMockupValue(b.initialBalance)} currency={b.currency || 'ETB'} className="text-[#111111] font-bold" />
-                        <button
-                          type="button"
-                          onClick={() => openAdjustmentModal(b)}
-                          className="mt-1 rounded border border-[#E5D8C5] bg-[#FAF7F0] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B6258] hover:border-[#166534] hover:text-[#111111]"
-                        >
-                          Adjust
-                        </button>
                       </div>
                       <div className="py-3 px-3">
                         <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Received</span>
@@ -2593,6 +2722,132 @@ export default function PerformanceTab({
               </form>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Transactions Modal */}
+      <AnimatePresence>
+        {viewingTransactionsForId && (
+          (() => {
+            const bank = bankAccounts.find(b => b.id === viewingTransactionsForId);
+            if (!bank) return null;
+            const txs = getTransactionsForBank(bank.id);
+            const additions = txs.filter(t => t.type === 'add' || t.type === 'modify_add').reduce((sum, t) => sum + t.amount, 0);
+            const subtractions = txs.filter(t => t.type === 'subtract' || t.type === 'modify_subtract').reduce((sum, t) => sum + t.amount, 0);
+
+            return (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans"
+              >
+                <motion.div 
+                  initial={{ scale: 0.95, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 20 }}
+                  className="bg-[#121212] border border-[#262626] max-w-2xl w-full flex flex-col rounded-md shadow-2xl overflow-hidden max-h-[90vh]"
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-[#262626] shrink-0">
+                    <div>
+                      <h3 className="font-sans font-bold text-white tracking-tight uppercase text-sm flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-[#71b536]" />
+                        Transactions for {bank.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Current Balance: <span className="text-white font-semibold">{getBankCurrentBalance(bank).toLocaleString(undefined, { maximumFractionDigits: 2 })} {bank.currency || 'ETB'}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingTransactionsForId(null)}
+                      className="p-1 text-gray-400 hover:text-white rounded-full hover:bg-[#262626] transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="p-4 bg-[#181818] border-b border-[#262626] flex gap-6 shrink-0 text-xs">
+                    <div>
+                      <span className="text-gray-500 uppercase tracking-wider block mb-1">Total Additions</span>
+                      <span className="text-[#71b536] font-bold text-sm">+{additions.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 uppercase tracking-wider block mb-1">Total Subtractions</span>
+                      <span className="text-[#F87171] font-bold text-sm">-{subtractions.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0 bg-[#0A0A0A]">
+                    {txs.length === 0 ? (
+                      <p className="text-center text-gray-500 text-xs py-8 italic">No transactions found for this account.</p>
+                    ) : (
+                      txs.map((tx) => {
+                        const isClickable = Boolean(tx.targetType && onHighlightGlobalItem);
+                        const displayDate = (() => {
+                          if (!tx.date) return 'No Date';
+                          if (tx.date.includes('T')) {
+                            try {
+                              const d = new Date(tx.date);
+                              return d.toLocaleString('en-US', { 
+                                year: 'numeric', month: 'short', day: 'numeric',
+                                hour: 'numeric', minute: '2-digit', hour12: true
+                              });
+                            } catch (_) {
+                              return tx.date.split('T')[0];
+                            }
+                          }
+                          return tx.date;
+                        })();
+
+                        return (
+                          <div 
+                            key={tx.id} 
+                            onClick={() => {
+                              if (isClickable) {
+                                onHighlightGlobalItem!(tx.targetType as 'customer' | 'purchase', tx.targetId!);
+                              }
+                            }}
+                            className={`flex items-center justify-between p-3 border border-[#262626] bg-[#121212] rounded-md transition-colors ${
+                              isClickable ? 'cursor-pointer hover:border-[#555] hover:bg-[#1A1A1A]' : 'hover:border-[#333]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-full shrink-0 ${
+                                tx.type.includes('add') ? 'bg-[#71b536]/10 text-[#71b536]' : 'bg-[#F87171]/10 text-[#F87171]'
+                              }`}>
+                                {tx.type.includes('add') ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5 transform rotate-180" />}
+                              </div>
+                              <div>
+                                <p className="text-white text-xs font-semibold break-words">{tx.description}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-gray-400">{displayDate}</span>
+                                  <span className="text-[10px] text-gray-500 px-1.5 py-0.5 rounded border border-[#262626] bg-[#181818]">{tx.source}</span>
+                                  {tx.user && (
+                                    <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                      <UserCheck className="w-3 h-3" />
+                                      {tx.user}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-2">
+                              <div className={`text-sm font-bold text-right ${
+                                tx.type.includes('add') ? 'text-[#71b536]' : 'text-[#F87171]'
+                              }`}>
+                                {tx.type.includes('add') ? '+' : '-'}{tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} {bank.currency || 'ETB'}
+                              </div>
+                              {isClickable && <ChevronRight className="w-4 h-4 text-gray-600" />}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })()
         )}
       </AnimatePresence>
 

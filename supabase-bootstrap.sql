@@ -167,6 +167,8 @@ ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" t
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "payments" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "orderAdjustments" jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE IF EXISTS public.purchases ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
 
 INSERT INTO public.lead_channels (id, name)

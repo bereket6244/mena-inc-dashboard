@@ -6,6 +6,7 @@ import { createTelegramBackupMiddleware } from './server/telegramBackup.mjs';
 
 export default defineConfig(() => {
   return {
+    base: '/dashboard/',
     plugins: [
       {
         name: 'telegram-daily-backup-api',

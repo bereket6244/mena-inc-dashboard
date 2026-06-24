@@ -73,6 +73,23 @@ export interface PaperStock {
   deletedBy?: string;
 }
 
+export interface CustomerPayment {
+  id: string;
+  amount: number;
+  date: string;
+  paymentMethodId: string;
+  recordedBy: string;
+}
+
+export interface OrderAdjustment {
+  id: string;
+  additionalQuantity: number;
+  unitPrice: number;
+  date: string;
+  recordedBy: string;
+  notes?: string;
+}
+
 export interface Customer {
   id: string;
   clientType: string;
@@ -87,6 +104,10 @@ export interface Customer {
   paymentMethodId?: string; // references a BankAccount id (e.g. 'b1', 'b2', etc.)
   currency?: string;
   
+  // New flexible payment and adjustment tracking
+  payments?: CustomerPayment[];
+  orderAdjustments?: OrderAdjustment[];
+
   // Paper specs
   paperType1: string;
   paperType1Id?: string;

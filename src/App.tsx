@@ -1787,6 +1787,41 @@ export default function App() {
             repaired[idField] = resolvedId;
           }
         });
+
+        // Migration: Flexible Payments
+        if (!repaired.payments) {
+          repaired.payments = [];
+          if (repaired.advancePayment > 0) {
+            repaired.payments.push({
+              id: `mig_adv_${repaired.id}`,
+              amount: repaired.advancePayment,
+              date: repaired.advancePaymentDate || repaired.deliveryDate || new Date().toISOString().split('T')[0],
+              paymentMethodId: repaired.paymentMethodId || 'b1',
+              recordedBy: repaired.orderTakenBy
+            });
+          }
+          if (repaired.deliveryDate) {
+            const base = repaired.quantity * repaired.unitPrice;
+            const vat = repaired.isVatAdded ? base * 0.15 : 0;
+            const totalInvoice = base + vat;
+            const remaining = totalInvoice - repaired.advancePayment;
+            if (remaining > 0) {
+              repaired.payments.push({
+                id: `mig_rem_${repaired.id}`,
+                amount: remaining,
+                date: repaired.deliveryDate,
+                paymentMethodId: repaired.bankRemainingId || repaired.paymentMethodId || 'b1',
+                recordedBy: repaired.orderTakenBy
+              });
+            }
+          }
+        }
+
+        // Migration: Order Adjustments
+        if (!repaired.orderAdjustments) {
+          repaired.orderAdjustments = [];
+        }
+
         return repaired;
       });
       const finalB = await fetchAllBankAccounts(initialB);
@@ -3749,10 +3784,16 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
               loans={loans}
               categories={categories}
               paperStocks={paperStocks}
+              auditLogs={auditLogs}
               currentUser={currentUser}
               highlightedSearchResult={globalSearchTarget?.type === 'bank' ? globalSearchTarget : null}
               onNavigateFromSummary={navigateFromReportsSummary}
               onAuditLog={logAuditEntry}
+              onHighlightGlobalItem={(type, id) => {
+                if (type === 'customer') changeTab('customers');
+                if (type === 'purchase') changeTab('purchases');
+                highlightGlobalSearchTarget({ type: type as any, id });
+              }}
             />
           )}
 
