@@ -612,7 +612,15 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [managingPaymentsFor, setManagingPaymentsFor] = useState<Customer | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentDate, setNewPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newPaymentMethodId, setNewPaymentMethodId] = useState('');
+
   const [managingAdjustmentsFor, setManagingAdjustmentsFor] = useState<Customer | null>(null);
+  const [newAdjustmentQuantity, setNewAdjustmentQuantity] = useState('');
+  const [newAdjustmentPrice, setNewAdjustmentPrice] = useState('');
+  const [newAdjustmentDate, setNewAdjustmentDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newAdjustmentNotes, setNewAdjustmentNotes] = useState('');
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
   const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: string; unitPrice: string; advancePayment: string; }>>([]);
 
@@ -3445,15 +3453,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMarkPaid(c)}
-                              disabled={isCompleted}
-                              className={`p-1.5 rounded-md transition-colors ${isCompleted ? 'text-[#71b536]/60 cursor-not-allowed' : 'text-gray-400 hover:text-[#71b536] hover:bg-[#262626] cursor-pointer'}`}
-                              title={isCompleted ? 'Already paid' : 'Mark as Paid'}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </button>
+
                             <button
                               type="button"
                               onClick={() => setDeletingCustomerId(c.id)}
@@ -3921,22 +3921,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </div>
 
                 {/* Card footer buttons */}
-                <div className="grid grid-cols-4 gap-1.5 mt-3.5 pt-3 border-t border-[#262626]">
-                  <button
-                    type="button"
-                    onClick={() => handleMarkPaid(c)}
-                    disabled={isCompleted}
-                    className={`text-[10px] font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
-                      isCompleted 
-                        ? 'bg-[#1c1c1c] text-gray-500 border border-[#262626] cursor-not-allowed' 
-                        : 'bg-[#116e33] hover:bg-[#0e5c2a] text-white keep-text-white cursor-pointer'
-                    }`}
-                    title={isCompleted ? 'Already paid' : 'Mark as Paid'}
-                  >
-                    <CheckCircle2 className={`w-3 h-3 shrink-0 ${isCompleted ? 'text-gray-500' : 'text-white keep-text-white'}`} />
-                    <span className="truncate">Mark Paid</span>
-                  </button>
-                  
+                <div className="grid grid-cols-3 gap-1.5 mt-3.5 pt-3 border-t border-[#262626]">
                   <button
                     type="button"
                     onClick={() => setManagingPaymentsFor(c)}
@@ -6461,6 +6446,285 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               </button>
               {showSelectedShareOptions && selectedShareOptions}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PAYMENTS MODAL */}
+      <AnimatePresence>
+        {managingPaymentsFor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#111] border border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+            >
+              <div className="p-4 border-b border-[#333] flex items-center justify-between bg-gradient-to-r from-[#1a1a1a] to-[#111]">
+                <h3 className="text-white font-bold text-base flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-[#71b536]" />
+                  Manage Payments
+                </h3>
+                <button onClick={() => setManagingPaymentsFor(null)} className="text-gray-400 hover:text-white transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Previous Payments</h4>
+                  {managingPaymentsFor.payments && managingPaymentsFor.payments.length > 0 ? (
+                    <div className="space-y-2">
+                      {managingPaymentsFor.payments.map((p, idx) => {
+                        const bank = bankAccounts.find(b => b.id === p.paymentMethodId);
+                        return (
+                          <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-2 rounded border border-[#2a2a2a]">
+                            <div>
+                              <div className="text-white text-xs font-bold">{Number(p.amount).toLocaleString()} {managingPaymentsFor.currency || 'ETB'}</div>
+                              <div className="text-gray-500 text-[10px]">{formatDateFriendly(p.date)} &bull; {bank?.name || 'Unknown Bank'}</div>
+                            </div>
+                            <div className="text-gray-500 text-[10px]">By {p.recordedBy}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-xs italic">No payments recorded.</div>
+                  )}
+                </div>
+                
+                <div className="border-t border-[#333] pt-4 mt-2">
+                  <h4 className="text-xs font-bold text-[#71b536] uppercase tracking-wider mb-3">Add New Payment</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">Amount ({managingPaymentsFor.currency || 'ETB'})</label>
+                      <input
+                        type="number"
+                        value={newPaymentAmount}
+                        onChange={(e) => setNewPaymentAmount(e.target.value)}
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                        placeholder="e.g. 5000"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={newPaymentDate}
+                          onChange={(e) => setNewPaymentDate(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Bank Account</label>
+                        <select
+                          value={newPaymentMethodId}
+                          onChange={(e) => setNewPaymentMethodId(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                        >
+                          <option value="">Select Bank...</option>
+                          {bankAccounts.filter(b => !b.isDeleted).map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t border-[#333] bg-[#0a0a0a] flex justify-between gap-2">
+                <button
+                  onClick={() => {
+                    const c = managingPaymentsFor;
+                    setManagingPaymentsFor(null);
+                    handleMarkPaid(c);
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-gray-400 border border-gray-600 hover:text-white hover:bg-gray-800 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Mark Fully Paid & Completed
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setManagingPaymentsFor(null)}
+                    className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!newPaymentAmount || !newPaymentDate || !newPaymentMethodId) {
+                        setToastMessage("Please fill in all payment fields.");
+                        setToastType("error");
+                        return;
+                      }
+                      const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                      const newPayment = {
+                        id: paymentId,
+                        amount: Number(newPaymentAmount),
+                        date: newPaymentDate,
+                        paymentMethodId: newPaymentMethodId,
+                        recordedBy: currentUser?.username || 'Unknown'
+                      };
+                      const updatedCustomer = {
+                        ...managingPaymentsFor,
+                        payments: [...(managingPaymentsFor.payments || []), newPayment]
+                      };
+                      onUpdateCustomer(updatedCustomer);
+                      setManagingPaymentsFor(updatedCustomer);
+                      setNewPaymentAmount('');
+                      setToastMessage("Payment added successfully.");
+                      setToastType("success");
+                    }}
+                    className="px-4 py-2 text-xs font-bold bg-[#71b536] hover:bg-[#5a912a] text-white rounded transition-colors cursor-pointer"
+                  >
+                    Save Payment
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ADJUSTMENTS MODAL */}
+      <AnimatePresence>
+        {managingAdjustmentsFor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#111] border border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+            >
+              <div className="p-4 border-b border-[#333] flex items-center justify-between bg-gradient-to-r from-[#1a1a1a] to-[#111]">
+                <h3 className="text-white font-bold text-base flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#ee317b]" />
+                  Order Adjustments
+                </h3>
+                <button onClick={() => setManagingAdjustmentsFor(null)} className="text-gray-400 hover:text-white transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Previous Adjustments</h4>
+                  {managingAdjustmentsFor.orderAdjustments && managingAdjustmentsFor.orderAdjustments.length > 0 ? (
+                    <div className="space-y-2">
+                      {managingAdjustmentsFor.orderAdjustments.map((adj, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-2 rounded border border-[#2a2a2a]">
+                          <div>
+                            <div className="text-white text-xs font-bold">+{adj.additionalQuantity} qty @ {Number(adj.unitPrice).toLocaleString()}</div>
+                            <div className="text-gray-500 text-[10px]">{formatDateFriendly(adj.date)} {adj.notes ? `• ${adj.notes}` : ''}</div>
+                          </div>
+                          <div className="text-gray-500 text-[10px]">By {adj.recordedBy}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-xs italic">No order adjustments recorded.</div>
+                  )}
+                </div>
+                
+                <div className="border-t border-[#333] pt-4 mt-2">
+                  <h4 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider mb-3">Increase Order Size</h4>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Additional Qty</label>
+                        <input
+                          type="number"
+                          value={newAdjustmentQuantity}
+                          onChange={(e) => setNewAdjustmentQuantity(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                          placeholder="e.g. 50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Unit Price ({managingAdjustmentsFor.currency || 'ETB'})</label>
+                        <input
+                          type="number"
+                          value={newAdjustmentPrice}
+                          onChange={(e) => setNewAdjustmentPrice(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                          placeholder={managingAdjustmentsFor.unitPrice.toString()}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={newAdjustmentDate}
+                          onChange={(e) => setNewAdjustmentDate(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-500 mb-1">Notes (Optional)</label>
+                        <input
+                          type="text"
+                          value={newAdjustmentNotes}
+                          onChange={(e) => setNewAdjustmentNotes(e.target.value)}
+                          className="w-full bg-[#0a0a0a] border border-[#333] rounded px-3 py-2 text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                          placeholder="Reason for increase..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t border-[#333] bg-[#0a0a0a] flex justify-end gap-2">
+                <button
+                  onClick={() => setManagingAdjustmentsFor(null)}
+                  className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!newAdjustmentQuantity || !newAdjustmentPrice || !newAdjustmentDate) {
+                      setToastMessage("Please fill in quantity, price, and date.");
+                      setToastType("error");
+                      return;
+                    }
+                    const adjId = `adj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const newAdj = {
+                      id: adjId,
+                      additionalQuantity: Number(newAdjustmentQuantity),
+                      unitPrice: Number(newAdjustmentPrice),
+                      date: newAdjustmentDate,
+                      notes: newAdjustmentNotes,
+                      recordedBy: currentUser?.username || 'Unknown'
+                    };
+                    const updatedCustomer = {
+                      ...managingAdjustmentsFor,
+                      orderAdjustments: [...(managingAdjustmentsFor.orderAdjustments || []), newAdj]
+                    };
+                    onUpdateCustomer(updatedCustomer);
+                    setManagingAdjustmentsFor(updatedCustomer);
+                    setNewAdjustmentQuantity('');
+                    setNewAdjustmentNotes('');
+                    setToastMessage("Order increased successfully.");
+                    setToastType("success");
+                  }}
+                  className="px-4 py-2 text-xs font-bold bg-[#ee317b] hover:bg-[#c62060] text-white rounded transition-colors cursor-pointer"
+                >
+                  Save Adjustment
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
