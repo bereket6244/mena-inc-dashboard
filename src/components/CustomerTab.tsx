@@ -225,7 +225,14 @@ export function computeCustomerTotalInvoice(customer: Customer): number {
 }
 
 export function computeCustomerTotalPaid(customer: Customer): number {
-  return (customer.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  let sum = (customer.payments || []).reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  if (customer.advancePayment && Number(customer.advancePayment) > 0) {
+    const isMigrated = (customer.payments || []).some(p => Number(p.amount) === Number(customer.advancePayment));
+    if (!isMigrated) {
+      sum += Number(customer.advancePayment);
+    }
+  }
+  return sum;
 }
 
 export default function CustomerTab({ 
