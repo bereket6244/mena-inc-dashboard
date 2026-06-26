@@ -264,7 +264,7 @@ export default function SearchableSelect({
           <div 
             ref={dropdownRef}
             style={dropdownStyle}
-            className="bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden animate-select-dropdown"
+            className="searchable-select-dropdown bg-[#181818] border border-[#262626] rounded-md shadow-2xl max-h-60 flex flex-col overflow-hidden animate-select-dropdown z-[9999]"
           >
             <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 py-1">
             {filteredOptions.length === 0 && !showCreateOption ? (
@@ -281,7 +281,7 @@ export default function SearchableSelect({
                       onChange({ target: { value: opt.value } });
                       setIsOpen(false);
                     }}
-                    className={`px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
+                    className={`searchable-select-option px-3 py-2 text-xs cursor-pointer transition-colors flex justify-between items-center
                       ${index === activeIndex
                         ? 'bg-[#262626] text-white'
                         : opt.value === value 
@@ -302,7 +302,7 @@ export default function SearchableSelect({
                       onCreateOption?.(trimmedSearchTerm);
                       setIsOpen(false);
                     }}
-                    className={`px-3 py-2.5 bg-[#ee317b]/10 hover:bg-[#ee317b]/20 text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626] ${activeIndex === filteredOptions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
+                    className={`searchable-select-create-option px-3 py-2.5 bg-[#ee317b]/10 hover:bg-[#ee317b]/20 text-white font-sans text-xs flex items-center justify-between cursor-pointer border-t border-[#262626] ${activeIndex === filteredOptions.length ? 'ring-1 ring-[#ee317b]/40' : ''}`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <PlusCircle className="w-4 h-4 text-[#ee317b] shrink-0" />

@@ -42,8 +42,7 @@ import {
   ArrowUpDown,
   Calendar,
   Banknote,
-  TrendingUp,
-  Pencil,
+  TrendingUp
 } from 'lucide-react';
 
 import { 
@@ -234,24 +233,6 @@ export function computeCustomerTotalPaid(customer: Customer): number {
     }
   }
   return sum;
-}
-
-export function isCustomerPaymentComplete(customer: Customer): boolean {
-  const totalInvoice = computeCustomerTotalInvoice(customer);
-  if (totalInvoice <= 0) return false;
-  return computeCustomerTotalPaid(customer) >= totalInvoice - 0.01;
-}
-
-export function getCustomerLatestPaymentDate(customer: Customer): string {
-  const dates = (customer.payments || [])
-    .map(payment => payment.date)
-    .filter(Boolean);
-
-  if (customer.advancePayment && Number(customer.advancePayment) > 0 && customer.advancePaymentDate) {
-    dates.push(customer.advancePaymentDate);
-  }
-
-  return dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || '';
 }
 
 export default function CustomerTab({ 
@@ -641,11 +622,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentDate, setNewPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newPaymentMethodId, setNewPaymentMethodId] = useState('');
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
-  const [actionMenuRect, setActionMenuRect] = useState<DOMRect | null>(null);
-  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
-  const [showAdjustmentHistory, setShowAdjustmentHistory] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
 
   const [managingAdjustmentsFor, setManagingAdjustmentsFor] = useState<Customer | null>(null);
   const [newAdjustmentQuantity, setNewAdjustmentQuantity] = useState('');
@@ -1903,7 +1879,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   };
 
   const handleMarkPaid = (customer: Customer) => {
-    if ((customer.deliveryDate && customer.bankRemainingId) || isCustomerPaymentComplete(customer)) return;
+    if (customer.deliveryDate && customer.bankRemainingId) return;
     setSingleMarkPaidId(customer.id);
     setBulkCompleteDate(new Date().toISOString().split('T')[0]);
     setBulkCompleteBankId('b1');
@@ -2099,36 +2075,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const targetIds = singleMarkPaidId ? [singleMarkPaidId] : selectedCustomerIds;
     const updatedList = customers.map(c => {
       if (targetIds.includes(c.id)) {
-        const totalInvoice = computeCustomerTotalInvoice(c);
-        const totalPaid = computeCustomerTotalPaid(c);
-        const finalPaymentAmount = Math.max(0, totalInvoice - totalPaid);
-        const completionPaymentId = `mig_rem_${c.id}`;
-        const hasCompletionPayment = (c.payments || []).some(payment =>
-          payment.id === completionPaymentId ||
-          (
-            Math.abs(Number(payment.amount || 0) - finalPaymentAmount) < 0.01 &&
-            payment.date === bulkCompleteDate &&
-            (payment.paymentMethodId || payment.methodId || '') === bulkCompleteBankId
-          )
-        );
-        const payments = finalPaymentAmount > 0.01 && !hasCompletionPayment
-          ? [
-              ...(c.payments || []),
-              {
-                id: completionPaymentId,
-                amount: finalPaymentAmount,
-                date: bulkCompleteDate,
-                paymentMethodId: bulkCompleteBankId,
-                recordedBy: currentUser?.username || c.orderTakenBy || 'Unknown'
-              }
-            ]
-          : c.payments;
-
         return {
           ...c,
           deliveryDate: c.deliveryDate || bulkCompleteDate,
-          bankRemainingId: c.bankRemainingId || bulkCompleteBankId,
-          payments
+          bankRemainingId: c.bankRemainingId || bulkCompleteBankId
         };
       }
       return c;
@@ -2251,7 +2201,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const getCustomerSortValue = (customer: Customer, field: CustomerColumnSortField) => {
     const fullValue = computeCustomerTotalInvoice(customer);
-    const isCompleted = !!(customer.deliveryDate && customer.bankRemainingId) || isCustomerPaymentComplete(customer);
+    const isCompleted = !!(customer.deliveryDate && customer.bankRemainingId);
     const remainingBalance = isCompleted ? 0 : Math.max(0, fullValue - computeCustomerTotalPaid(customer));
 
     switch (field) {
@@ -2290,7 +2240,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const full = computeCustomerTotalInvoice(c);
     const advance = computeCustomerTotalPaid(c);
     const remaining = Math.max(0, full - advance);
-    const isCompleted = !!(c.deliveryDate && c.bankRemainingId) || isCustomerPaymentComplete(c);
+    const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
     const hasOutstandingDebt = !isCompleted && remaining > 0;
     const isPaidOrSettled = isCompleted || remaining <= 0;
     let matchesPayment = true;
@@ -2492,7 +2442,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   };
   const getBankName = (id?: string) => id ? (bankAccounts.find(b => b.id === id)?.name || 'Unknown account') : 'Empty / Unpaid';
   const getStatusLabel = (customer: Customer) => {
-    if ((customer.deliveryDate && customer.bankRemainingId) || isCustomerPaymentComplete(customer)) return 'Completed';
+    if (customer.deliveryDate && customer.bankRemainingId) return 'Completed';
     if (customer.incompletionReason) return 'Incomplete';
     return 'Pending';
   };
@@ -3210,7 +3160,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <SortableCustomerHeader field="productType" className="min-w-[190px]">Order Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="paperType1" className="min-w-[210px] bg-[#31111E]/20">Material Info</SortableCustomerHeader>
                   <SortableCustomerHeader field="advancePayment" className="min-w-[230px] text-[#71b536]">Payment Info</SortableCustomerHeader>
-                  <SortableCustomerHeader field="deliveryDate" className="min-w-[150px] bg-[#31111E]/5">Delivery / Status</SortableCustomerHeader>
+                  <SortableCustomerHeader field="deliveryDate" className="min-w-[210px] bg-[#31111E]/5">Delivery / Status</SortableCustomerHeader>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-gray-300">
@@ -3353,15 +3303,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         </td>
 
                         {/* 7. Delivery / Status */}
-                        <td className="py-1.5 px-2 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[150px] max-w-[170px]">
-                          <div className="flex flex-col gap-1.5 pt-1">
+                        <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[245px]">
+                          <div className="flex flex-wrap items-end gap-2 pt-1">
                             {/* Delivery Date */}
-                            <div className="min-w-0 w-full">
+                            <div className="min-w-0">
                               <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
-                              <div className="w-full h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
+                              <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
+                            </div>
+                            {/* Remaining Bank */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining Bank</span>
+                              <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
+                            </div>
+                            {/* Status */}
+                            <div className="min-w-0">
+                              <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Status</span>
+                              <div className="w-[64px] h-[21px] rounded-md skeleton-line bg-[#ee317b]/10" style={{ '--w': '64px' } as React.CSSProperties} />
                             </div>
                             {/* Incomplete Reason */}
-                            <div className="min-w-0 w-full">
+                            <div className="min-w-0">
                               <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Incomplete Reason</span>
                               <div className="w-[128px] h-[21px] rounded-md skeleton-line" style={{ '--w': '128px' } as React.CSSProperties} />
                             </div>
@@ -3373,18 +3333,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 ) : (
                   <>
                     {filteredCustomers.map((c, index) => {
+                  const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
                   const fullVal = computeCustomerTotalInvoice(c);
-                  const totalPaidAmount = computeCustomerTotalPaid(c);
-                  const isCompletedByPayment = fullVal > 0 && totalPaidAmount >= fullVal - 0.01;
-                  const isCompleted = !!(c.deliveryDate && c.bankRemainingId) || isCompletedByPayment;
-                  const rawRemainingVal = Math.max(0, fullVal - totalPaidAmount);
+                  const rawRemainingVal = Math.max(0, fullVal - computeCustomerTotalPaid(c));
                   const remainingVal = isCompleted ? 0 : rawRemainingVal;
                   
                   const isSelected = selectedCustomerIds.includes(c.id);
                   const isSearchHighlighted = highlightedSearchResult?.id === c.id;
-                  const isOverPaid = totalPaidAmount > fullVal + 0.01;
-                  const isExactlyPaid = Math.abs(totalPaidAmount - fullVal) < 0.01 && fullVal > 0;
-                  const displayedDeliveryDate = isCompletedByPayment ? getCustomerLatestPaymentDate(c) : '';
                   
                   return (
                     <tr 
@@ -3395,15 +3350,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           ? 'selected-row'
                           : ''
                       } ${
-                        isOverPaid
-                          ? 'overpaid-order-row'
-                          : isExactlyPaid
-                            ? 'fully-paid-order-row'
-                            : isCompleted
-                              ? 'completed-order-row'
-                              : c.incompletionReason
-                                ? 'incomplete-order-row'
-                                : 'hover:bg-[#1a1a1a]'
+                        isCompleted 
+                          ? 'completed-order-row' 
+                          : c.incompletionReason 
+                            ? 'incomplete-order-row' 
+                            : 'hover:bg-[#1a1a1a]'
                       }`}
                       onClick={(e) => handleCustomerRowClick(c.id, e)}
                       onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
@@ -3477,11 +3428,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             {c.acquisitionSource || 'No source'}
                           </span>
                           <div className="flex items-center gap-1 pt-0.5 font-sans">
-
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDuplicate(c)}
+                              className="text-gray-400 hover:text-sky-400 hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Copy details to add another order for this client"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               type="button"
                               onClick={() => setManagingPaymentsFor(c)}
-                              className="customer-row-payment-action text-gray-400 hover:text-[#71b536] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              className="text-gray-400 hover:text-[#71b536] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                               title="Add Payment"
                             >
                               <Banknote className="w-3.5 h-3.5" />
@@ -3489,23 +3447,27 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             <button
                               type="button"
                               onClick={() => setManagingAdjustmentsFor(c)}
-                              className="customer-row-increase-action text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
                               title="Increase Order"
                             >
                               <TrendingUp className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setActionMenuRect(rect);
-                                setOpenActionMenuId(openActionMenuId === c.id ? null : c.id);
-                              }}
-                              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer relative z-[60]"
-                              title="More Options"
+                              onClick={() => handleOpenEdit(c)}
+                              className="text-gray-400 hover:text-[#ee317b] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Edit Record"
                             >
-                              <MoreVertical className="w-3.5 h-3.5" />
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCustomerId(c.id)}
+                              className="text-gray-500 hover:text-[#F87171] hover:bg-[#262626] p-1.5 rounded-md transition-colors cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -3558,18 +3520,48 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       </td>
 
                       {/* Delivery / Status */}
-                      <td className="py-1.5 px-2 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[150px] max-w-[170px]">
-                          <div className="flex flex-col gap-1.5 pt-1">
-                            <div className="min-w-0 w-full">
+                      <td className="py-1.5 px-2.5 border-r border-[#262626] font-sans align-top bg-[#1c1c1c]/10 min-w-[245px]">
+                          <div className="flex flex-wrap items-end gap-2 pt-1">
+                            <div className="min-w-0">
                               <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Delivery Date</span>
-                              <span
-                                className="block w-full max-w-[118px] rounded-md border border-[#262626] bg-[#121212] px-1.5 py-0.5 text-[11px] leading-tight text-sky-400"
-                                title={displayedDeliveryDate ? 'Latest payment date' : 'Order is not complete'}
-                              >
-                                {displayedDeliveryDate ? formatDateFriendly(displayedDeliveryDate) : ''}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="date"
+                                  value={c.deliveryDate || ''}
+                                  onChange={(e) => onUpdateCustomer({ ...c, deliveryDate: e.target.value })}
+                                  className="min-w-0 w-full max-w-[128px] bg-[#121212] text-[11px] font-semibold text-[#ee317b] hover:text-[#ff4e91] border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
+                                  title="Change Delivery Date directly"
+                                />
+                                {c.deliveryDate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateCustomer({ ...c, deliveryDate: '', bankRemainingId: '' })}
+                                    className="text-red-500 hover:text-red-400 font-extrabold px-1 py-0 cursor-pointer text-xs leading-none"
+                                    title="Clear Delivery Date"
+                                  >
+                                    x
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Remaining Bank</span>
+                            <SearchableSelect
+                              value={c.bankRemainingId || ''}
+                              onChange={(e) => onUpdateCustomer({ ...c, bankRemainingId: e.target.value || undefined })}
+                              className="bg-[#121212] text-[11px] text-gray-300 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md w-full max-w-[128px] leading-tight truncate"
+                            >
+                              <option value="">- Empty/Unpaid -</option>
+                              {activeBankAccounts.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </SearchableSelect>
                           </div>
-                          <div className="min-w-0 w-full">
+                          <div className="min-w-0">
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Status</span>
+                            <span className={`inline-flex max-w-full rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight ${isCompleted ? 'border-green-800/60 bg-[#112918]/30 text-[#71b536]' : c.incompletionReason ? 'border-red-900/60 bg-[#2E181D]/40 text-red-300' : 'border-[#262626] bg-[#181818] text-gray-300'}`}>
+                              {getStatusLabel(c)}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
                             <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Incomplete Reason</span>
                             <input
                               type="text"
@@ -3577,7 +3569,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                               placeholder={isCompleted ? 'Completed' : 'Completed / reason...'}
                               disabled={isCompleted}
                               onChange={(e) => onUpdateCustomer({ ...c, incompletionReason: e.target.value })}
-                              className="bg-[#121212] text-[11px] text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans rounded-md w-full leading-tight disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="bg-[#121212] text-[11px] text-gray-350 hover:text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] outline-none px-1.5 py-0.5 font-sans rounded-md w-full max-w-[128px] leading-tight disabled:opacity-60 disabled:cursor-not-allowed"
                               title={isCompleted ? 'Completed orders do not need an incomplete reason' : (c.incompletionReason || 'Change Incompletion Reason directly')}
                             />
                           </div>
@@ -3602,18 +3594,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       {/* RESPONSIVE CARDS VIEW */}
       <div className={`${layoutMode === 'cards' ? 'grid' : 'hidden'} customer-gallery-scroll grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-none mobile-table-bottom-gap pb-32 md:pb-0 ${selectedCustomerIds.length > 0 ? 'mobile-selection-lift' : ''}`}>
         {filteredCustomers.map((c) => {
+            const isCompleted = !!(c.deliveryDate && c.bankRemainingId);
             const fullVal = computeCustomerTotalInvoice(c);
-            const totalPaidAmount = computeCustomerTotalPaid(c);
-            const isCompletedByPayment = fullVal > 0 && totalPaidAmount >= fullVal - 0.01;
-            const isCompleted = !!(c.deliveryDate && c.bankRemainingId) || isCompletedByPayment;
-            const rawRemainingVal = Math.max(0, fullVal - totalPaidAmount);
+            const rawRemainingVal = Math.max(0, fullVal - computeCustomerTotalPaid(c));
             const remainingVal = isCompleted ? 0 : rawRemainingVal;
             const isSelected = selectedCustomerIds.includes(c.id);
             const isSearchHighlighted = highlightedSearchResult?.id === c.id;
-            
-            const isOverPaid = totalPaidAmount > fullVal + 0.01;
-            const isExactlyPaid = Math.abs(totalPaidAmount - fullVal) < 0.01 && fullVal > 0;
-            const displayedDeliveryDate = isCompletedByPayment ? getCustomerLatestPaymentDate(c) : '';
 
              // Collect deductions for table display
              const deductionsList: Array<{ location: string; item: string; qty: string }> = [];
@@ -3658,17 +3644,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 key={c.id} 
                 data-global-search-id={`customer-${c.id}`}
                 className={`border rounded-xl p-3.5 shadow-sm flex flex-col justify-between transition-all duration-300 ${isSearchHighlighted ? 'global-search-highlight' : ''} ${
-                  isSelected
+                  isSelected 
                     ? 'bg-sky-950/20 border-sky-600/60 text-sky-300'
-                    : isOverPaid
-                      ? 'bg-yellow-200 dark:bg-[#312b12] border-yellow-500/80 text-yellow-950 dark:text-yellow-100'
-                      : isExactlyPaid
-                        ? 'bg-green-100 dark:bg-[#132c10] border-green-500/80 text-green-950 dark:text-green-100'
-                        : isCompleted
-                          ? 'bg-[#112918]/25 border-green-800/40 text-green-300'
-                          : c.incompletionReason
-                            ? 'bg-[#2E181D]/30 border-red-800/40 text-red-300'
-                            : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]'
+                    : isCompleted 
+                      ? 'bg-[#112918]/25 border-green-800/40 text-green-300' 
+                      : c.incompletionReason
+                        ? 'bg-[#2E181D]/30 border-red-800/40 text-red-300'
+                        : 'bg-[#121212] border-[#262626] hover:border-[#ee317b]'
                 }`}
                 onClick={(e) => handleCustomerRowClick(c.id, e)}
                 onTouchStart={(e) => startCustomerRowLongPress(c.id, e)}
@@ -3786,11 +3768,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     </div>
                   </div>
 
-                  {/* Dates Grid */}
-                  <div className="grid grid-cols-2 divide-x divide-[#262626]/50 border-t border-[#262626] mt-3 pt-3 text-xs font-sans">
+                  {/* Dates & Method 3-column Grid */}
+                  <div className="grid grid-cols-3 divide-x divide-[#262626]/50 border-t border-[#262626] mt-3 pt-3 text-xs font-sans">
                     {/* Advance Date Column */}
                     <div className="flex flex-col gap-1 pr-3.5">
-                      <div className="flex items-center text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
+                      <div className="flex items-center justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
                         <div className="flex items-center gap-1 min-w-0">
                           <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
                           <span className="truncate">Advance Date</span>
@@ -3833,7 +3815,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
                           <span className="truncate">Final Payment</span>
                         </div>
-                        {false && c.deliveryDate && (
+                        {c.deliveryDate && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -3851,14 +3833,46 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           </button>
                         )}
                       </div>
-                      <span
-                        className="bg-[#161616] text-white border border-[#262626] rounded-md px-1 h-7 text-[10px] font-sans font-bold w-full mt-1 flex items-center justify-center text-center"
-                        title={displayedDeliveryDate ? 'Latest payment date' : 'Order is not complete'}
-                      >
-                        {displayedDeliveryDate ? formatDateFriendly(displayedDeliveryDate) : ''}
-                      </span>
+                      <input
+                        type="date"
+                        value={c.deliveryDate || ''}
+                        onChange={(e) => {
+                          onUpdateCustomer({
+                            ...c,
+                            deliveryDate: e.target.value
+                          });
+                        }}
+                        className="bg-[#161616] text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] rounded-md px-1 h-7 text-[10px] font-sans font-bold w-full mt-1 outline-none cursor-pointer text-center"
+                        title="Choose Final Payment Date"
+                      />
                     </div>
 
+                    {/* Final Method Column */}
+                    <div className="flex flex-col gap-1 pl-3.5">
+                      <div className="flex items-center gap-1 text-[8px] text-gray-400 font-bold uppercase tracking-wider mb-1 h-3.5">
+                        <CreditCard className="w-3 h-3 text-gray-500 shrink-0" />
+                        <span className="truncate">Final Method</span>
+                      </div>
+                      <SearchableSelect
+                        value={c.bankRemainingId || ''}
+                        onChange={(e) => {
+                          onUpdateCustomer({
+                            ...c,
+                            bankRemainingId: e.target.value || undefined
+                          });
+                        }}
+                        className="bg-[#161616] text-white border border-[#262626] hover:border-[#ee317b] focus:border-[#ee317b] rounded-md px-1 h-7 min-h-0 text-[10px] font-sans font-bold w-full truncate"
+                        inputClassName="text-center text-[10px] py-0"
+                        placeholder="Unpaid"
+                      >
+                        <option value="">Unpaid</option>
+                        {activeBankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </SearchableSelect>
+                    </div>
                   </div>
 
                   {/* Finance Calculations Card */}
@@ -3918,7 +3932,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <button
                     type="button"
                     onClick={() => setManagingPaymentsFor(c)}
-                    className="customer-row-payment-action text-[10px] border border-green-900/40 hover:bg-green-950/10 text-green-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                    className="text-[10px] border border-green-900/40 hover:bg-green-950/10 text-green-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
                   >
                     <Banknote className="w-3 h-3 shrink-0" />
                     <span className="truncate">Pay</span>
@@ -3927,7 +3941,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   <button
                     type="button"
                     onClick={() => setManagingAdjustmentsFor(c)}
-                    className="customer-row-increase-action text-[10px] border border-pink-900/40 hover:bg-pink-950/10 text-pink-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                    className="text-[10px] border border-pink-900/40 hover:bg-pink-950/10 text-pink-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
                   >
                     <TrendingUp className="w-3 h-3 shrink-0" />
                     <span className="truncate">Adjust</span>
@@ -3935,16 +3949,30 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setActionMenuRect(rect);
-                      setOpenActionMenuId(openActionMenuId === c.id ? null : c.id);
-                    }}
-                    className="text-[10px] border border-gray-300 dark:border-gray-600/40 hover:bg-gray-100 dark:hover:bg-gray-600/10 text-gray-600 dark:text-gray-400 font-sans font-bold py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent relative z-[60]"
-                    title="More Options"
+                    onClick={() => handleOpenEdit(c)}
+                    className="text-[10px] border border-rose-900/40 hover:bg-rose-950/10 text-rose-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
                   >
-                    <MoreVertical className="w-3 h-3 shrink-0" />
+                    <Edit3 className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Modify</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDuplicate(c)}
+                    className="text-[10px] border border-blue-900/40 hover:bg-blue-950/10 text-blue-500 font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+                    title="Copy details to add another order for this client"
+                  >
+                    <Plus className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Order</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setDeletingCustomerId(c.id)}
+                    className="text-[10px] bg-[#a61f17] hover:bg-[#8f1a13] text-white keep-text-white font-sans font-bold py-1.5 px-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3 shrink-0 text-white keep-text-white" />
+                    <span className="truncate">Remove</span>
                   </button>
                 </div>
               </div>
@@ -6432,26 +6460,22 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             {/* PAYMENTS MODAL */}
       <AnimatePresence>
         {managingPaymentsFor && (() => {
+          const combinedPayments = [...(managingPaymentsFor.payments || [])];
+          if (
+            managingPaymentsFor.advancePayment > 0 && 
+            !combinedPayments.some(p => p.amount === managingPaymentsFor.advancePayment && (p.date === managingPaymentsFor.advancePaymentDate || p.date === managingPaymentsFor.deliveryDate))
+          ) {
+            combinedPayments.unshift({
+              id: 'legacy_advance',
+              amount: managingPaymentsFor.advancePayment,
+              date: managingPaymentsFor.advancePaymentDate || managingPaymentsFor.deliveryDate || '',
+              paymentMethodId: managingPaymentsFor.bankAdvanceId || '',
+              recordedBy: 'Initial Advance'
+            });
+          }
           const totalPaid = computeCustomerTotalPaid(managingPaymentsFor);
-          const totalInvoice = computeCustomerTotalInvoice(managingPaymentsFor);
-          const rawRemaining = totalInvoice - totalPaid;
-          const remainingAmount = Math.max(0, rawRemaining);
-          const legacyAdvanceAmount = Number(managingPaymentsFor.advancePayment || 0);
-          const legacyAdvanceBankId = managingPaymentsFor.paymentMethodId || '';
-          const legacyAdvanceDate = managingPaymentsFor.advancePaymentDate || managingPaymentsFor.deliveryDate || '';
-          const legacyAdvancePaymentId = `mig_adv_${managingPaymentsFor.id}`;
-          const visiblePaymentHistory = (managingPaymentsFor.payments || []).filter(payment => {
-            if (legacyAdvanceAmount <= 0) return true;
-            const paymentBankId = payment.paymentMethodId || payment.methodId || '';
-            return !(
-              payment.id === legacyAdvancePaymentId ||
-              (
-                Math.abs(Number(payment.amount || 0) - legacyAdvanceAmount) < 0.01 &&
-                paymentBankId === legacyAdvanceBankId &&
-                payment.date === legacyAdvanceDate
-              )
-            );
-          });
+          const totalOrderValue = computeCustomerTotalInvoice(managingPaymentsFor);
+          const remainingBalance = Math.max(0, totalOrderValue - totalPaid);
 
           return (
           <motion.div
@@ -6464,276 +6488,143 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="customer-payment-modal bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
             >
-              <div className="customer-payment-modal-header p-4 border-b border-gray-200 dark:border-[#333] flex flex-col gap-3 bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-gray-900 dark:text-white font-bold text-base flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-[#71b536]" />
-                    Manage Payments
-                  </h3>
-                  <button onClick={() => {
-                    setManagingPaymentsFor(null);
-                    setEditingPaymentId(null);
-                    setNewPaymentAmount('');
-                    setNewPaymentMethodId('');
-                  }} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="customer-payment-summary flex flex-wrap gap-4 text-sm bg-white dark:bg-[#111] p-3 rounded-lg border border-gray-200 dark:border-[#262626]">
-                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Total Value</span><span className="customer-payment-summary-value font-bold text-gray-900 dark:text-white">{formatMoney(totalInvoice, managingPaymentsFor.currency)}</span></div>
-                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Total Paid</span><span className="font-bold text-[#71b536]">{formatMoney(totalPaid, managingPaymentsFor.currency)}</span></div>
-                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Remaining</span><span className={`customer-payment-summary-value font-bold ${remainingAmount > 0 ? 'text-[#ee317b]' : 'text-gray-900 dark:text-white'}`}>{formatMoney(remainingAmount, managingPaymentsFor.currency)}</span></div>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPaymentHistory(!showPaymentHistory)}
-                  className="text-xs font-bold text-[#ee317b] hover:text-[#c62060] self-start"
-                >
-                  {showPaymentHistory ? "Hide Payment History" : "View Payment History"}
+              <div className="p-4 border-b border-gray-200 dark:border-[#333] flex items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">
+                <h3 className="text-gray-900 dark:text-white font-bold text-base flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-[#71b536]" />
+                  Manage Payments
+                </h3>
+                <button onClick={() => setManagingPaymentsFor(null)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              <div className="customer-payment-modal-body flex-1 overflow-y-auto p-4 custom-scrollbar">
-                <AnimatePresence>
-                  {showPaymentHistory && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="mb-6 overflow-hidden"
-                    >
-                      <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">All Payments Made</h4>
-                      <div className="space-y-2">
-                        {legacyAdvanceAmount > 0 && (
-                          <div className="customer-payment-history-item flex justify-between items-center bg-gray-50 dark:bg-[#1a1a1a] p-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
-                            <div>
-                              <div className="customer-payment-history-amount text-gray-900 dark:text-white text-sm font-bold flex items-center gap-2">
-                                {formatMoney(legacyAdvanceAmount, managingPaymentsFor.currency)}
-                                {legacyAdvanceBankId && (
-                                  <span className="customer-payment-method-badge text-[10px] font-normal bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                                    {bankAccounts.find(b => b.id === legacyAdvanceBankId)?.name || 'Unknown Bank'}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-gray-500 text-xs">{formatDateFriendly(legacyAdvanceDate)}</div>
-                              <div className="text-gray-500 text-xs">Advance Payment</div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-gray-500 text-xs italic">Initial</div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updatedCustomer = {
-                                    ...managingPaymentsFor,
-                                    advancePayment: 0,
-                                    advancePaymentDate: '',
-                                    paymentMethodId: '',
-                                    payments: (managingPaymentsFor.payments || []).filter(payment => payment.id !== legacyAdvancePaymentId)
-                                  };
-                                  onUpdateCustomer(updatedCustomer);
-                                  setManagingPaymentsFor(updatedCustomer);
-                                  setToastMessage("Payment deleted.");
-                                  setToastType("success");
-                                }}
-                                className="p-1.5 text-gray-400 hover:text-[#F87171] hover:bg-red-950/20 rounded transition-colors"
-                                title="Delete Payment"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {visiblePaymentHistory.length > 0 ? (
-                          visiblePaymentHistory.map((p) => (
-                            <div key={p.id} className="customer-payment-history-item flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
-                              <div>
-                                <div className="customer-payment-history-amount text-gray-900 dark:text-white text-sm font-bold flex items-center gap-2">
-                                  {formatMoney(Number(p.amount), managingPaymentsFor.currency)}
-                                  {(p.paymentMethodId || p.methodId) && (
-                                    <span className="customer-payment-method-badge text-[10px] font-normal bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                                      {bankAccounts.find(b => b.id === (p.paymentMethodId || p.methodId))?.name || 'Unknown Bank'}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-gray-500 text-xs">{formatDateFriendly(p.date)}</div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="text-gray-500 text-xs text-right">
-                                  <div>By {p.recordedBy}</div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingPaymentId(p.id);
-                                    setNewPaymentAmount(p.amount.toString());
-                                    setNewPaymentDate(p.date);
-                                    setNewPaymentMethodId(p.paymentMethodId || p.methodId || '');
-                                    setShowPaymentHistory(false);
-                                  }}
-                                  className="p-1.5 text-gray-400 hover:text-white hover:bg-[#333] rounded transition-colors"
-                                  title="Edit Payment"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updatedPayments = (managingPaymentsFor.payments || []).filter(payment => payment.id !== p.id);
-                                    const updatedCustomer = {
-                                      ...managingPaymentsFor,
-                                      payments: updatedPayments
-                                    };
-                                    onUpdateCustomer(updatedCustomer);
-                                    setManagingPaymentsFor(updatedCustomer);
-                                    if (editingPaymentId === p.id) {
-                                      setEditingPaymentId(null);
-                                      setNewPaymentAmount('');
-                                      setNewPaymentMethodId('');
-                                    }
-                                    setToastMessage("Payment deleted.");
-                                    setToastType("success");
-                                  }}
-                                  className="p-1.5 text-gray-400 hover:text-[#F87171] hover:bg-red-950/20 rounded transition-colors"
-                                  title="Delete Payment"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          legacyAdvanceAmount <= 0 && <div className="text-gray-500 text-sm italic">No additional payments recorded.</div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div className="p-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
                 
-                <div className="customer-payment-form bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-gray-200 dark:border-[#2a2a2a]">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-sm font-bold text-[#71b536] uppercase tracking-wider">
-                      {editingPaymentId ? 'Edit Payment' : 'Record New Payment'}
-                    </h4>
-                    {editingPaymentId && (
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setEditingPaymentId(null);
-                          setNewPaymentAmount('');
-                        }}
-                        className="text-[10px] font-bold text-gray-500 hover:text-white"
-                      >
-                        CANCEL EDIT
-                      </button>
-                    )}
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] p-3 rounded-lg border border-gray-200 dark:border-[#333] mb-4">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Total Order Value</div>
+                    <div className="text-sm font-bold text-gray-900 dark:text-white">{totalOrderValue.toLocaleString()} {managingPaymentsFor.currency || 'ETB'}</div>
                   </div>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="flex justify-between items-end mb-1">
-                          <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500">Amount</label>
-                          {!editingPaymentId && remainingAmount > 0 && (
-                            <button 
-                              type="button" 
-                              onClick={() => setNewPaymentAmount(remainingAmount.toString())}
-                              className="text-[9px] text-[#ee317b] hover:text-[#c62060] font-bold"
-                            >
-                              Write remaining balance
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="number"
-                          value={newPaymentAmount}
-                          onChange={(e) => setNewPaymentAmount(e.target.value)}
-                          className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded-lg px-3 py-2.5 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
-                          placeholder="e.g. 500"
-                        />
-                      </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Remaining Balance</div>
+                    <div className={`text-sm font-bold ${remainingBalance === 0 ? 'text-[#71b536]' : 'text-orange-500'}`}>
+                      {remainingBalance.toLocaleString()} {managingPaymentsFor.currency || 'ETB'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Previous Payments</h4>
+                  {combinedPayments.length > 0 ? (
+                    <div className="space-y-2">
+                      {combinedPayments.map((p, idx) => {
+                        const bank = bankAccounts.find(b => b.id === p.paymentMethodId);
+                        return (
+                          <div key={idx} className="flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-2 rounded border border-gray-200 dark:border-[#2a2a2a]">
+                            <div>
+                              <div className="text-gray-900 dark:text-white text-xs font-bold">{Number(p.amount).toLocaleString()} {managingPaymentsFor.currency || 'ETB'}</div>
+                              <div className="text-gray-500 text-[10px]">{formatDateFriendly(p.date)} &bull; {bank?.name || 'Unknown Bank'}</div>
+                            </div>
+                            <div className="text-gray-500 text-[10px]">By {p.recordedBy}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-xs italic">No payments recorded.</div>
+                  )}
+                </div>
+                
+                <div className="border-t border-gray-200 dark:border-[#333] pt-4 mt-2">
+                  <h4 className="text-xs font-bold text-[#71b536] uppercase tracking-wider mb-3">Add New Payment</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Amount ({managingPaymentsFor.currency || 'ETB'})</label>
+                      <input
+                        type="number"
+                        value={newPaymentAmount}
+                        onChange={(e) => setNewPaymentAmount(e.target.value)}
+                        className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                        placeholder="e.g. 5000"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Date</label>
                         <input
                           type="date"
                           value={newPaymentDate}
                           onChange={(e) => setNewPaymentDate(e.target.value)}
-                          className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded-lg px-3 py-2.5 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                          className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
                         />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Bank / Method</label>
-                      <SearchableSelect
-                        value={newPaymentMethodId}
-                        onChange={(e: any) => setNewPaymentMethodId(e.target.value)}
-                        placeholder="Select Bank..."
-                        className="customer-payment-method-select min-h-[42px] rounded-lg border border-gray-300 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] text-sm"
-                      >
-                        <option value="">Select Bank...</option>
-                        {bankAccounts.map(b => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </SearchableSelect>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Bank Account</label>
+                        <select
+                          value={newPaymentMethodId}
+                          onChange={(e) => setNewPaymentMethodId(e.target.value)}
+                          className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
+                        >
+                          <option value="">Select Bank...</option>
+                          {bankAccounts.filter(b => !b.isDeleted).map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="customer-payment-modal-footer p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-end gap-3">
+              <div className="p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-between gap-2">
                 <button
                   onClick={() => {
+                    const c = managingPaymentsFor;
                     setManagingPaymentsFor(null);
-                    setEditingPaymentId(null);
-                    setNewPaymentAmount('');
-                    setNewPaymentMethodId('');
+                    handleMarkPaid(c);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+                  className="px-3 py-2 text-xs font-bold text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800 rounded transition-colors flex items-center gap-1 cursor-pointer"
                 >
-                  Cancel
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Mark Fully Paid & Completed
                 </button>
-                <button
-                  onClick={() => {
-                    if (!newPaymentAmount || !newPaymentDate || !newPaymentMethodId) {
-                      setToastMessage("Please fill in amount, date, and bank / method.");
-                      setToastType("error");
-                      return;
-                    }
-                    
-                    let updatedPayments = managingPaymentsFor.payments || [];
-                    
-                    if (editingPaymentId) {
-                      updatedPayments = updatedPayments.map(p => 
-                        p.id === editingPaymentId 
-                          ? { ...p, amount: Number(newPaymentAmount), date: newPaymentDate, paymentMethodId: newPaymentMethodId }
-                          : p
-                      );
-                    } else {
-                      const payId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                      const newPay = {
-                        id: payId,
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setManagingPaymentsFor(null)}
+                    className="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!newPaymentAmount || !newPaymentDate || !newPaymentMethodId) {
+                        setToastMessage("Please fill in all payment fields.");
+                        setToastType("error");
+                        return;
+                      }
+                      const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                      const newPayment = {
+                        id: paymentId,
                         amount: Number(newPaymentAmount),
                         date: newPaymentDate,
                         paymentMethodId: newPaymentMethodId,
                         recordedBy: currentUser?.username || 'Unknown'
                       };
-                      updatedPayments = [...updatedPayments, newPay];
-                    }
-                    
-                    const updatedCustomer = {
-                      ...managingPaymentsFor,
-                      payments: updatedPayments
-                    };
-                    onUpdateCustomer(updatedCustomer);
-                    setManagingPaymentsFor(updatedCustomer);
-                    setEditingPaymentId(null);
-                    setNewPaymentAmount('');
-                    setNewPaymentMethodId('');
-                    setToastType("success");
-                  }}
-                  className="customer-payment-save-button px-4 py-2 text-xs font-bold bg-[#71b536] hover:bg-[#5a912a] text-white rounded transition-colors cursor-pointer"
-                >
-                  {editingPaymentId ? 'Update Payment' : 'Save Payment'}
-                </button>
+                      const updatedCustomer = {
+                        ...managingPaymentsFor,
+                        payments: [...(managingPaymentsFor.payments || []), newPayment]
+                      };
+                      onUpdateCustomer(updatedCustomer);
+                      setManagingPaymentsFor(updatedCustomer);
+                      setNewPaymentAmount('');
+                      setToastMessage("Payment added successfully.");
+                      setToastType("success");
+                    }}
+                    className="px-4 py-2 text-xs font-bold bg-[#71b536] hover:bg-[#5a912a] text-white rounded transition-colors cursor-pointer"
+                  >
+                    Save Payment
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -6754,61 +6645,43 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="customer-adjustment-modal bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
             >
-              <div className="customer-adjustment-modal-header p-4 border-b border-gray-200 dark:border-[#333] flex flex-col gap-3 bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-gray-900 dark:text-white font-bold text-base flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-[#ee317b]" />
-                    Increase Order Size
-                  </h3>
-                  <button onClick={() => setManagingAdjustmentsFor(null)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAdjustmentHistory(!showAdjustmentHistory)}
-                  className="text-xs font-bold text-[#ee317b] hover:text-[#c62060] self-start"
-                >
-                  {showAdjustmentHistory ? "Hide Addition History" : "View Addition History"}
+              <div className="p-4 border-b border-gray-200 dark:border-[#333] flex items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">
+                <h3 className="text-gray-900 dark:text-white font-bold text-base flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#ee317b]" />
+                  Order Adjustments
+                </h3>
+                <button onClick={() => setManagingAdjustmentsFor(null)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="customer-adjustment-modal-body flex-1 overflow-y-auto p-4 custom-scrollbar">
-                <AnimatePresence>
-                  {showAdjustmentHistory && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="mb-6 overflow-hidden"
-                    >
-                      <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Previous Additions</h4>
-                      {managingAdjustmentsFor.orderAdjustments && managingAdjustmentsFor.orderAdjustments.length > 0 ? (
-                        <div className="space-y-2">
-                          {managingAdjustmentsFor.orderAdjustments.map((adj, idx) => (
-                            <div key={idx} className="customer-adjustment-history-item flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-2 rounded border border-gray-200 dark:border-[#2a2a2a]">
-                              <div>
-                                <div className="text-gray-900 dark:text-white text-xs font-bold">+{adj.additionalQuantity} qty</div>
-                                <div className="text-gray-500 text-[10px]">{formatDateFriendly(adj.date)}</div>
-                              </div>
-                              <div className="text-gray-500 text-[10px]">By {adj.recordedBy}</div>
-                            </div>
-                          ))}
+              <div className="p-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Previous Adjustments</h4>
+                  {managingAdjustmentsFor.orderAdjustments && managingAdjustmentsFor.orderAdjustments.length > 0 ? (
+                    <div className="space-y-2">
+                      {managingAdjustmentsFor.orderAdjustments.map((adj, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-2 rounded border border-gray-200 dark:border-[#2a2a2a]">
+                          <div>
+                            <div className="text-gray-900 dark:text-white text-xs font-bold">+{adj.additionalQuantity} qty @ {Number(adj.unitPrice).toLocaleString()}</div>
+                            <div className="text-gray-500 text-[10px]">{formatDateFriendly(adj.date)} {adj.notes ? `• ${adj.notes}` : ''}</div>
+                          </div>
+                          <div className="text-gray-500 text-[10px]">By {adj.recordedBy}</div>
                         </div>
-                      ) : (
-                        <div className="text-gray-500 text-xs italic">No order additions recorded.</div>
-                      )}
-                    </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-xs italic">No order adjustments recorded.</div>
                   )}
-                </AnimatePresence>
+                </div>
                 
-                <div className="customer-adjustment-form bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-gray-200 dark:border-[#2a2a2a]">
-                  <h4 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider mb-3">Add Quantity</h4>
+                <div className="border-t border-gray-200 dark:border-[#333] pt-4 mt-2">
+                  <h4 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider mb-3">Increase Order Size</h4>
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Additional Amount (Qty)</label>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Additional Qty</label>
                         <input
                           type="number"
                           value={newAdjustmentQuantity}
@@ -6818,6 +6691,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         />
                       </div>
                       <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Unit Price ({managingAdjustmentsFor.currency || 'ETB'})</label>
+                        <input
+                          type="number"
+                          value={newAdjustmentPrice}
+                          onChange={(e) => setNewAdjustmentPrice(e.target.value)}
+                          className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                          placeholder={managingAdjustmentsFor.unitPrice.toString()}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
                         <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Date</label>
                         <input
                           type="date"
@@ -6826,11 +6711,21 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Notes (Optional)</label>
+                        <input
+                          type="text"
+                          value={newAdjustmentNotes}
+                          onChange={(e) => setNewAdjustmentNotes(e.target.value)}
+                          className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
+                          placeholder="Reason for increase..."
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="customer-adjustment-modal-footer p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-end gap-2">
+              <div className="p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-end gap-2">
                 <button
                   onClick={() => setManagingAdjustmentsFor(null)}
                   className="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
@@ -6839,19 +6734,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </button>
                 <button
                   onClick={() => {
-                    if (!newAdjustmentQuantity || !newAdjustmentDate) {
-                      setToastMessage("Please fill in quantity and date.");
+                    if (!newAdjustmentQuantity || !newAdjustmentPrice || !newAdjustmentDate) {
+                      setToastMessage("Please fill in quantity, price, and date.");
                       setToastType("error");
                       return;
                     }
-                    const addQty = Number(newAdjustmentQuantity);
                     const adjId = `adj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     const newAdj = {
                       id: adjId,
-                      additionalQuantity: addQty,
-                      unitPrice: Number(managingAdjustmentsFor.unitPrice),
+                      additionalQuantity: Number(newAdjustmentQuantity),
+                      unitPrice: Number(newAdjustmentPrice),
                       date: newAdjustmentDate,
-                      notes: '',
+                      notes: newAdjustmentNotes,
                       recordedBy: currentUser?.username || 'Unknown'
                     };
                     const updatedCustomer = {
@@ -6861,12 +6755,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     onUpdateCustomer(updatedCustomer);
                     setManagingAdjustmentsFor(updatedCustomer);
                     setNewAdjustmentQuantity('');
+                    setNewAdjustmentNotes('');
                     setToastMessage("Order increased successfully.");
                     setToastType("success");
                   }}
-                  className="customer-adjustment-save-button px-4 py-2 text-xs font-bold bg-[#ee317b] hover:bg-[#c62060] text-white rounded transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold bg-[#ee317b] hover:bg-[#c62060] text-white rounded transition-colors cursor-pointer"
                 >
-                  Save Addition
+                  Save Adjustment
                 </button>
               </div>
             </motion.div>
@@ -6874,39 +6769,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         )}
       </AnimatePresence>
       <AppToast message={toastMessage} type={toastType} />
-
-    
-      {openActionMenuId && actionMenuRect && (() => {
-        const c = filteredCustomers.find(cust => cust.id === openActionMenuId);
-        if (!c) return null;
-        
-        // Calculate position based on button rect
-        const top = actionMenuRect.bottom + window.scrollY;
-        // Position right-aligned if close to right edge, else left-aligned
-        const isRightEdge = actionMenuRect.right > window.innerWidth - 150;
-        const style: React.CSSProperties = {
-          position: 'fixed',
-          top: `${actionMenuRect.bottom + 4}px`,
-          ...(isRightEdge ? { right: `${window.innerWidth - actionMenuRect.right}px` } : { left: `${actionMenuRect.left}px` }),
-          zIndex: 9999
-        };
-
-        return createPortal(
-          <>
-            <div className="fixed inset-0 z-[9998]" onClick={() => setOpenActionMenuId(null)} />
-            <div 
-              className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-[#333] rounded-md shadow-lg flex flex-col py-1 min-w-[140px]"
-              style={style}
-            >
-              <button onClick={() => { handleOpenEdit(c); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Edit3 className="w-3.5 h-3.5"/> Modify</button>
-              <button onClick={() => { handleOpenDuplicate(c); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Copy className="w-3.5 h-3.5"/> Copy</button>
-              <div className="h-px bg-gray-200 dark:bg-[#333] my-1"></div>
-              <button onClick={() => { setDeletingCustomerId(c.id); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-[#F87171] hover:text-[#ff9999] hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Trash2 className="w-3.5 h-3.5"/> Delete</button>
-            </div>
-          </>,
-          document.body
-        );
-      })()}
 
     </SharedDataTableLayout>
   );

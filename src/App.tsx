@@ -72,6 +72,81 @@ const LOCAL_STORAGE_CLIENT_TYPES_KEY = 'mena_inc_client_types_v1';
 const LOCAL_STORAGE_AUDIT_LOGS_KEY = 'mena_inc_audit_logs_v1';
 const TAB_SCROLL_STORAGE_KEY = 'mena_inc_tab_scroll_positions_v1';
 const TAB_SCROLL_TTL_MS = 5 * 60 * 1000;
+
+const repairCustomerPayments = (customer: Customer): Customer => {
+  const repaired: Customer = { ...customer };
+  const today = new Date().toISOString().split('T')[0];
+
+  if (!repaired.advancePaymentDate) {
+    repaired.advancePaymentDate = repaired.deliveryDate || today;
+  }
+
+  repaired.payments = Array.isArray(repaired.payments)
+    ? repaired.payments.map(payment => ({
+        ...payment,
+        amount: Number(payment.amount || 0),
+        paymentMethodId: payment.paymentMethodId || payment.methodId || ''
+      }))
+    : [];
+
+  const hasPaymentLike = (amount: number, date: string, bankId: string, id: string) => {
+    return (repaired.payments || []).some(payment => {
+      const paymentBankId = payment.paymentMethodId || payment.methodId || '';
+      return payment.id === id || (
+        Math.abs(Number(payment.amount || 0) - amount) < 0.01 &&
+        payment.date === date &&
+        paymentBankId === bankId
+      );
+    });
+  };
+
+  const legacyAdvanceAmount = Number(repaired.advancePayment || 0);
+  if (legacyAdvanceAmount > 0) {
+    const advanceDate = repaired.advancePaymentDate || repaired.deliveryDate || today;
+    const advanceBankId = repaired.paymentMethodId || 'b1';
+    const advanceId = `mig_adv_${repaired.id}`;
+    const hasAdvancePayment = (repaired.payments || []).some(payment =>
+      payment.id === advanceId || Math.abs(Number(payment.amount || 0) - legacyAdvanceAmount) < 0.01
+    );
+    if (!hasAdvancePayment && !hasPaymentLike(legacyAdvanceAmount, advanceDate, advanceBankId, advanceId)) {
+      repaired.payments.push({
+        id: advanceId,
+        amount: legacyAdvanceAmount,
+        date: advanceDate,
+        paymentMethodId: advanceBankId,
+        recordedBy: repaired.orderTakenBy
+      });
+    }
+  }
+
+  if (repaired.deliveryDate) {
+    const base = Number(repaired.quantity || 0) * Number(repaired.unitPrice || 0);
+    const adjustments = (repaired.orderAdjustments || []).reduce(
+      (sum, adjustment) => sum + (Number(adjustment.additionalQuantity || 0) * Number(adjustment.unitPrice || 0)),
+      0
+    );
+    const subtotal = base + adjustments;
+    const totalInvoice = subtotal + (repaired.isVatAdded ? subtotal * 0.15 : 0);
+    const alreadyPaid = (repaired.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    const legacyRemainingAmount = Math.max(0, totalInvoice - legacyAdvanceAmount);
+    const missingAmount = Math.min(legacyRemainingAmount, Math.max(0, totalInvoice - alreadyPaid));
+    const remainingBankId = repaired.bankRemainingId || repaired.paymentMethodId || 'b1';
+    const remainingId = `mig_rem_${repaired.id}`;
+
+    if (missingAmount > 0.01 && !hasPaymentLike(missingAmount, repaired.deliveryDate, remainingBankId, remainingId)) {
+      repaired.payments.push({
+        id: remainingId,
+        amount: missingAmount,
+        date: repaired.deliveryDate,
+        paymentMethodId: remainingBankId,
+        recordedBy: repaired.orderTakenBy
+      });
+    }
+  }
+
+  return repaired;
+};
+
 type AppTab = 'customers' | 'inventory' | 'performance' | 'purchases';
 type GlobalSearchTarget = {
   type: 'customer' | 'stock' | 'purchase' | 'bank';
@@ -1788,41 +1863,12 @@ export default function App() {
           }
         });
 
-        // Migration: Flexible Payments
-        if (!repaired.payments) {
-          repaired.payments = [];
-          if (repaired.advancePayment > 0) {
-            repaired.payments.push({
-              id: `mig_adv_${repaired.id}`,
-              amount: repaired.advancePayment,
-              date: repaired.advancePaymentDate || repaired.deliveryDate || new Date().toISOString().split('T')[0],
-              paymentMethodId: repaired.paymentMethodId || 'b1',
-              recordedBy: repaired.orderTakenBy
-            });
-          }
-          if (repaired.deliveryDate) {
-            const base = repaired.quantity * repaired.unitPrice;
-            const vat = repaired.isVatAdded ? base * 0.15 : 0;
-            const totalInvoice = base + vat;
-            const remaining = totalInvoice - repaired.advancePayment;
-            if (remaining > 0) {
-              repaired.payments.push({
-                id: `mig_rem_${repaired.id}`,
-                amount: remaining,
-                date: repaired.deliveryDate,
-                paymentMethodId: repaired.bankRemainingId || repaired.paymentMethodId || 'b1',
-                recordedBy: repaired.orderTakenBy
-              });
-            }
-          }
-        }
-
         // Migration: Order Adjustments
         if (!repaired.orderAdjustments) {
           repaired.orderAdjustments = [];
         }
 
-        return repaired;
+        return repairCustomerPayments(repaired);
       });
       const finalB = await fetchAllBankAccounts(initialB);
       if (!isBackgroundRefresh) {
@@ -3049,10 +3095,7 @@ ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;`;
         // Apply repaired mappings to customers before reconciling
         const repairedC = newC.map(cust => {
           const repaired = { ...cust };
-          if (!repaired.advancePaymentDate) {
-            repaired.advancePaymentDate = repaired.deliveryDate || new Date().toISOString().split('T')[0];
-          }
-          return repaired;
+          return repairCustomerPayments(repaired);
         });
         const recC = reconcileCollection(current.customers, repairedC);
         if (recC.hasChanges) {

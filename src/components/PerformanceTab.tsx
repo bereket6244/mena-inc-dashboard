@@ -233,15 +233,112 @@ export default function PerformanceTab({
     toggleBankSelection(bankId);
   };
 
+  const getCustomerInvoiceTotal = (customer: Customer) => {
+    const base = Number(customer.quantity || 0) * Number(customer.unitPrice || 0);
+    const adjustments = (customer.orderAdjustments || [])
+      .reduce((sum, adjustment) => sum + (Number(adjustment.additionalQuantity || 0) * Number(adjustment.unitPrice || 0)), 0);
+    const subtotal = base + adjustments;
+    return subtotal + (customer.isVatAdded ? subtotal * 0.15 : 0);
+  };
+
+  const getCustomerPaymentMethodId = (payment: NonNullable<Customer['payments']>[number]) => (
+    payment.paymentMethodId || payment.methodId || ''
+  );
+
+  type CustomerPaymentEntry = {
+    id: string;
+    date: string;
+    amount: number;
+    bankId: string;
+    recordedBy: string;
+    label: string;
+  };
+
+  const getCustomerPaymentEntries = (customer: Customer): CustomerPaymentEntry[] => {
+    const entries: CustomerPaymentEntry[] = (customer.payments || [])
+      .map((payment, index) => ({
+        id: payment.id || `pay_${customer.id}_${index}`,
+        date: payment.date || '',
+        amount: Number(payment.amount || 0),
+        bankId: getCustomerPaymentMethodId(payment) || 'b1',
+        recordedBy: payment.recordedBy || customer.orderTakenBy || 'Unknown',
+        label: payment.id === `mig_adv_${customer.id}`
+          ? 'Advance Payment'
+          : payment.id === `mig_rem_${customer.id}`
+            ? 'Final Payment'
+            : 'Customer Payment'
+      }))
+      .filter(entry => entry.amount > 0);
+
+    const legacyAdvanceAmount = Number(customer.advancePayment || 0);
+    if (legacyAdvanceAmount > 0) {
+      const advanceDate = customer.advancePaymentDate || customer.deliveryDate || '';
+      const advanceBankId = customer.paymentMethodId || 'b1';
+      const advanceId = `mig_adv_${customer.id}`;
+      const hasLegacyAdvance = entries.some(entry =>
+        entry.id === advanceId ||
+        (
+          Math.abs(entry.amount - legacyAdvanceAmount) < 0.01 &&
+          entry.date === advanceDate &&
+          entry.bankId === advanceBankId
+        )
+      );
+
+      if (!hasLegacyAdvance) {
+        entries.push({
+          id: advanceId,
+          date: advanceDate,
+          amount: legacyAdvanceAmount,
+          bankId: advanceBankId,
+          recordedBy: customer.orderTakenBy || 'Unknown',
+          label: 'Advance Payment'
+        });
+      }
+    }
+
+    if (customer.deliveryDate) {
+      const legacyRemainingAmount = Math.max(0, getCustomerInvoiceTotal(customer) - legacyAdvanceAmount);
+      const alreadyPaid = entries.reduce((sum, entry) => sum + entry.amount, 0);
+      const missingRemainingAmount = Math.min(legacyRemainingAmount, Math.max(0, getCustomerInvoiceTotal(customer) - alreadyPaid));
+      if (missingRemainingAmount > 0.01) {
+        entries.push({
+          id: `mig_rem_${customer.id}`,
+          date: customer.deliveryDate,
+          amount: missingRemainingAmount,
+          bankId: customer.bankRemainingId || customer.paymentMethodId || 'b1',
+          recordedBy: customer.orderTakenBy || 'Unknown',
+          label: 'Final Payment'
+        });
+      }
+    }
+
+    return entries;
+  };
+
+  const getCustomerRelevantBankIds = (customer: Customer) => {
+    const paymentBankIds = getCustomerPaymentEntries(customer)
+      .map(entry => entry.bankId)
+      .filter(Boolean);
+    if (paymentBankIds.length > 0) return Array.from(new Set(paymentBankIds));
+
+    return Array.from(new Set([
+      customer.paymentMethodId,
+      customer.bankRemainingId
+    ].filter(Boolean) as string[]));
+  };
+
+  const paymentBelongsToBank = (payment: CustomerPaymentEntry, bankId: string) => {
+    return payment.bankId === bankId || (!payment.bankId && bankId === 'b1');
+  };
+
+  const getCustomerInflowForBank = (customer: Customer, bankId: string) => {
+    return getCustomerPaymentEntries(customer).reduce((sum, payment) => (
+      paymentBelongsToBank(payment, bankId) ? sum + payment.amount : sum
+    ), 0);
+  };
+
   const getBankCurrentBalance = (bank: BankAccount) => {
-    let customerPaymentsForBank = 0;
-    customers.forEach(c => {
-      (c.payments || []).forEach(p => {
-        if (p.paymentMethodId === bank.id || (!p.paymentMethodId && bank.id === 'b1')) {
-          customerPaymentsForBank += Number(p.amount) || 0;
-        }
-      });
-    });
+    const customerPaymentsForBank = customers.reduce((sum, c) => sum + getCustomerInflowForBank(c, bank.id), 0);
 
     const purchasesOutOfBank = purchases
       .filter(p => p.paymentMethodId === bank.id)
@@ -453,20 +550,19 @@ export default function PerformanceTab({
     }> = [];
 
     customers.forEach(c => {
-      (c.payments || []).forEach((p, index) => {
-        if (p.paymentMethodId === bankId || (!p.paymentMethodId && bankId === 'b1')) {
-          txs.push({
-            id: p.id || `pay_${c.id}_${index}`,
-            date: p.date,
-            description: `Payment from ${c.clientName}`,
-            amount: p.amount,
-            type: 'add',
-            source: 'Customer Payment',
-            user: p.recordedBy || c.orderTakenBy,
-            targetType: 'customer',
-            targetId: c.id
-          });
-        }
+      getCustomerPaymentEntries(c).forEach(payment => {
+        if (!paymentBelongsToBank(payment, bankId)) return;
+        txs.push({
+          id: payment.id,
+          date: payment.date,
+          description: `${payment.label} from ${c.clientName}`,
+          amount: payment.amount,
+          type: 'add',
+          source: 'Customer Payment',
+          user: payment.recordedBy,
+          targetType: 'customer',
+          targetId: c.id
+        });
       });
     });
 
@@ -747,23 +843,40 @@ export default function PerformanceTab({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [showBulkDeleteConfirm, adjustingBank, adjustmentAmount, adjustmentReason, adjustmentType, deletingBankId, editingBankId, isAddingBank, selectedBankIds]);
 
-  // Dynamic filtering of customers for interval analysis
-  const filteredCustomersForInterval = customers.filter(c => {
-    const cCurr = getBankCurrency(c.paymentMethodId || c.bankRemainingId);
-    if (summaryCurrency !== 'All' && cCurr !== summaryCurrency) return false;
-    if (summaryAccount !== 'All' && c.paymentMethodId !== summaryAccount && c.bankRemainingId !== summaryAccount) return false;
-    if (summaryEmployee !== 'All' && c.orderTakenBy !== summaryEmployee) return false;
-    
-    const orderDate = c.advancePaymentDate || c.deliveryDate || '';
-    if (summaryStartDate && (!orderDate || orderDate < summaryStartDate)) return false;
-    if (summaryEndDate && (!orderDate || orderDate > summaryEndDate)) return false;
+  const customerMatchesSummarySearch = (customer: Customer) => {
     if (summarySearch) {
       const searchLower = summarySearch.toLowerCase();
-      const nameMatch = c.clientName?.toLowerCase().includes(searchLower);
-      const productMatch = c.productType?.toLowerCase().includes(searchLower);
-      const empMatch = c.orderTakenBy?.toLowerCase().includes(searchLower);
+      const nameMatch = customer.clientName?.toLowerCase().includes(searchLower);
+      const productMatch = customer.productType?.toLowerCase().includes(searchLower);
+      const empMatch = customer.orderTakenBy?.toLowerCase().includes(searchLower);
       if (!nameMatch && !productMatch && !empMatch) return false;
     }
+    return true;
+  };
+
+  const customerPaymentMatchesSummaryFilters = (customer: Customer, payment: CustomerPaymentEntry) => {
+    const paymentCurrency = getBankCurrency(payment.bankId);
+    if (summaryCurrency !== 'All' && paymentCurrency !== summaryCurrency) return false;
+    if (summaryAccount !== 'All' && payment.bankId !== summaryAccount) return false;
+    if (summaryEmployee !== 'All' && payment.recordedBy !== summaryEmployee && customer.orderTakenBy !== summaryEmployee) return false;
+    if (summaryStartDate && (!payment.date || payment.date < summaryStartDate)) return false;
+    if (summaryEndDate && (!payment.date || payment.date > summaryEndDate)) return false;
+    if (!customerMatchesSummarySearch(customer)) return false;
+    return true;
+  };
+
+  // Dynamic filtering of customers for interval analysis
+  const filteredCustomersForInterval = customers.filter(c => {
+    const paymentEntries = getCustomerPaymentEntries(c);
+    const customerBankIds = getCustomerRelevantBankIds(c);
+    const hasMatchingPayment = paymentEntries.some(payment => customerPaymentMatchesSummaryFilters(c, payment));
+    const cCurr = getBankCurrency(customerBankIds[0] || c.paymentMethodId || c.bankRemainingId);
+
+    if (summaryCurrency !== 'All' && cCurr !== summaryCurrency && !hasMatchingPayment) return false;
+    if (summaryAccount !== 'All' && !customerBankIds.includes(summaryAccount)) return false;
+    if (summaryEmployee !== 'All' && c.orderTakenBy !== summaryEmployee && !hasMatchingPayment) return false;
+    if ((summaryStartDate || summaryEndDate) && !hasMatchingPayment) return false;
+    if (!customerMatchesSummarySearch(c)) return false;
     return true;
   });
 
@@ -771,7 +884,7 @@ export default function PerformanceTab({
   const grossByCurrency: Record<string, number> = {};
   filteredCustomersForInterval.forEach(c => {
     const curr = getBankCurrency(c.paymentMethodId || c.bankRemainingId);
-    const val = c.quantity * c.unitPrice;
+    const val = getCustomerInvoiceTotal(c);
     grossByCurrency[curr] = (grossByCurrency[curr] || 0) + val;
   });
 
@@ -809,21 +922,12 @@ export default function PerformanceTab({
 
   // 3. Collected cash in-hand grouped by currency (inflow - outflow per currency)
   const inflowByCurrency: Record<string, number> = {};
-  filteredCustomersForInterval.forEach(c => {
-    // Advance payment inflow
-    const advCurr = getBankCurrency(c.paymentMethodId);
-    const advVal = Number(c.advancePayment || 0);
-    inflowByCurrency[advCurr] = (inflowByCurrency[advCurr] || 0) + advVal;
-
-    // Remaining payment inflow
-    if (c.deliveryDate && c.bankRemainingId) {
-      const remCurr = getBankCurrency(c.bankRemainingId);
-      const base = c.quantity * c.unitPrice;
-      const vat = c.isVatAdded ? base * 0.15 : 0;
-      const invoice = base + vat;
-      const remVal = Math.max(0, invoice - c.advancePayment);
-      inflowByCurrency[remCurr] = (inflowByCurrency[remCurr] || 0) + remVal;
-    }
+  customers.forEach(c => {
+    getCustomerPaymentEntries(c).forEach(payment => {
+      if (!customerPaymentMatchesSummaryFilters(c, payment)) return;
+      const curr = getBankCurrency(payment.bankId);
+      inflowByCurrency[curr] = (inflowByCurrency[curr] || 0) + payment.amount;
+    });
   });
 
   // Unique currencies across all datasets
@@ -866,12 +970,10 @@ export default function PerformanceTab({
   // 4. Total Outstanding Debt grouped by final payment method currency
   const debtByCurrency: Record<string, number> = {};
   filteredCustomersForInterval.forEach(c => {
-    if (c.deliveryDate && c.bankRemainingId) return;
     const curr = getBankCurrency(c.bankRemainingId || c.paymentMethodId);
-    const base = c.quantity * c.unitPrice;
-    const vat = c.isVatAdded ? base * 0.15 : 0;
-    const invoice = base + vat;
-    const remaining = Math.max(0, invoice - c.advancePayment);
+    const totalPaid = getCustomerPaymentEntries(c).reduce((sum, payment) => sum + payment.amount, 0);
+    const remaining = Math.max(0, getCustomerInvoiceTotal(c) - totalPaid);
+    if (remaining <= 0) return;
     debtByCurrency[curr] = (debtByCurrency[curr] || 0) + remaining;
   });
 
@@ -881,7 +983,7 @@ export default function PerformanceTab({
   const employeeDataMap: Record<string, { count: number; gross: number }> = {};
   customers.forEach(c => {
     const emp = c.orderTakenBy || 'Unknown';
-    const grossVal = c.quantity * c.unitPrice;
+    const grossVal = getCustomerInvoiceTotal(c);
     if (!employeeDataMap[emp]) {
       employeeDataMap[emp] = { count: 0, gross: 0 };
     }
@@ -895,14 +997,17 @@ export default function PerformanceTab({
     totalGross: data.gross
   })).sort((a, b) => b.totalGross - a.totalGross);
 
-  const allEmployees = Array.from(new Set(customers.map(c => c.orderTakenBy).filter(Boolean))).sort();
+  const allEmployees = Array.from(new Set([
+    ...customers.map(c => c.orderTakenBy).filter(Boolean),
+    ...customers.flatMap(c => getCustomerPaymentEntries(c).map(payment => payment.recordedBy).filter(Boolean))
+  ])).sort();
 
   // --- MARKETING PERFORMANCE (QUERY D) ---
   // GROUP BY D (Acquisition Source) ORDER BY SUM(X) DESC
   const marketingDataMap: Record<string, { count: number; revenue: number }> = {};
   customers.forEach(c => {
     const channel = c.acquisitionSource || 'Unknown';
-    const revenueVal = c.quantity * c.unitPrice;
+    const revenueVal = getCustomerInvoiceTotal(c);
     if (!marketingDataMap[channel]) {
       marketingDataMap[channel] = { count: 0, revenue: 0 };
     }
@@ -1290,26 +1395,14 @@ export default function PerformanceTab({
                 return showAllAccounts || b.currency === selectedCurrency;
               })
               .map((b) => {
-                const advancesForBank = customers
-                  .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
-                  .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
-
-                const completedRemainingForBank = customers
-                  .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
-                  .reduce((sum, c) => {
-                    const base = c.quantity * c.unitPrice;
-                    const vat = c.isVatAdded ? base * 0.15 : 0;
-                    const totalInvoice = base + vat;
-                    const remaining = totalInvoice - c.advancePayment;
-                    return sum + Math.max(0, remaining);
-                  }, 0);
+                const customerPaymentsForBank = customers.reduce((sum, c) => sum + getCustomerInflowForBank(c, b.id), 0);
 
                 const purchasesOutOfBank = purchases
                   .filter(p => p.paymentMethodId === b.id)
                   .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
                 
                 const loanCashMovement = getLoanCashMovementForBank(b.id);
-                const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
+                const currentBalance = b.initialBalance + customerPaymentsForBank - purchasesOutOfBank + loanCashMovement;
                 const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
                 const isEditing = editingBankId === b.id;
                 const isBankSelected = selectedBankIds.includes(b.id);
@@ -1460,7 +1553,7 @@ export default function PerformanceTab({
                         </div>
                         <div className="py-3 px-2">
                           <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Received</span>
-                          <span className="text-[#166534] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
+                          <span className="text-[#166534] font-bold">+<CopyableAmount value={customerPaymentsForBank} displayValue={formatMockupValue(customerPaymentsForBank)} copyValue={formatMockupValue(customerPaymentsForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
                         </div>
                         <div className="py-3 pl-2">
                           <span className="block text-[9px] uppercase tracking-wider text-[#6B6258]">Spent</span>
@@ -2014,21 +2107,7 @@ export default function PerformanceTab({
               return showAllAccounts || b.currency === selectedCurrency;
             })
             .map((b) => {
-              // Advances inflow to this bank account
-              const advancesForBank = customers
-                .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
-                .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
-
-              // Completed remaining payments inflow to this bank account
-              const completedRemainingForBank = customers
-                .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
-                .reduce((sum, c) => {
-                  const base = c.quantity * c.unitPrice;
-                  const vat = c.isVatAdded ? base * 0.15 : 0;
-                  const totalInvoice = base + vat;
-                  const remaining = totalInvoice - c.advancePayment;
-                  return sum + Math.max(0, remaining);
-                }, 0);
+              const customerPaymentsForBank = customers.reduce((sum, c) => sum + getCustomerInflowForBank(c, b.id), 0);
 
               // Expenses/Materials purchased out of this bank account
               const purchasesOutOfBank = purchases
@@ -2036,7 +2115,7 @@ export default function PerformanceTab({
                 .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
               
               const loanCashMovement = getLoanCashMovementForBank(b.id);
-              const currentBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
+              const currentBalance = b.initialBalance + customerPaymentsForBank - purchasesOutOfBank + loanCashMovement;
               const isSystemDefault = ['b1', 'b2', 'b3'].includes(b.id);
               const isEditing = editingBankId === b.id;
               const isBankSelected = selectedBankIds.includes(b.id);
@@ -2204,7 +2283,7 @@ export default function PerformanceTab({
                       </div>
                       <div className="py-3 px-3">
                         <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Received</span>
-                        <span className="text-[#166534] font-bold">+<CopyableAmount value={advancesForBank + completedRemainingForBank} displayValue={formatMockupValue(advancesForBank + completedRemainingForBank)} copyValue={formatMockupValue(advancesForBank + completedRemainingForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
+                        <span className="text-[#166534] font-bold">+<CopyableAmount value={customerPaymentsForBank} displayValue={formatMockupValue(customerPaymentsForBank)} copyValue={formatMockupValue(customerPaymentsForBank)} currency={b.currency || 'ETB'} className="text-[#166534] font-bold" /></span>
                       </div>
                       <div className="py-3 pl-3">
                         <span className="block text-[10px] uppercase tracking-wider text-[#6B6258]">Spent</span>

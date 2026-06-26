@@ -702,7 +702,7 @@ body.light-theme {
 .light-theme .hover\:bg-\[\#262626\]:hover,
 .light-theme .hover\:bg-\[\#2a2a2a\]:hover,
 .light-theme .hover\:bg-\[\#323232\]:hover,
-.light-theme tr:not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):hover {
+.light-theme tr:not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):hover {
   background-color: var(--surface-control-hover) !important;
 }
 
@@ -755,19 +755,19 @@ body.light-theme {
 }
 
 /* Shared data-table readability */
-.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: #151312;
 }
 
-.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: #0d0c0b;
 }
 
-.light-theme .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+.light-theme .alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: var(--surface-table-even) !important;
 }
 
-.light-theme .alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
+.light-theme .alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) td {
   background-color: var(--surface-table-odd) !important;
 }
 
@@ -776,12 +776,22 @@ body.light-theme {
   background-color: var(--brand-green-soft) !important;
   color: var(--brand-green-dark) !important;
 }
+.light-theme .fully-paid-order-row {
+  background-color: var(--brand-green-soft) !important;
+  color: var(--brand-green-dark) !important;
+}
 .light-theme .completed-order-row td {
+  color: var(--brand-green-dark) !important;
+}
+.light-theme .fully-paid-order-row td {
   color: var(--brand-green-dark) !important;
 }
 .light-theme .completed-order-row span,
 .light-theme .completed-order-row select,
-.light-theme .completed-order-row input {
+.light-theme .completed-order-row input,
+.light-theme .fully-paid-order-row span,
+.light-theme .fully-paid-order-row select,
+.light-theme .fully-paid-order-row input {
   color: var(--brand-green-dark) !important;
   border-color: #b7dca5 !important;
 }
@@ -803,7 +813,13 @@ body.light-theme {
 .alternating-table-rows tbody tr.completed-order-row:nth-child(even) td {
   background-color: #172615 !important;
 }
+.alternating-table-rows tbody tr.fully-paid-order-row:nth-child(even) td {
+  background-color: #172615 !important;
+}
 .alternating-table-rows tbody tr.completed-order-row:nth-child(odd) td {
+  background-color: #121e11 !important;
+}
+.alternating-table-rows tbody tr.fully-paid-order-row:nth-child(odd) td {
   background-color: #121e11 !important;
 }
 .alternating-table-rows tbody tr.incomplete-order-row:nth-child(even) td {
@@ -815,7 +831,13 @@ body.light-theme {
 .light-theme .alternating-table-rows tbody tr.completed-order-row:nth-child(even) td {
   background-color: #e8f6e1 !important;
 }
+.light-theme .alternating-table-rows tbody tr.fully-paid-order-row:nth-child(even) td {
+  background-color: #e8f6e1 !important;
+}
 .light-theme .alternating-table-rows tbody tr.completed-order-row:nth-child(odd) td {
+  background-color: var(--brand-green-soft) !important;
+}
+.light-theme .alternating-table-rows tbody tr.fully-paid-order-row:nth-child(odd) td {
   background-color: var(--brand-green-soft) !important;
 }
 .light-theme .alternating-table-rows tbody tr.incomplete-order-row:nth-child(even) td {
@@ -1178,7 +1200,13 @@ button[title="Search categories"] {
 tr.completed-order-row td:first-child {
   background-color: #1b2b17 !important;
 }
+tr.fully-paid-order-row td:first-child {
+  background-color: #1b2b17 !important;
+}
 .light-theme tr.completed-order-row td:first-child {
+  background-color: var(--brand-green-soft) !important;
+}
+.light-theme tr.fully-paid-order-row td:first-child {
   background-color: var(--brand-green-soft) !important;
 }
 
@@ -1322,19 +1350,28 @@ tr.out-of-stock-row td:first-child {
 }
 
 /* Dark Theme Solid Backgrounds */
-:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #151312 !important;
 }
-:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+:root:not(.light-theme) .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #0d0c0b !important;
 }
 :root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #172615 !important;
 }
+:root:not(.light-theme) .freeze-pane-table tbody tr.fully-paid-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #172615 !important;
+}
 :root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #121e11 !important;
 }
+:root:not(.light-theme) .freeze-pane-table tbody tr.fully-paid-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
 :root:not(.light-theme) .freeze-pane-table tbody tr.completed-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
+:root:not(.light-theme) .freeze-pane-table tbody tr.fully-paid-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #121e11 !important;
 }
 :root:not(.light-theme) .freeze-pane-table tbody tr.incomplete-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
@@ -1369,19 +1406,28 @@ tr.out-of-stock-row td:first-child {
 }
 
 /* Light Theme Solid Backgrounds */
-.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(even):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: var(--surface-table-even) !important;
 }
-.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+.light-theme .freeze-pane-table.alternating-table-rows tbody tr:nth-child(odd):not(.completed-order-row):not(.fully-paid-order-row):not(.overpaid-order-row):not(.incomplete-order-row):not(.low-stock-row):not(.out-of-stock-row):not(.selected-row) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: var(--surface-table-odd) !important;
 }
 .light-theme .freeze-pane-table tbody tr.completed-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: #e8f6e1 !important;
 }
+.light-theme .freeze-pane-table tbody tr.fully-paid-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #e8f6e1 !important;
+}
 .light-theme .freeze-pane-table tbody tr.completed-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: var(--brand-green-soft) !important;
 }
+.light-theme .freeze-pane-table tbody tr.fully-paid-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--brand-green-soft) !important;
+}
 .light-theme .freeze-pane-table tbody tr.completed-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: var(--brand-green-soft) !important;
+}
+.light-theme .freeze-pane-table tbody tr.fully-paid-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
   background-color: var(--brand-green-soft) !important;
 }
 .light-theme .freeze-pane-table tbody tr.incomplete-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
@@ -2861,14 +2907,17 @@ tr.selected-row td,
 tr.selected-row th,
 tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 tr.selected-row.completed-order-row td,
+tr.selected-row.fully-paid-order-row td,
 tr.selected-row.incomplete-order-row td,
 tr.selected-row.low-stock-row td,
 tr.selected-row.out-of-stock-row td,
 .alternating-table-rows tbody tr.selected-row.completed-order-row td,
+.alternating-table-rows tbody tr.selected-row.fully-paid-order-row td,
 .alternating-table-rows tbody tr.selected-row.incomplete-order-row td,
 .alternating-table-rows tbody tr.selected-row.low-stock-row td,
 .alternating-table-rows tbody tr.selected-row.out-of-stock-row td,
 .freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.fully-paid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
@@ -2879,14 +2928,17 @@ tr.selected-row.out-of-stock-row td,
 .light-theme tr.selected-row th,
 .light-theme tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme tr.selected-row.completed-order-row td,
+.light-theme tr.selected-row.fully-paid-order-row td,
 .light-theme tr.selected-row.incomplete-order-row td,
 .light-theme tr.selected-row.low-stock-row td,
 .light-theme tr.selected-row.out-of-stock-row td,
 .light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row.fully-paid-order-row td,
 .light-theme .alternating-table-rows tbody tr.selected-row.incomplete-order-row td,
 .light-theme .alternating-table-rows tbody tr.selected-row.low-stock-row td,
 .light-theme .alternating-table-rows tbody tr.selected-row.out-of-stock-row td,
 .light-theme .freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.fully-paid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.incomplete-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.low-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)),
 .light-theme .freeze-pane-table tbody tr.selected-row.out-of-stock-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
@@ -2922,7 +2974,9 @@ tr.selected-row th > * {
 }
 
 .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
-.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td {
+.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td,
+.alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(odd) td {
   background-color: #1b2b17 !important;
 }
 
@@ -3342,3 +3396,282 @@ tr.global-search-highlight > th,
 }
 
 
+
+/* Highlight Rows CSS */
+/* Default / Dark Theme Overpaid (Yellow/Amber) */
+.overpaid-order-row td {
+  background-color: #2e270a !important;
+  color: #fde047 !important;
+}
+.overpaid-order-row:nth-child(even) td {
+  background-color: #38300d !important;
+}
+.freeze-pane-table tbody tr.overpaid-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #38300d !important;
+}
+.freeze-pane-table tbody tr.overpaid-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #2e270a !important;
+}
+.freeze-pane-table tbody tr.overpaid-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #2e270a !important;
+}
+
+/* Default / Dark Theme Fully Paid (Green) */
+.fully-paid-order-row {
+  background-color: rgba(27, 43, 23, 0.64) !important;
+  color: #9cd36f !important;
+}
+.fully-paid-order-row td {
+  color: #c4e8ad !important;
+}
+.fully-paid-order-row:nth-child(even) td {
+  background-color: #172615 !important;
+}
+.freeze-pane-table tbody tr.fully-paid-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #172615 !important;
+}
+.freeze-pane-table tbody tr.fully-paid-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
+.freeze-pane-table tbody tr.fully-paid-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #121e11 !important;
+}
+
+/* Default / Dark Theme Controls override */
+.overpaid-order-row input:not([type="checkbox"]),
+.overpaid-order-row select,
+.overpaid-order-row .relative.font-sans {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: #fde047 !important;
+  border-color: rgba(254, 240, 138, 0.25) !important;
+}
+.overpaid-order-row input:not([type="checkbox"]):hover,
+.overpaid-order-row select:hover,
+.overpaid-order-row .relative.font-sans:hover {
+  border-color: #fde047 !important;
+}
+
+.fully-paid-order-row input:not([type="checkbox"]),
+.fully-paid-order-row select,
+.fully-paid-order-row .relative.font-sans {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: #c4e8ad !important;
+  border-color: rgba(156, 211, 111, 0.35) !important;
+}
+.fully-paid-order-row input:not([type="checkbox"]):hover,
+.fully-paid-order-row select:hover,
+.fully-paid-order-row .relative.font-sans:hover {
+  border-color: #9cd36f !important;
+}
+
+/* Light Theme Overpaid (Yellow) */
+.light-theme .overpaid-order-row td {
+  background-color: #fef9c3 !important;
+  color: #854d0e !important;
+}
+.light-theme .overpaid-order-row:nth-child(even) td {
+  background-color: #fef08a !important;
+}
+.light-theme .freeze-pane-table tbody tr.overpaid-order-row:nth-child(even) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #fef08a !important;
+}
+.light-theme .freeze-pane-table tbody tr.overpaid-order-row:nth-child(odd) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #fef9c3 !important;
+}
+.light-theme .freeze-pane-table tbody tr.overpaid-order-row:not(.alternating-table-rows tbody tr) > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #fef9c3 !important;
+}
+
+/* Light Theme Controls override */
+.light-theme .overpaid-order-row input:not([type="checkbox"]),
+.light-theme .overpaid-order-row select,
+.light-theme .overpaid-order-row .relative.font-sans {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  color: #854d0e !important;
+  border-color: rgba(133, 77, 14, 0.3) !important;
+}
+.light-theme .overpaid-order-row input:not([type="checkbox"]):hover,
+.light-theme .overpaid-order-row select:hover,
+.light-theme .overpaid-order-row .relative.font-sans:hover {
+  border-color: #854d0e !important;
+}
+
+.light-theme .fully-paid-order-row input:not([type="checkbox"]),
+.light-theme .fully-paid-order-row select,
+.light-theme .fully-paid-order-row .relative.font-sans {
+  background-color: #fffefa !important;
+  color: var(--brand-green-dark) !important;
+  border-color: #b7dca5 !important;
+}
+.light-theme .fully-paid-order-row input:not([type="checkbox"]):hover,
+.light-theme .fully-paid-order-row select:hover,
+.light-theme .fully-paid-order-row .relative.font-sans:hover {
+  border-color: #b7dca5 !important;
+}
+
+/* Generic Icon coloring for inputs inside glowing rows */
+.overpaid-order-row .relative.font-sans svg,
+.fully-paid-order-row .relative.font-sans svg {
+  color: currentColor !important;
+}
+
+/* Customer payment/action buttons in light mode */
+.light-theme .customer-payment-modal {
+  background-color: #fffdf8 !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-adjustment-modal {
+  background-color: #fffdf8 !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-payment-modal-header {
+  background: linear-gradient(90deg, #faf6ee, #fffdf8) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.light-theme .customer-adjustment-modal-header {
+  background: linear-gradient(90deg, #faf6ee, #fffdf8) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.light-theme .customer-payment-summary,
+.light-theme .customer-payment-form,
+.light-theme .customer-payment-history-item,
+.light-theme .customer-adjustment-form,
+.light-theme .customer-adjustment-history-item {
+  background-color: #fffefa !important;
+  border-color: var(--border-soft) !important;
+}
+
+.light-theme .customer-payment-modal-body,
+.light-theme .customer-payment-modal-footer,
+.light-theme .customer-adjustment-modal-body,
+.light-theme .customer-adjustment-modal-footer {
+  background-color: #faf6ee !important;
+  border-color: var(--border-soft) !important;
+}
+
+.light-theme .customer-payment-modal :is(h3, h4, label, span, div),
+.light-theme .customer-adjustment-modal :is(h3, h4, label, span, div) {
+  border-color: var(--border-soft);
+}
+
+.light-theme .customer-payment-modal h3 {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-adjustment-modal :is(h3, label, div, span, button) {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-adjustment-modal h4,
+.light-theme .customer-adjustment-modal .text-\[\#ee317b\] {
+  color: var(--brand-pink) !important;
+}
+
+.light-theme .customer-adjustment-modal .text-gray-500,
+.light-theme .customer-adjustment-modal .dark\:text-gray-400 {
+  color: #7e715f !important;
+}
+
+.light-theme .customer-payment-modal input,
+.light-theme .customer-adjustment-modal input,
+.light-theme .customer-payment-method-select {
+  background-color: #fffefa !important;
+  color: var(--text-strong) !important;
+  border-color: var(--border-medium) !important;
+}
+
+.light-theme .customer-payment-method-select input {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-payment-method-select input::placeholder {
+  color: #7e715f !important;
+  opacity: 1 !important;
+}
+
+.light-theme .customer-payment-method-select svg {
+  color: #7e715f !important;
+}
+
+.light-theme .customer-payment-summary-value,
+.light-theme .customer-payment-history-amount {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-payment-method-badge {
+  background-color: #f3eee5 !important;
+  color: var(--text-strong) !important;
+}
+
+:root:not(.light-theme) .customer-payment-summary-value,
+:root:not(.light-theme) .customer-payment-history-amount {
+  color: #f5f5f4 !important;
+}
+
+:root:not(.light-theme) .customer-payment-method-badge {
+  background-color: #262626 !important;
+  color: #d6d3d1 !important;
+}
+
+.light-theme .searchable-select-dropdown {
+  background-color: #fffefa !important;
+  border-color: var(--border-medium) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .searchable-select-option {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .searchable-select-option:hover {
+  background-color: var(--surface-control-hover) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .searchable-select-create-option {
+  background-color: var(--brand-pink-soft) !important;
+  border-color: rgba(238, 49, 123, 0.2) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-row-payment-action {
+  color: #477821 !important;
+  border-color: rgba(113, 181, 54, 0.38) !important;
+}
+.light-theme .customer-row-payment-action:hover {
+  background-color: #e8f6e1 !important;
+  color: #477821 !important;
+}
+
+.light-theme .customer-row-increase-action {
+  color: #b01855 !important;
+  border-color: rgba(238, 49, 123, 0.34) !important;
+}
+.light-theme .customer-row-increase-action:hover {
+  background-color: #fde7f0 !important;
+  color: #b01855 !important;
+}
+
+.light-theme .customer-payment-save-button {
+  background-color: #71b536 !important;
+  color: #ffffff !important;
+}
+.light-theme .customer-payment-save-button:hover {
+  background-color: #5e9f2d !important;
+  color: #ffffff !important;
+}
+
+.light-theme .customer-adjustment-save-button {
+  background-color: #ee317b !important;
+  color: #ffffff !important;
+}
+.light-theme .customer-adjustment-save-button:hover {
+  background-color: #d61e63 !important;
+  color: #ffffff !important;
+}

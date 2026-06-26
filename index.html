@@ -101,13 +101,13 @@
       });
 
       // Register the service worker to support mobile offline caching and install triggers
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Mena Ledger PWA service worker registered:', reg.scope))
-            .catch(err => console.error('PWA service worker registration failed:', err));
-        });
-      }
+      // if ('serviceWorker' in navigator) {
+      //   window.addEventListener('load', () => {
+      //     navigator.serviceWorker.register('/sw.js')
+      //       .then(reg => console.log('Mena Ledger PWA service worker registered:', reg.scope))
+      //       .catch(err => console.error('PWA service worker registration failed:', err));
+      //   });
+      // }
     </script>
     
   </head>
@@ -115,5 +115,14 @@
 
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+  <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+    </script>
   </body>
 </html>

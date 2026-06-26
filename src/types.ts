@@ -77,7 +77,8 @@ export interface CustomerPayment {
   id: string;
   amount: number;
   date: string;
-  paymentMethodId: string;
+  paymentMethodId?: string;
+  methodId?: string;
   recordedBy: string;
 }
 
