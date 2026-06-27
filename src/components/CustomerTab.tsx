@@ -77,6 +77,22 @@ import {
   saveUsernameOpenPreference,
   UsernameOpenPreference,
 } from '../utils';
+import {
+  getBankNameForPayment,
+  getCustomerInvoiceTotal,
+  getCustomerEffectiveQuantity,
+  getCustomerGrossPaid,
+  getCustomerLatestPaymentDate as getLatestPaymentDate,
+  getCustomerLatestPaymentEntry,
+  getCustomerOverpaidAmount,
+  getCustomerPaymentEntries,
+  getCustomerRemainingBalance,
+  getCustomerRefundEntries,
+  getCustomerTotalPaid,
+  getCustomerTotalRefunded,
+  isCustomerPaymentCurrencyCompatible,
+  isCustomerPaymentComplete as isPaymentComplete,
+} from '../utils/customerFinance';
 import SearchableSelect from './SearchableSelect';
 import { DataTableWrapper, DataTable, FloatingAddButton } from './shared/TabLayout';
 import { SharedDataTableLayout } from './shared/SharedDataTableLayout';
@@ -214,44 +230,19 @@ const formatDateFriendly = (dateStr?: string) => {
 };
 
 export function computeCustomerTotalInvoice(customer: Customer): number {
-  const baseQty = customer.quantity || 0;
-  
-  // Base cost calculation
-  const baseCost = baseQty * (customer.unitPrice || 0);
-  const adjustCost = (customer.orderAdjustments || []).reduce((sum, adj) => sum + (adj.additionalQuantity * adj.unitPrice), 0);
-  
-  const base = baseCost + adjustCost;
-  const vat = customer.isVatAdded ? base * 0.15 : 0;
-  return base + vat;
+  return getCustomerInvoiceTotal(customer);
 }
 
 export function computeCustomerTotalPaid(customer: Customer): number {
-  let sum = (customer.payments || []).reduce((acc, p) => acc + Number(p.amount || 0), 0);
-  if (customer.advancePayment && Number(customer.advancePayment) > 0) {
-    const isMigrated = (customer.payments || []).some(p => Number(p.amount) === Number(customer.advancePayment));
-    if (!isMigrated) {
-      sum += Number(customer.advancePayment);
-    }
-  }
-  return sum;
+  return getCustomerTotalPaid(customer);
 }
 
 export function isCustomerPaymentComplete(customer: Customer): boolean {
-  const totalInvoice = computeCustomerTotalInvoice(customer);
-  if (totalInvoice <= 0) return false;
-  return computeCustomerTotalPaid(customer) >= totalInvoice - 0.01;
+  return isPaymentComplete(customer);
 }
 
 export function getCustomerLatestPaymentDate(customer: Customer): string {
-  const dates = (customer.payments || [])
-    .map(payment => payment.date)
-    .filter(Boolean);
-
-  if (customer.advancePayment && Number(customer.advancePayment) > 0 && customer.advancePaymentDate) {
-    dates.push(customer.advancePaymentDate);
-  }
-
-  return dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || '';
+  return getLatestPaymentDate(customer);
 }
 
 export default function CustomerTab({ 
@@ -409,21 +400,18 @@ export default function CustomerTab({
   const copiedOrderMessageTimerRef = useRef<number | null>(null);
 
   const buildCustomerOrderMessage = (c: Customer) => {
-    const totalAmount = c.quantity * c.unitPrice;
+    const effectiveQuantity = getCustomerEffectiveQuantity(c);
+    const totalAmount = computeCustomerTotalInvoice(c);
     const advancePaid = computeCustomerTotalPaid(c);
     const remainingBalance = Math.max(0, totalAmount - advancePaid);
     const downPaymentPercent = totalAmount > 0 ? Math.round((advancePaid / totalAmount) * 100) : 0;
     
-    const bank = bankAccounts.find(b => b.id === c.paymentMethodId);
-    const bankName = bank ? bank.name : 'Unknown Bank';
-    const bankNumber = bank && bank.accountNumber ? bank.accountNumber : 'N/A';
-    
-    let paymentDate = c.advancePaymentDate || 'N/A';
-    if (paymentDate && paymentDate !== 'N/A') {
+    const formatLongDate = (value?: string) => {
+      if (!value) return 'N/A';
       try {
-        const dateObj = new Date(paymentDate);
+        const dateObj = new Date(value);
         if (!isNaN(dateObj.getTime())) {
-          paymentDate = dateObj.toLocaleDateString('en-US', {
+          return dateObj.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -432,7 +420,22 @@ export default function CustomerTab({
       } catch (e) {
         // fallback
       }
-    }
+      return value;
+    };
+
+    const paymentEntries = getCustomerPaymentEntries(c);
+    const latestPayment = getCustomerLatestPaymentEntry(c);
+    const latestBank = bankAccounts.find(b => b.id === latestPayment?.bankId);
+    const latestBankName = latestBank ? latestBank.name : 'Unknown Bank';
+    const latestBankNumber = latestBank && latestBank.accountNumber ? latestBank.accountNumber : 'N/A';
+    const paymentDetails = paymentEntries.length > 0
+      ? paymentEntries.map(payment => {
+          const bank = bankAccounts.find(b => b.id === payment.bankId);
+          return `Account Name: ${bank?.name || 'Unknown Bank'}
+Account Number: ${bank?.accountNumber || 'N/A'}
+Payment Date: ${formatLongDate(payment.date)}`;
+        }).join('\n\n')
+      : 'No payment details recorded.';
     
     let desc = c.productType || '';
     const parts: string[] = [];
@@ -446,17 +449,27 @@ export default function CustomerTab({
       desc += ` with ` + parts.join(' and ');
     }
 
-    const message = `you order for ${c.quantity} pcs ${desc} at a unit price of ${c.unitPrice} birr
+    const message = `selam,
+you order for ${effectiveQuantity} pcs ${desc} at a unit price of ${c.unitPrice} birr
 
 Total Amount:
-${c.quantity} pcs × ${c.unitPrice} birr = ${totalAmount.toLocaleString()} birr
+${effectiveQuantity} pcs × ${c.unitPrice} birr = ${totalAmount.toLocaleString()} birr
 
 A ${downPaymentPercent}% down payment of ${advancePaid.toLocaleString()} birr has been received through the following account:
-Account Name: ${bankName}
-Account Number: ${bankNumber}
-Payment Date: ${paymentDate}
+${paymentDetails}
 
-The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
+The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.
+
+Kindly complete the remaining payment before or upon collection:
+
+Account Number: ${latestBankNumber}
+Account Name: ${latestBankName}
+
+Pickup Location:
+Reality Plaza, 1st Floor, Office No. 104
+Bole, next to Yougo Church
+
+Thank you for choosing us.`;
 
     return message;
   };
@@ -485,6 +498,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     let totalAdvance = 0;
     
     const detailsLines = selectedItems.map(c => {
+      const effectiveQuantity = getCustomerEffectiveQuantity(c);
       let desc = c.productType || '';
       const parts: string[] = [];
       if (c.amount16 > 0) {
@@ -496,20 +510,21 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       if (parts.length > 0) {
         desc += ` with ` + parts.join(' and ');
       }
-      return `${c.quantity} pcs ${desc} at a unit price of ${c.unitPrice} birr`;
+      return `${effectiveQuantity} pcs ${desc} at a unit price of ${c.unitPrice} birr`;
     });
     
     selectedItems.forEach(c => {
-      totalSum += c.quantity * c.unitPrice;
+      totalSum += computeCustomerTotalInvoice(c);
       totalAdvance += computeCustomerTotalPaid(c);
     });
     
     const paymentLines = selectedItems.map(c => {
-      const bank = bankAccounts.find(b => b.id === c.paymentMethodId);
+      const latestPayment = getCustomerLatestPaymentEntry(c);
+      const bank = bankAccounts.find(b => b.id === latestPayment?.bankId);
       const bankName = bank ? bank.name : 'Unknown Bank';
       const bankNumber = bank && bank.accountNumber ? bank.accountNumber : 'N/A';
       
-      let paymentDate = c.advancePaymentDate || 'N/A';
+      let paymentDate = latestPayment?.date || 'N/A';
       if (paymentDate && paymentDate !== 'N/A') {
         try {
           const dateObj = new Date(paymentDate);
@@ -641,17 +656,27 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentDate, setNewPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newPaymentMethodId, setNewPaymentMethodId] = useState('');
+  const [newPaymentCurrency, setNewPaymentCurrency] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundDate, setRefundDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [refundMethodId, setRefundMethodId] = useState('');
+  const [refundCurrency, setRefundCurrency] = useState('');
+  const [refundNotes, setRefundNotes] = useState('');
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [actionMenuRect, setActionMenuRect] = useState<DOMRect | null>(null);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
-  const [showAdjustmentHistory, setShowAdjustmentHistory] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!managingPaymentsFor) return;
+    const latestCustomer = customers.find(customer => customer.id === managingPaymentsFor.id);
+    if (latestCustomer && JSON.stringify(latestCustomer) !== JSON.stringify(managingPaymentsFor)) {
+      setManagingPaymentsFor(latestCustomer);
+    }
+  }, [customers, managingPaymentsFor]);
 
   const [managingAdjustmentsFor, setManagingAdjustmentsFor] = useState<Customer | null>(null);
   const [newAdjustmentQuantity, setNewAdjustmentQuantity] = useState('');
-  const [newAdjustmentPrice, setNewAdjustmentPrice] = useState('');
-  const [newAdjustmentDate, setNewAdjustmentDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [newAdjustmentNotes, setNewAdjustmentNotes] = useState('');
   const [isStandaloneProformaMode, setIsStandaloneProformaMode] = useState(false);
   const [standaloneProformaItems, setStandaloneProformaItems] = useState<Array<{ id: string; productType: string; quantity: string; unitPrice: string; advancePayment: string; }>>([]);
 
@@ -1827,10 +1852,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setAcquisitionSource(customer.acquisitionSource);
     setOrderTakenBy(customer.orderTakenBy);
     setProductType(customer.productType);
-    setQuantity(customer.quantity);
+    const effectiveQuantity = getCustomerEffectiveQuantity(customer);
+    setQuantity(effectiveQuantity);
     setUnitPrice(customer.unitPrice);
     setAdvancePayment(customer.advancePayment);
-    setQtyInput(customer.quantity.toString());
+    setQtyInput(effectiveQuantity.toString());
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
@@ -1870,10 +1896,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setAcquisitionSource(customer.acquisitionSource);
     setOrderTakenBy(customer.orderTakenBy);
     setProductType(customer.productType);
-    setQuantity(customer.quantity);
+    const effectiveQuantity = getCustomerEffectiveQuantity(customer);
+    setQuantity(effectiveQuantity);
     setUnitPrice(customer.unitPrice);
     setAdvancePayment(customer.advancePayment);
-    setQtyInput(customer.quantity.toString());
+    setQtyInput(effectiveQuantity.toString());
     setPriceInput(customer.unitPrice.toString());
     setAdvanceInput(customer.advancePayment.toString());
     setPaymentMethodId(customer.paymentMethodId || '');
@@ -1910,6 +1937,44 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     setShowBulkCompleteModal(true);
   };
 
+  const syncLegacyAdvancePayment = (
+    customer: Customer | null,
+    customerId: string,
+    amount: number,
+    date: string,
+    bankId: string,
+  ): Customer['payments'] => {
+    const advanceId = `mig_adv_${customerId}`;
+    const previousAmount = Number(customer?.advancePayment || 0);
+    const previousDate = customer?.advancePaymentDate || customer?.deliveryDate || '';
+    const previousBankId = customer?.paymentMethodId || '';
+    const existingAdvance = (customer?.payments || []).find(payment => payment.id === advanceId);
+    const paymentsWithoutLegacyAdvance = (customer?.payments || []).filter(payment => {
+      const paymentBankId = payment.paymentMethodId || payment.methodId || '';
+      const matchesPreviousLegacyAdvance = previousAmount > 0 &&
+        Math.abs(Number(payment.amount || 0) - previousAmount) < 0.01 &&
+        payment.date === previousDate &&
+        paymentBankId === previousBankId &&
+        (payment.recordedBy || customer?.orderTakenBy || 'Unknown') === (customer?.orderTakenBy || payment.recordedBy || 'Unknown');
+      return payment.id !== advanceId && !matchesPreviousLegacyAdvance;
+    });
+
+    if (amount <= 0) return paymentsWithoutLegacyAdvance;
+
+    return [
+      {
+        id: advanceId,
+        amount,
+        date,
+        paymentMethodId: bankId,
+        currency: getBankCurrency(bankId) || orderCurrency,
+        originalCurrency: orderCurrency,
+        recordedBy: existingAdvance?.recordedBy || currentUser?.username || customer?.orderTakenBy || orderTakenBy || 'Unknown'
+      },
+      ...paymentsWithoutLegacyAdvance
+    ];
+  };
+
   const validateAndFormatContactInput = (): string | null => {
     const contactValue = phone.trim();
     if (!contactValue) return '';
@@ -1941,14 +2006,30 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
     const finalAdvancePayment = Math.max(0, parseFractionOrExpression(advanceInput));
+    if (finalAdvancePayment > 0 && !paymentMethodId) {
+      showToast('Select an advance payment bank before saving an advance payment.', 'error');
+      return;
+    }
+    if (finalAdvancePayment > 0 && !isCustomerPaymentCurrencyCompatible({ currency: orderCurrency } as Customer, getBankCurrency(paymentMethodId))) {
+      showToast('Advance payment account currency must match the order currency.', 'error');
+      return;
+    }
     const paperType1Id = resolveStockId(paperType1, paperStocks);
     const paperType2Id = resolveStockId(paperType2, paperStocks);
     const paperType3Id = resolveStockId(paperType3, paperStocks);
     const entrancePaperId = resolveStockId(entrancePaper, paperStocks);
     const ajabiPaperId = resolveStockId(ajabiPaper, paperStocks);
+    const customerId = editingCustomer ? editingCustomer.id : 'c_' + Date.now();
+    const syncedPayments = syncLegacyAdvancePayment(
+      editingCustomer,
+      customerId,
+      finalAdvancePayment,
+      advancePaymentDate,
+      finalAdvancePayment > 0 ? paymentMethodId : '',
+    );
 
     const payload: Customer = {
-      id: editingCustomer ? editingCustomer.id : 'c_' + Date.now(),
+      id: customerId,
       clientType,
       clientName: clientName.trim(),
       phone: contactInfo,
@@ -1981,11 +2062,18 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       advancePaymentDate,
       bankRemainingId,
       incompletionReason: incompletionReason.trim(),
+      isVatAdded,
+      baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined,
+      payments: syncedPayments,
+      orderAdjustments: [],
       currency: orderCurrency
     };
 
     if (editingCustomer) {
       onUpdateCustomer(payload);
+      if (managingPaymentsFor?.id === payload.id) {
+        setManagingPaymentsFor(payload);
+      }
     } else {
       onAddCustomer(payload);
     }
@@ -2006,14 +2094,26 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const finalQuantity = Math.max(0, parseFractionOrExpression(qtyInput));
     const finalUnitPrice = Math.max(0, parseFractionOrExpression(priceInput));
     const finalAdvancePayment = Math.max(0, parseFractionOrExpression(advanceInput));
+    if (finalAdvancePayment > 0 && !paymentMethodId) {
+      showToast('Select an advance payment bank before saving an advance payment.', 'error');
+      return;
+    }
     const paperType1Id = resolveStockId(paperType1, paperStocks);
     const paperType2Id = resolveStockId(paperType2, paperStocks);
     const paperType3Id = resolveStockId(paperType3, paperStocks);
     const entrancePaperId = resolveStockId(entrancePaper, paperStocks);
     const ajabiPaperId = resolveStockId(ajabiPaper, paperStocks);
+    const customerId = 'c_' + Date.now();
+    const syncedPayments = syncLegacyAdvancePayment(
+      null,
+      customerId,
+      finalAdvancePayment,
+      advancePaymentDate,
+      finalAdvancePayment > 0 ? paymentMethodId : '',
+    );
 
     const payload: Customer = {
-      id: 'c_' + Date.now(),
+      id: customerId,
       clientType,
       clientName: clientName.trim(),
       phone: contactInfo,
@@ -2046,6 +2146,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       incompletionReason: incompletionReason.trim(),
       isVatAdded,
       baseUnitPrice: isVatAdded ? Math.max(0, parseFractionOrExpression(baseUnitPriceInput)) : undefined,
+      payments: syncedPayments,
+      orderAdjustments: [],
       currency: orderCurrency
     };
 
@@ -2086,7 +2188,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const computedFullPayment = quantity * unitPrice;
   const computedRemainingBalance = computedFullPayment - advancePayment;
-  const isCurrentFormCompleted = !!(deliveryDate && bankRemainingId);
+  const isCurrentFormCompleted = editingCustomer ? isCustomerPaymentComplete(editingCustomer) : false;
 
   // Bulk Selection and Update Handlers
   const handleBulkComplete = () => {
@@ -2097,6 +2199,20 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const executeBulkCompleteConfirmed = () => {
     const targetIds = singleMarkPaidId ? [singleMarkPaidId] : selectedCustomerIds;
+    const selectedCompletionBankCurrency = getBankCurrency(bulkCompleteBankId);
+    const incompatibleCustomer = customers.find(c =>
+      targetIds.includes(c.id) &&
+      Math.max(0, computeCustomerTotalInvoice(c) - computeCustomerTotalPaid(c)) > 0.01 &&
+      !isCustomerPaymentCurrencyCompatible(c, selectedCompletionBankCurrency)
+    );
+    if (incompatibleCustomer) {
+      showToast(
+        `Selected account currency (${selectedCompletionBankCurrency || 'ETB'}) does not match ${incompatibleCustomer.clientName}'s order currency (${incompatibleCustomer.currency || 'ETB'}).`,
+        'error'
+      );
+      return;
+    }
+
     const updatedList = customers.map(c => {
       if (targetIds.includes(c.id)) {
         const totalInvoice = computeCustomerTotalInvoice(c);
@@ -2119,6 +2235,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 amount: finalPaymentAmount,
                 date: bulkCompleteDate,
                 paymentMethodId: bulkCompleteBankId,
+                currency: selectedCompletionBankCurrency || c.currency || 'ETB',
+                originalCurrency: c.currency || 'ETB',
                 recordedBy: currentUser?.username || c.orderTakenBy || 'Unknown'
               }
             ]
@@ -2255,6 +2373,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     const remainingBalance = isCompleted ? 0 : Math.max(0, fullValue - computeCustomerTotalPaid(customer));
 
     switch (field) {
+      case 'quantity':
+        return getCustomerEffectiveQuantity(customer);
+      case 'advancePayment':
+        return computeCustomerTotalPaid(customer);
       case 'remainingBalance':
         return remainingBalance;
       case 'fullValue':
@@ -2388,12 +2510,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
   const proformaItemsToRender = isStandaloneProformaMode 
     ? standaloneProformaItems 
-    : customers.filter(c => selectedCustomerIds.includes(c.id)).map(c => ({
+      : customers.filter(c => selectedCustomerIds.includes(c.id)).map(c => ({
         id: c.id,
         clientName: c.clientName,
         phone: c.phone,
         productType: c.productType,
-        quantity: c.quantity,
+        quantity: getCustomerEffectiveQuantity(c),
         unitPrice: c.unitPrice,
         advancePayment: c.advancePayment || 0
       }));
@@ -2491,6 +2613,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     return `${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
   };
   const getBankName = (id?: string) => id ? (bankAccounts.find(b => b.id === id)?.name || 'Unknown account') : 'Empty / Unpaid';
+  const getBankCurrency = (id?: string) => {
+    if (!id) return '';
+    return bankAccounts.find(bank => bank.id === id)?.currency || 'ETB';
+  };
+  const syncOrderCurrencyFromBank = (bankId: string) => {
+    const bankCurrency = getBankCurrency(bankId);
+    if (bankCurrency) setOrderCurrency(bankCurrency);
+  };
   const getStatusLabel = (customer: Customer) => {
     if ((customer.deliveryDate && customer.bankRemainingId) || isCustomerPaymentComplete(customer)) return 'Completed';
     if (customer.incompletionReason) return 'Incomplete';
@@ -3138,7 +3268,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     setStandaloneProformaItems(selectedLedgerItems.map(c => ({
                       id: c.id,
                       productType: c.productType || '',
-                      quantity: c.quantity?.toString() || '',
+                      quantity: getCustomerEffectiveQuantity(c).toString(),
                       unitPrice: c.unitPrice?.toString() || '',
                       advancePayment: c.advancePayment?.toString() || ''
                     })));
@@ -3385,6 +3515,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   const isOverPaid = totalPaidAmount > fullVal + 0.01;
                   const isExactlyPaid = Math.abs(totalPaidAmount - fullVal) < 0.01 && fullVal > 0;
                   const displayedDeliveryDate = isCompletedByPayment ? getCustomerLatestPaymentDate(c) : '';
+                  const latestPaymentEntry = getCustomerLatestPaymentEntry(c);
+                  const effectiveQuantity = getCustomerEffectiveQuantity(c);
                   
                   return (
                     <tr 
@@ -3516,7 +3648,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
                           {miniLabel('By', c.orderTakenBy, '', 'text-gray-300')}
                           {miniLabel('Product', c.productType, '', 'text-gray-200')}
-                          {miniLabel('Qty', c.quantity.toLocaleString(), '', 'text-white')}
+                          {miniLabel('Qty', effectiveQuantity.toLocaleString(), '', 'text-white')}
                           {miniLabel('Unit', formatMoney(c.unitPrice, c.currency), '', 'text-gray-300')}
                           <div className="col-span-2 flex items-center justify-between gap-2 border-t border-[#262626]/80 pt-0.5">
                             <span className="text-[8px] uppercase tracking-wider text-gray-500">Total</span>
@@ -3542,16 +3674,16 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
                           {miniLabel('Paid', formatMoney(computeCustomerTotalPaid(c), c.currency), '', 'text-[#71b536]')}
                           <div>
-                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Advance Date</span>
+                            <span className="block text-[8px] uppercase tracking-wider text-gray-500 leading-tight">Latest Payment Date</span>
                             <input
                               type="date"
-                              value={c.advancePaymentDate || ''}
-                              onChange={(e) => onUpdateCustomer({ ...c, advancePaymentDate: e.target.value })}
+                              value={latestPaymentEntry?.date || ''}
+                              readOnly
                               className="w-full max-w-[118px] bg-[#121212] text-[11px] text-sky-400 hover:text-sky-300 border border-[#262626] hover:border-sky-400 focus:border-sky-400 outline-none px-1.5 py-0.5 font-sans cursor-pointer rounded-md leading-tight"
-                              title="Change Advance Payment Date directly"
+                              title="Latest payment date is managed from Add Payment"
                             />
                           </div>
-                          {miniLabel('Advance Bank', getBankName(c.paymentMethodId), '', 'text-gray-400')}
+                          {miniLabel('Latest Bank', getBankNameForPayment(bankAccounts, latestPaymentEntry?.bankId), '', 'text-gray-400')}
                           {miniLabel('Remaining', remainingVal <= 0 ? 'PAID' : formatMoney(remainingVal, c.currency), '', remainingVal > 0 ? 'text-[#F87171] font-bold' : 'text-[#71b536] font-bold')}
                           {miniLabel('Full', formatMoney(fullVal, c.currency), '', 'text-white font-bold')}
                         </div>
@@ -3614,6 +3746,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             const isOverPaid = totalPaidAmount > fullVal + 0.01;
             const isExactlyPaid = Math.abs(totalPaidAmount - fullVal) < 0.01 && fullVal > 0;
             const displayedDeliveryDate = isCompletedByPayment ? getCustomerLatestPaymentDate(c) : '';
+            const latestPaymentEntry = getCustomerLatestPaymentEntry(c);
+            const effectiveQuantity = getCustomerEffectiveQuantity(c);
 
              // Collect deductions for table display
              const deductionsList: Array<{ location: string; item: string; qty: string }> = [];
@@ -3621,35 +3755,35 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                deductionsList.push({
                  location: 'PAPER 1',
                  item: getCustomerStockDisplayName(c, 'paperType1', paperStocks),
-                 qty: `${Math.ceil(c.amount1 * c.quantity)} sheets`
+                  qty: `${Math.ceil(c.amount1 * effectiveQuantity)} sheets`
                });
              }
              if (getCustomerStockId(c, 'paperType2', paperStocks) !== 'None') {
                deductionsList.push({
                  location: 'PAPER 2',
                  item: getCustomerStockDisplayName(c, 'paperType2', paperStocks),
-                 qty: `${Math.ceil(c.amount2 * c.quantity)} sheets`
+                  qty: `${Math.ceil(c.amount2 * effectiveQuantity)} sheets`
                });
              }
              if (getCustomerStockId(c, 'paperType3', paperStocks) !== 'None') {
                deductionsList.push({
                  location: 'PAPER 3',
                  item: getCustomerStockDisplayName(c, 'paperType3', paperStocks),
-                 qty: `${Math.ceil(c.amount3 * c.quantity)} sheets`
+                  qty: `${Math.ceil(c.amount3 * effectiveQuantity)} sheets`
                });
              }
              if (getCustomerStockId(c, 'entrancePaper', paperStocks) !== 'None') {
                deductionsList.push({
                  location: 'ENTRANCE',
                  item: getCustomerStockDisplayName(c, 'entrancePaper', paperStocks),
-                 qty: `${Math.ceil(c.amount16 / 16)} sheets`
+                  qty: `${Math.ceil((c.amount16 * effectiveQuantity) / 16)} sheets`
                });
              }
              if (getCustomerStockId(c, 'ajabiPaper', paperStocks) !== 'None') {
                deductionsList.push({
                  location: 'AJABI',
                  item: getCustomerStockDisplayName(c, 'ajabiPaper', paperStocks),
-                 qty: `${Math.ceil(c.amount9 / 9)} sheets`
+                  qty: `${Math.ceil((c.amount9 * effectiveQuantity) / 9)} sheets`
                });
              }
 
@@ -3780,7 +3914,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       <div className="flex items-center gap-2 flex-wrap mt-0.5">
                         <span className="font-bold text-white text-sm truncate">{c.productType}</span>
                         <span className="bg-[#181818] text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#262626] shrink-0">
-                          {c.quantity} pcs
+                          {effectiveQuantity} pcs
                         </span>
                       </div>
                     </div>
@@ -3788,14 +3922,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
 
                   {/* Dates Grid */}
                   <div className="grid grid-cols-2 divide-x divide-[#262626]/50 border-t border-[#262626] mt-3 pt-3 text-xs font-sans">
-                    {/* Advance Date Column */}
+                    {/* Latest Payment Date Column */}
                     <div className="flex flex-col gap-1 pr-3.5">
                       <div className="flex items-center text-[8px] text-gray-400 font-bold uppercase tracking-wider h-3.5">
                         <div className="flex items-center gap-1 min-w-0">
                           <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
-                          <span className="truncate">Advance Date</span>
+                          <span className="truncate">Latest Payment</span>
                         </div>
-                        {c.advancePaymentDate && (
+                        {false && c.advancePaymentDate && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -3814,15 +3948,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       </div>
                       <input
                         type="date"
-                        value={c.advancePaymentDate || ''}
-                        onChange={(e) => {
-                          onUpdateCustomer({
-                            ...c,
-                            advancePaymentDate: e.target.value
-                          });
-                        }}
+                        value={latestPaymentEntry?.date || ''}
+                        readOnly
                         className="bg-[#161616] text-[#71b536] border border-[#262626] hover:border-[#71b536] focus:border-[#71b536] rounded-md px-1 h-7 text-[10px] font-sans font-bold w-full mt-1 outline-none cursor-pointer text-center"
-                        title="Choose Advance Payment Date"
+                        title="Latest payment date is managed from Add Payment"
                       />
                     </div>
 
@@ -4334,7 +4463,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             <SearchableSelect
                               value={orderCurrency}
                               onChange={(e) => setOrderCurrency(e.target.value)}
-                              className="bg-[#121212] border border-[#262626] text-white px-3 py-2 text-xs rounded-r-md outline-none focus:border-[#ee317b] w-20 font-bold font-sans cursor-pointer border-l-0"
+                              className="bg-[#121212] border border-[#262626] text-white px-3 py-2 text-xs rounded-r-md outline-none focus:border-[#ee317b] w-24 min-w-[96px] font-bold font-sans cursor-pointer border-l-0"
+                              inputClassName="font-bold tracking-normal"
+                              truncateValue={false}
                             >
                               {availableCurrencies.map(curr => (
                                 <option key={curr} value={curr}>
@@ -4381,51 +4512,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           />
                         </div>
 
-                        {(parseFractionOrExpression(advanceInput) > 0) && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Advance Deposit Account</label>
-                            <SearchableSelect
-                              id="field-client-bank"
-                              value={paymentMethodId}
-                              onChange={(e) => setPaymentMethodId(e.target.value)}
-                              className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
-                            >
-                              <option value="">-- Empty / Unpaid --</option>
-                              {activeBankAccounts.map(b => (
-                                <option key={b.id} value={b.id}>
-                                  {b.name}
-                                </option>
-                              ))}
-                            </SearchableSelect>
-                          </div>
-                        )}
-
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank-remaining">Final Payment Method</label>
+                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-bank">Advance Payment Bank</label>
                           <SearchableSelect
-                            id="field-client-bank-remaining"
-                            value={bankRemainingId}
-                            onChange={(e) => setBankRemainingId(e.target.value)}
+                            id="field-client-bank"
+                            value={paymentMethodId}
+                            onChange={(e) => {
+                              const bankId = e.target.value;
+                              setPaymentMethodId(bankId);
+                              syncOrderCurrencyFromBank(bankId);
+                            }}
                             className="w-full px-3 py-2 text-sm bg-[#121212] border border-[#262626] text-white rounded-md outline-none focus:border-[#ee317b] cursor-pointer"
                           >
-                            <option value="">-- Unpaid / Pending --</option>
+                            <option value="">-- Empty / Unpaid --</option>
                             {activeBankAccounts.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.name}
                               </option>
                             ))}
                           </SearchableSelect>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1" htmlFor="field-client-delivery">Final Payment Date (Delivery Date)</label>
-                          <input
-                            id="field-client-delivery"
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm bg-[#121212] text-white border border-[#262626] focus:border-[#ee317b] rounded-md outline-none cursor-pointer"
-                          />
                         </div>
 
                         {(computedRemainingBalance > 0) && (
@@ -5217,7 +5322,16 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                       <span className="font-bold text-gray-400 uppercase text-[9px]">Payment Bank</span>
                       <SearchableSelect
                         value={proformaBankId}
-                        onChange={(e) => setProformaBankId(e.target.value)}
+                        onChange={(e) => {
+                          const bankId = e.target.value;
+                          setProformaBankId(bankId);
+                          const bankCurrency = getBankCurrency(bankId);
+                          if (bankCurrency) {
+                            setProformaCurrency(bankCurrency);
+                            setProformaColPrice(`Unit Price (${bankCurrency})`);
+                            setProformaColTotal(`Subtotal (${bankCurrency})`);
+                          }
+                        }}
                         className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
                       >
                         <option value="">-- No Bank Details --</option>
@@ -5239,6 +5353,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           setProformaColTotal(`Subtotal (${newCurr})`);
                         }}
                         className="px-2 py-1 bg-[#121212] border border-[#262626] text-gray-300 rounded-sm text-[10px] outline-none cursor-pointer focus:border-[#ee317b] w-2/3 max-w-[200px]"
+                        truncateValue={false}
                       >
                         {availableCurrencies.map((curr) => (
                           <option key={curr} value={curr}>
@@ -6385,7 +6500,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   setStandaloneProformaItems(selectedLedgerItems.map(c => ({
                     id: c.id,
                     productType: c.productType || '',
-                    quantity: c.quantity?.toString() || '',
+                    quantity: getCustomerEffectiveQuantity(c).toString(),
                     unitPrice: c.unitPrice?.toString() || '',
                     advancePayment: c.advancePayment?.toString() || ''
                   })));
@@ -6433,13 +6548,26 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       <AnimatePresence>
         {managingPaymentsFor && (() => {
           const totalPaid = computeCustomerTotalPaid(managingPaymentsFor);
+          const grossPaid = getCustomerGrossPaid(managingPaymentsFor);
+          const totalRefunded = getCustomerTotalRefunded(managingPaymentsFor);
           const totalInvoice = computeCustomerTotalInvoice(managingPaymentsFor);
           const rawRemaining = totalInvoice - totalPaid;
           const remainingAmount = Math.max(0, rawRemaining);
-          const legacyAdvanceAmount = Number(managingPaymentsFor.advancePayment || 0);
-          const legacyAdvanceBankId = managingPaymentsFor.paymentMethodId || '';
-          const legacyAdvanceDate = managingPaymentsFor.advancePaymentDate || managingPaymentsFor.deliveryDate || '';
+          const overpaidAmount = getCustomerOverpaidAmount(managingPaymentsFor);
+          const selectedPaymentBankCurrency = getBankCurrency(newPaymentMethodId);
+          const activePaymentCurrency = newPaymentCurrency || selectedPaymentBankCurrency || managingPaymentsFor.currency || 'ETB';
+          const hasMixedPaymentCurrency = !isCustomerPaymentCurrencyCompatible(managingPaymentsFor, activePaymentCurrency);
+          const refundBankCurrency = getBankCurrency(refundMethodId);
+          const activeRefundCurrency = refundCurrency || refundBankCurrency || managingPaymentsFor.currency || 'ETB';
+          const hasMixedRefundCurrency = !isCustomerPaymentCurrencyCompatible(managingPaymentsFor, activeRefundCurrency);
           const legacyAdvancePaymentId = `mig_adv_${managingPaymentsFor.id}`;
+          const migratedAdvancePayment = (managingPaymentsFor.payments || [])
+            .find(payment => payment.id === legacyAdvancePaymentId);
+          const legacyAdvanceAmount = Number(migratedAdvancePayment?.amount ?? managingPaymentsFor.advancePayment ?? 0);
+          const legacyAdvanceBankId = migratedAdvancePayment
+            ? (migratedAdvancePayment.paymentMethodId || migratedAdvancePayment.methodId || '')
+            : (managingPaymentsFor.paymentMethodId || '');
+          const legacyAdvanceDate = migratedAdvancePayment?.date || managingPaymentsFor.advancePaymentDate || managingPaymentsFor.deliveryDate || '';
           const visiblePaymentHistory = (managingPaymentsFor.payments || []).filter(payment => {
             if (legacyAdvanceAmount <= 0) return true;
             const paymentBankId = payment.paymentMethodId || payment.methodId || '';
@@ -6452,6 +6580,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               )
             );
           });
+          const refundHistory = getCustomerRefundEntries(managingPaymentsFor);
 
           return (
           <motion.div
@@ -6477,14 +6606,22 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     setEditingPaymentId(null);
                     setNewPaymentAmount('');
                     setNewPaymentMethodId('');
+                    setNewPaymentCurrency('');
+                    setRefundAmount('');
+                    setRefundMethodId('');
+                    setRefundCurrency('');
+                    setRefundNotes('');
                   }} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
                 <div className="customer-payment-summary flex flex-wrap gap-4 text-sm bg-white dark:bg-[#111] p-3 rounded-lg border border-gray-200 dark:border-[#262626]">
                   <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Total Value</span><span className="customer-payment-summary-value font-bold text-gray-900 dark:text-white">{formatMoney(totalInvoice, managingPaymentsFor.currency)}</span></div>
-                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Total Paid</span><span className="font-bold text-[#71b536]">{formatMoney(totalPaid, managingPaymentsFor.currency)}</span></div>
+                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Gross Paid</span><span className="font-bold text-[#71b536]">{formatMoney(grossPaid, managingPaymentsFor.currency)}</span></div>
+                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Refunded</span><span className="font-bold text-[#F87171]">{formatMoney(totalRefunded, managingPaymentsFor.currency)}</span></div>
+                  <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Net Paid</span><span className="font-bold text-[#71b536]">{formatMoney(totalPaid, managingPaymentsFor.currency)}</span></div>
                   <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Remaining</span><span className={`customer-payment-summary-value font-bold ${remainingAmount > 0 ? 'text-[#ee317b]' : 'text-gray-900 dark:text-white'}`}>{formatMoney(remainingAmount, managingPaymentsFor.currency)}</span></div>
+                  {overpaidAmount > 0 && <div><span className="text-gray-500 block text-[10px] uppercase tracking-wider mb-0.5">Overpaid</span><span className="font-bold text-[#FACC15]">{formatMoney(overpaidAmount, managingPaymentsFor.currency)}</span></div>}
                 </div>
                 <button 
                   type="button" 
@@ -6550,7 +6687,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                             <div key={p.id} className="customer-payment-history-item flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
                               <div>
                                 <div className="customer-payment-history-amount text-gray-900 dark:text-white text-sm font-bold flex items-center gap-2">
-                                  {formatMoney(Number(p.amount), managingPaymentsFor.currency)}
+                                  {formatMoney(Number(p.amount), p.currency || managingPaymentsFor.currency)}
                                   {(p.paymentMethodId || p.methodId) && (
                                     <span className="customer-payment-method-badge text-[10px] font-normal bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
                                       {bankAccounts.find(b => b.id === (p.paymentMethodId || p.methodId))?.name || 'Unknown Bank'}
@@ -6570,6 +6707,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                     setNewPaymentAmount(p.amount.toString());
                                     setNewPaymentDate(p.date);
                                     setNewPaymentMethodId(p.paymentMethodId || p.methodId || '');
+                                    setNewPaymentCurrency(p.currency || getBankCurrency(p.paymentMethodId || p.methodId || '') || managingPaymentsFor.currency || 'ETB');
                                     setShowPaymentHistory(false);
                                   }}
                                   className="p-1.5 text-gray-400 hover:text-white hover:bg-[#333] rounded transition-colors"
@@ -6591,6 +6729,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                                       setEditingPaymentId(null);
                                       setNewPaymentAmount('');
                                       setNewPaymentMethodId('');
+                                      setNewPaymentCurrency('');
                                     }
                                     setToastMessage("Payment deleted.");
                                     setToastType("success");
@@ -6605,6 +6744,30 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           ))
                         ) : (
                           legacyAdvanceAmount <= 0 && <div className="text-gray-500 text-sm italic">No additional payments recorded.</div>
+                        )}
+                        {refundHistory.length > 0 && (
+                          <>
+                            <h4 className="pt-3 text-xs font-bold text-[#F87171] uppercase tracking-wider">Refunds Issued</h4>
+                            {refundHistory.map((refund) => (
+                              <div key={refund.id} className="customer-payment-history-item flex justify-between items-center bg-red-50 dark:bg-[#2E181D]/40 p-3 rounded-lg border border-red-200 dark:border-red-900/40">
+                                <div>
+                                  <div className="customer-payment-history-amount text-[#F87171] text-sm font-bold flex items-center gap-2">
+                                    -{formatMoney(Number(refund.amount), refund.currency || managingPaymentsFor.currency)}
+                                    {refund.bankId && (
+                                      <span className="customer-payment-method-badge text-[10px] font-normal bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">
+                                        {bankAccounts.find(b => b.id === refund.bankId)?.name || 'Unknown Bank'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-gray-500 text-xs">{formatDateFriendly(refund.date)}</div>
+                                  {refund.notes && (
+                                    <div className="mt-1 max-w-[320px] text-xs text-gray-600 dark:text-gray-400">{refund.notes}</div>
+                                  )}
+                                </div>
+                                <div className="text-gray-500 text-xs text-right">By {refund.recordedBy}</div>
+                              </div>
+                            ))}
+                          </>
                         )}
                       </div>
                     </motion.div>
@@ -6622,6 +6785,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                         onClick={() => {
                           setEditingPaymentId(null);
                           setNewPaymentAmount('');
+                          setNewPaymentCurrency('');
                         }}
                         className="text-[10px] font-bold text-gray-500 hover:text-white"
                       >
@@ -6630,7 +6794,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     )}
                   </div>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <div className="flex justify-between items-end mb-1">
                           <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500">Amount</label>
@@ -6661,12 +6825,30 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded-lg px-3 py-2.5 text-gray-900 dark:text-white text-sm focus:border-[#71b536] focus:outline-none transition-colors"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Currency</label>
+                        <SearchableSelect
+                          value={activePaymentCurrency}
+                          onChange={(e: any) => setNewPaymentCurrency(e.target.value)}
+                          placeholder="Currency..."
+                          truncateValue={false}
+                          className="customer-payment-currency-select min-h-[42px] rounded-lg border border-gray-300 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] text-sm"
+                        >
+                          {availableCurrencies.map(curr => (
+                            <option key={curr} value={curr}>{curr}</option>
+                          ))}
+                        </SearchableSelect>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Bank / Method</label>
                       <SearchableSelect
                         value={newPaymentMethodId}
-                        onChange={(e: any) => setNewPaymentMethodId(e.target.value)}
+                        onChange={(e: any) => {
+                          const bankId = e.target.value;
+                          setNewPaymentMethodId(bankId);
+                          setNewPaymentCurrency(getBankCurrency(bankId) || managingPaymentsFor.currency || 'ETB');
+                        }}
                         placeholder="Select Bank..."
                         className="customer-payment-method-select min-h-[42px] rounded-lg border border-gray-300 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] text-sm"
                       >
@@ -6675,9 +6857,146 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </SearchableSelect>
+                      {hasMixedPaymentCurrency && (
+                        <div className="mt-2 flex gap-2 rounded-lg border border-[#FACC15]/40 bg-[#2D210F]/50 p-2 text-[11px] leading-snug text-[#FACC15]">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            This order is in {managingPaymentsFor.currency || 'ETB'}, but the selected payment currency is {activePaymentCurrency}. Select an account in the order currency before saving this invoice payment.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
+                {overpaidAmount > 0 && (
+                  <div className="mt-4 bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-[#F87171]/40">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-bold text-[#F87171] uppercase tracking-wider">Refund Overpayment</h4>
+                      <button
+                        type="button"
+                        onClick={() => setRefundAmount(overpaidAmount.toString())}
+                        className="text-[9px] text-[#FACC15] hover:text-[#fde68a] font-bold"
+                      >
+                        Write overpaid amount
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Refund Amount</label>
+                        <input
+                          type="number"
+                          value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)}
+                          className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded-lg px-3 py-2.5 text-gray-900 dark:text-white text-sm focus:border-[#F87171] focus:outline-none transition-colors"
+                          placeholder="e.g. 200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Refund Date</label>
+                        <input
+                          type="date"
+                          value={refundDate}
+                          onChange={(e) => setRefundDate(e.target.value)}
+                          className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded-lg px-3 py-2.5 text-gray-900 dark:text-white text-sm focus:border-[#F87171] focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Currency</label>
+                        <SearchableSelect
+                          value={activeRefundCurrency}
+                          onChange={(e: any) => setRefundCurrency(e.target.value)}
+                          placeholder="Currency..."
+                          truncateValue={false}
+                          className="customer-refund-currency-select min-h-[42px] rounded-lg border border-gray-300 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] text-sm"
+                        >
+                          {availableCurrencies.map(curr => (
+                            <option key={curr} value={curr}>{curr}</option>
+                          ))}
+                        </SearchableSelect>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Refund Bank</label>
+                      <SearchableSelect
+                        value={refundMethodId}
+                        onChange={(e: any) => {
+                          const bankId = e.target.value;
+                          setRefundMethodId(bankId);
+                          setRefundCurrency(getBankCurrency(bankId) || managingPaymentsFor.currency || 'ETB');
+                        }}
+                        placeholder="Select Bank..."
+                        className="customer-payment-method-select min-h-[42px] rounded-lg border border-gray-300 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] text-sm"
+                      >
+                        <option value="">Select Bank...</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </SearchableSelect>
+                      {hasMixedRefundCurrency && (
+                        <div className="mt-2 flex gap-2 rounded-lg border border-[#FACC15]/40 bg-[#2D210F]/50 p-2 text-[11px] leading-snug text-[#FACC15]">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            This order is in {managingPaymentsFor.currency || 'ETB'}, but the refund currency is {activeRefundCurrency}. Select an account in the order currency before saving this refund.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4">
+                      <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Refund Notes</label>
+                      <textarea
+                        value={refundNotes}
+                        onChange={(e) => setRefundNotes(e.target.value)}
+                        className="min-h-[76px] w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-[#F87171] focus:outline-none dark:border-[#333] dark:bg-[#0a0a0a] dark:text-white"
+                        placeholder="Reason, reference number, or extra detail..."
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amount = Number(refundAmount || 0);
+                        if (!Number.isFinite(amount) || amount <= 0 || !refundDate || !refundMethodId) {
+                          setToastMessage("Please fill refund amount, date, and bank.");
+                          setToastType("error");
+                          return;
+                        }
+                        if (hasMixedRefundCurrency) {
+                          setToastMessage("Refund currency must match the order currency.");
+                          setToastType("error");
+                          return;
+                        }
+                        if (amount > overpaidAmount + 0.01) {
+                          setToastMessage("Refund amount cannot exceed the current overpaid amount.");
+                          setToastType("error");
+                          return;
+                        }
+                        const refund = {
+                          id: `refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                          amount,
+                          date: refundDate,
+                          paymentMethodId: refundMethodId,
+                          currency: activeRefundCurrency,
+                          notes: refundNotes.trim() || undefined,
+                          recordedBy: currentUser?.username || 'Unknown'
+                        };
+                        const updatedCustomer = {
+                          ...managingPaymentsFor,
+                          refunds: [...(managingPaymentsFor.refunds || []), refund]
+                        };
+                        onUpdateCustomer(updatedCustomer);
+                        setManagingPaymentsFor(updatedCustomer);
+                        setRefundAmount('');
+                        setRefundMethodId('');
+                        setRefundCurrency('');
+                        setRefundNotes('');
+                        setToastMessage("Refund recorded successfully.");
+                        setToastType("success");
+                      }}
+                      className="mt-4 w-full rounded-lg bg-[#F87171] px-4 py-2 text-xs font-bold uppercase text-white hover:bg-[#dc2626]"
+                    >
+                      Save Refund
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="customer-payment-modal-footer p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-end gap-3">
                 <button
@@ -6686,6 +7005,11 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     setEditingPaymentId(null);
                     setNewPaymentAmount('');
                     setNewPaymentMethodId('');
+                    setNewPaymentCurrency('');
+                    setRefundAmount('');
+                    setRefundMethodId('');
+                    setRefundCurrency('');
+                    setRefundNotes('');
                   }}
                   className="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
                 >
@@ -6693,8 +7017,19 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </button>
                 <button
                   onClick={() => {
-                    if (!newPaymentAmount || !newPaymentDate || !newPaymentMethodId) {
-                      setToastMessage("Please fill in amount, date, and bank / method.");
+                    if (!newPaymentAmount || !newPaymentDate || !newPaymentMethodId || !activePaymentCurrency) {
+                      setToastMessage("Please fill in amount, date, currency, and bank / method.");
+                      setToastType("error");
+                      return;
+                    }
+                    const paymentAmount = Number(newPaymentAmount);
+                    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+                      setToastMessage("Payment amount must be greater than zero.");
+                      setToastType("error");
+                      return;
+                    }
+                    if (hasMixedPaymentCurrency) {
+                      setToastMessage("Payment currency must match the order currency.");
                       setToastType("error");
                       return;
                     }
@@ -6704,16 +7039,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     if (editingPaymentId) {
                       updatedPayments = updatedPayments.map(p => 
                         p.id === editingPaymentId 
-                          ? { ...p, amount: Number(newPaymentAmount), date: newPaymentDate, paymentMethodId: newPaymentMethodId }
+                          ? {
+                              ...p,
+                              amount: paymentAmount,
+                              date: newPaymentDate,
+                              paymentMethodId: newPaymentMethodId,
+                              currency: activePaymentCurrency,
+                              originalCurrency: managingPaymentsFor.currency
+                            }
                           : p
                       );
                     } else {
                       const payId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                       const newPay = {
                         id: payId,
-                        amount: Number(newPaymentAmount),
+                        amount: paymentAmount,
                         date: newPaymentDate,
                         paymentMethodId: newPaymentMethodId,
+                        currency: activePaymentCurrency,
+                        originalCurrency: managingPaymentsFor.currency,
                         recordedBy: currentUser?.username || 'Unknown'
                       };
                       updatedPayments = [...updatedPayments, newPay];
@@ -6728,6 +7072,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     setEditingPaymentId(null);
                     setNewPaymentAmount('');
                     setNewPaymentMethodId('');
+                    setNewPaymentCurrency('');
                     setToastType("success");
                   }}
                   className="customer-payment-save-button px-4 py-2 text-xs font-bold bg-[#71b536] hover:bg-[#5a912a] text-white rounded transition-colors cursor-pointer"
@@ -6766,47 +7111,12 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAdjustmentHistory(!showAdjustmentHistory)}
-                  className="text-xs font-bold text-[#ee317b] hover:text-[#c62060] self-start"
-                >
-                  {showAdjustmentHistory ? "Hide Addition History" : "View Addition History"}
-                </button>
               </div>
               <div className="customer-adjustment-modal-body flex-1 overflow-y-auto p-4 custom-scrollbar">
-                <AnimatePresence>
-                  {showAdjustmentHistory && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="mb-6 overflow-hidden"
-                    >
-                      <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Previous Additions</h4>
-                      {managingAdjustmentsFor.orderAdjustments && managingAdjustmentsFor.orderAdjustments.length > 0 ? (
-                        <div className="space-y-2">
-                          {managingAdjustmentsFor.orderAdjustments.map((adj, idx) => (
-                            <div key={idx} className="customer-adjustment-history-item flex justify-between items-center bg-white dark:bg-[#1a1a1a] p-2 rounded border border-gray-200 dark:border-[#2a2a2a]">
-                              <div>
-                                <div className="text-gray-900 dark:text-white text-xs font-bold">+{adj.additionalQuantity} qty</div>
-                                <div className="text-gray-500 text-[10px]">{formatDateFriendly(adj.date)}</div>
-                              </div>
-                              <div className="text-gray-500 text-[10px]">By {adj.recordedBy}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-gray-500 text-xs italic">No order additions recorded.</div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                
                 <div className="customer-adjustment-form bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-gray-200 dark:border-[#2a2a2a]">
                   <h4 className="text-xs font-bold text-[#ee317b] uppercase tracking-wider mb-3">Add Quantity</h4>
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div>
                       <div>
                         <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Additional Amount (Qty)</label>
                         <input
@@ -6815,15 +7125,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                           onChange={(e) => setNewAdjustmentQuantity(e.target.value)}
                           className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
                           placeholder="e.g. 50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] uppercase text-gray-600 dark:text-gray-500 mb-1">Date</label>
-                        <input
-                          type="date"
-                          value={newAdjustmentDate}
-                          onChange={(e) => setNewAdjustmentDate(e.target.value)}
-                          className="w-full bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-[#333] rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-[#ee317b] focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
@@ -6839,18 +7140,23 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </button>
                 <button
                   onClick={() => {
-                    if (!newAdjustmentQuantity || !newAdjustmentDate) {
-                      setToastMessage("Please fill in quantity and date.");
+                    if (!newAdjustmentQuantity) {
+                      setToastMessage("Please fill in quantity.");
                       setToastType("error");
                       return;
                     }
                     const addQty = Number(newAdjustmentQuantity);
+                    if (!Number.isFinite(addQty) || addQty <= 0) {
+                      setToastMessage("Additional quantity must be greater than zero.");
+                      setToastType("error");
+                      return;
+                    }
                     const adjId = `adj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     const newAdj = {
                       id: adjId,
                       additionalQuantity: addQty,
                       unitPrice: Number(managingAdjustmentsFor.unitPrice),
-                      date: newAdjustmentDate,
+                      date: new Date().toISOString().split('T')[0],
                       notes: '',
                       recordedBy: currentUser?.username || 'Unknown'
                     };
@@ -6880,8 +7186,6 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         const c = filteredCustomers.find(cust => cust.id === openActionMenuId);
         if (!c) return null;
         
-        // Calculate position based on button rect
-        const top = actionMenuRect.bottom + window.scrollY;
         // Position right-aligned if close to right edge, else left-aligned
         const isRightEdge = actionMenuRect.right > window.innerWidth - 150;
         const style: React.CSSProperties = {
@@ -6895,13 +7199,13 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => setOpenActionMenuId(null)} />
             <div 
-              className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-[#333] rounded-md shadow-lg flex flex-col py-1 min-w-[140px]"
+              className="customer-action-menu bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-[#333] rounded-md shadow-lg flex flex-col py-1 min-w-[140px]"
               style={style}
             >
-              <button onClick={() => { handleOpenEdit(c); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Edit3 className="w-3.5 h-3.5"/> Modify</button>
-              <button onClick={() => { handleOpenDuplicate(c); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Copy className="w-3.5 h-3.5"/> Copy</button>
-              <div className="h-px bg-gray-200 dark:bg-[#333] my-1"></div>
-              <button onClick={() => { setDeletingCustomerId(c.id); setOpenActionMenuId(null); }} className="px-3 py-2 text-left text-[11px] font-bold text-[#F87171] hover:text-[#ff9999] hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Trash2 className="w-3.5 h-3.5"/> Delete</button>
+              <button onClick={() => { handleOpenEdit(c); setOpenActionMenuId(null); }} className="customer-action-menu-button px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Edit3 className="w-3.5 h-3.5"/> Modify</button>
+              <button onClick={() => { handleOpenDuplicate(c); setOpenActionMenuId(null); }} className="customer-action-menu-button px-3 py-2 text-left text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Copy className="w-3.5 h-3.5"/> Copy</button>
+              <div className="customer-action-menu-divider h-px bg-gray-200 dark:bg-[#333] my-1"></div>
+              <button onClick={() => { setDeletingCustomerId(c.id); setOpenActionMenuId(null); }} className="customer-action-menu-button px-3 py-2 text-left text-[11px] font-bold text-[#F87171] hover:text-[#ff9999] hover:bg-gray-100 dark:hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"><Trash2 className="w-3.5 h-3.5"/> Delete</button>
             </div>
           </>,
           document.body

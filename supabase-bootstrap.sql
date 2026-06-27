@@ -92,7 +92,10 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "bankRemainingId" text,
   "incompletionReason" text,
   "isVatAdded" boolean DEFAULT false,
-  "baseUnitPrice" numeric DEFAULT 0
+  "baseUnitPrice" numeric DEFAULT 0,
+  payments jsonb DEFAULT '[]'::jsonb,
+  refunds jsonb DEFAULT '[]'::jsonb,
+  "orderAdjustments" jsonb DEFAULT '[]'::jsonb
 );
 
 -- Disable Row Level Security (RLS) on each table so the web app can read and write records instantly
@@ -168,6 +171,7 @@ ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "payments" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "refunds" jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "orderAdjustments" jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE IF EXISTS public.purchases ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
 

@@ -3675,3 +3675,77 @@ tr.global-search-highlight > th,
   background-color: #d61e63 !important;
   color: #ffffff !important;
 }
+
+/* Keep status-colored rows fully blue when selected, including frozen columns. */
+tr.selected-row td,
+tr.selected-row th,
+tr.selected-row.completed-order-row td,
+tr.selected-row.fully-paid-order-row td,
+tr.selected-row.overpaid-order-row td,
+tr.selected-row.incomplete-order-row td,
+tr.selected-row.low-stock-row td,
+tr.selected-row.out-of-stock-row td,
+.alternating-table-rows tbody tr.selected-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row:nth-child(odd) td,
+.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td,
+.alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(odd) td,
+.alternating-table-rows tbody tr.selected-row.overpaid-order-row:nth-child(even) td,
+.alternating-table-rows tbody tr.selected-row.overpaid-order-row:nth-child(odd) td,
+.freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.fully-paid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.freeze-pane-table tbody tr.selected-row.overpaid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #1d2336 !important;
+}
+
+.light-theme tr.selected-row td,
+.light-theme tr.selected-row th,
+.light-theme tr.selected-row.completed-order-row td,
+.light-theme tr.selected-row.fully-paid-order-row td,
+.light-theme tr.selected-row.overpaid-order-row td,
+.light-theme tr.selected-row.incomplete-order-row td,
+.light-theme tr.selected-row.low-stock-row td,
+.light-theme tr.selected-row.out-of-stock-row td,
+.light-theme .alternating-table-rows tbody tr.selected-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row:nth-child(odd) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.completed-order-row:nth-child(odd) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.fully-paid-order-row:nth-child(odd) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.overpaid-order-row:nth-child(even) td,
+.light-theme .alternating-table-rows tbody tr.selected-row.overpaid-order-row:nth-child(odd) td,
+.light-theme .freeze-pane-table tbody tr.selected-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.completed-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.fully-paid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)),
+.light-theme .freeze-pane-table tbody tr.selected-row.overpaid-order-row > :is(:first-child, :nth-child(2), :nth-child(3)) {
+  background-color: #eef5ff !important;
+}
+
+.light-theme .customer-action-menu {
+  background-color: #fffefa !important;
+  border-color: var(--border-medium) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-action-menu-button {
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-action-menu-button:hover {
+  background-color: var(--surface-control-hover) !important;
+  color: var(--text-strong) !important;
+}
+
+.light-theme .customer-action-menu-divider {
+  background-color: var(--border-soft) !important;
+}
+
+.light-theme .customer-payment-currency-select,
+.light-theme .customer-refund-currency-select,
+.light-theme .customer-payment-modal textarea {
+  background-color: #fffefa !important;
+  color: var(--text-strong) !important;
+  border-color: var(--border-medium) !important;
+}

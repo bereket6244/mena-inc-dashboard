@@ -79,6 +79,18 @@ export interface CustomerPayment {
   date: string;
   paymentMethodId?: string;
   methodId?: string;
+  currency?: string;
+  originalCurrency?: string;
+  recordedBy: string;
+}
+
+export interface CustomerRefund {
+  id: string;
+  amount: number;
+  date: string;
+  paymentMethodId: string;
+  currency?: string;
+  notes?: string;
   recordedBy: string;
 }
 
@@ -107,6 +119,7 @@ export interface Customer {
   
   // New flexible payment and adjustment tracking
   payments?: CustomerPayment[];
+  refunds?: CustomerRefund[];
   orderAdjustments?: OrderAdjustment[];
 
   // Paper specs

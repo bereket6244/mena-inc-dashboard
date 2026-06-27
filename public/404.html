@@ -13,7 +13,7 @@
     <script>
       (function() {
         try {
-          var savedTheme = localStorage.getItem('mena_inc_theme_v3') || 'dark';
+          var savedTheme = 'dark';
           document.documentElement.classList.toggle('light-theme', savedTheme === 'light');
           var faviconHref = savedTheme === 'light' ? '/mena-favicon-light.png' : '/mena-favicon-dark.png';
           var shortcutIcon = document.getElementById('app-favicon-shortcut');
@@ -100,12 +100,21 @@
         event.preventDefault();
       });
 
-      // Register the service worker to support mobile offline caching and install triggers
+      // Remove service workers and browser caches; this app should not persist local data.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Mena Ledger PWA service worker registered:', reg.scope))
-            .catch(err => console.error('PWA service worker registration failed:', err));
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (let registration of registrations) {
+              registration.unregister();
+            }
+          });
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(key) {
+            caches.delete(key);
+          });
         });
       }
     </script>

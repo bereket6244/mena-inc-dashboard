@@ -1,6 +1,16 @@
 import * as XLSX from 'xlsx';
 import { Customer, Purchase, BankAccount, PaperStock, ExpenseCategory, ProductType, ClientType, EmployeeUser, Loan, AuditLogEntry } from '../types';
 import { computeStockConsumed, getCustomerStockDisplayName } from '../utils';
+import {
+  getCustomerEffectiveQuantity,
+  getCustomerInvoiceSubtotal,
+  getCustomerInvoiceTotal,
+  getCustomerLatestPaymentDate,
+  getCustomerPaymentEntries,
+  getCustomerRefundEntries,
+  getCustomerRemainingBalance,
+  getCustomerTotalPaid,
+} from './customerFinance';
 
 interface FullBackupOptions {
   categories?: ExpenseCategory[];
@@ -132,26 +142,28 @@ export function buildAllDataWorkbook(
     'Order ID', 'Client Name', 'Client Type', 'Phone', 'Acquisition Source',
     'Order Taken By', 'Product Type', 'Quantity', 'Unit Price (ETB)',
     'Subtotal Gross (ETB)', 'VAT Added (15%)', 'Total Invoice Price (ETB)',
-    'Advance Payment (ETB)', 'Remaining Balance Owed (ETB)', 'Advance Payment Channel',
-    'Remaining Delivery Channel', 'Delivery/Status Date', 'Advance Receipt Date',
+    'Total Paid (ETB)', 'Remaining Balance Owed (ETB)', 'Payment Channels',
+    'Remaining Delivery Channel', 'Delivery/Status Date', 'Latest Payment Date',
     'Incompletion Reason', 'Paper 1 Type', 'Paper 1 Amount/Card', 'Paper 2 Type',
     'Paper 2 Amount/Card', 'Paper 3 Type', 'Paper 3 Amount/Card', 'Entrance Paper Type',
     'Entrance Paper Amount (1/16)', 'Ajabi Paper Type', 'Ajabi Paper Amount (1/9)'
   ];
 
   const orderRows = customers.map(c => {
-    const base = Number(c.quantity || 0) * Number(c.unitPrice || 0);
-    const vat = c.isVatAdded ? base * 0.15 : 0;
-    const invoiceTotal = base + vat;
-    const remaining = invoiceTotal - Number(c.advancePayment || 0);
+    const effectiveQuantity = getCustomerEffectiveQuantity(c);
+    const subtotal = getCustomerInvoiceSubtotal(c);
+    const invoiceTotal = getCustomerInvoiceTotal(c);
+    const paymentEntries = getCustomerPaymentEntries(c);
+    const paid = getCustomerTotalPaid(c);
+    const paymentChannels = Array.from(new Set(paymentEntries.map(payment => getBankName(payment.bankId)).filter(Boolean))).join(' | ') || 'N/A';
     
     return [
       c.id, c.clientName, c.clientType, c.phone, c.acquisitionSource,
-      c.orderTakenBy, c.productType, c.quantity, c.unitPrice,
-      base, c.isVatAdded ? 'Yes (15%)' : 'No', invoiceTotal,
-      c.advancePayment, Math.max(0, remaining), getBankName(c.paymentMethodId),
+      c.orderTakenBy, c.productType, effectiveQuantity, c.unitPrice,
+      subtotal, c.isVatAdded ? 'Yes (15%)' : 'No', invoiceTotal,
+      paid, getCustomerRemainingBalance(c), paymentChannels,
       c.bankRemainingId ? getBankName(c.bankRemainingId) : 'N/A (Uncollected)',
-      c.deliveryDate || 'N/A', c.advancePaymentDate || 'N/A', c.incompletionReason || 'N/A',
+      c.deliveryDate || 'N/A', getCustomerLatestPaymentDate(c) || 'N/A', c.incompletionReason || 'N/A',
       getCustomerStockDisplayName(c, 'paperType1', paperStocks), c.amount1 || 0,
       getCustomerStockDisplayName(c, 'paperType2', paperStocks), c.amount2 || 0,
       getCustomerStockDisplayName(c, 'paperType3', paperStocks), c.amount3 || 0,
@@ -225,26 +237,21 @@ export function buildAllDataWorkbook(
   // 3. Treasury Ledger Sheet
   const treasuryHeaders = [
     'Account ID', 'Account & Bank Name', 'Account Number',
-    'Initial Capital Stockpile (ETB)', 'Client Advances Received (ETB)',
-    'Client Delivery Balances Received (ETB)', 'Supplier Purchases Deducted (ETB)',
-    'Loan Cash Movement (ETB)', 'Compute Current Liquidity Status'
+    'Initial Capital Stockpile (ETB)', 'Client Payments Received (ETB)',
+    'Supplier Purchases Deducted (ETB)', 'Loan Cash Movement (ETB)',
+    'Compute Current Liquidity Status'
   ];
 
   const treasuryRows = bankAccounts.map(b => {
-    const advancesForBank = customers
-      .filter(c => c.paymentMethodId === b.id || (!c.paymentMethodId && b.id === 'b1'))
-      .reduce((sum, c) => sum + Number(c.advancePayment || 0), 0);
-
-    const completedRemainingForBank = customers
-      .filter(c => !!c.deliveryDate && (c.bankRemainingId === b.id || (!c.bankRemainingId && b.id === 'b1' && c.paymentMethodId === b.id)))
-      .reduce((sum, c) => {
-        const base = c.quantity * c.unitPrice;
-        const vat = c.isVatAdded ? base * 0.15 : 0;
-        const totalInvoice = base + vat;
-        const remaining = totalInvoice - c.advancePayment;
-        return sum + Math.max(0, remaining);
-      }, 0);
-
+    const customerPaymentsForBank = customers
+      .reduce((sum, c) => (
+        sum + getCustomerPaymentEntries(c)
+          .filter(payment => payment.bankId === b.id)
+          .reduce((paymentSum, payment) => paymentSum + Number(payment.amount || 0), 0)
+        - getCustomerRefundEntries(c)
+          .filter(refund => refund.bankId === b.id)
+          .reduce((refundSum, refund) => refundSum + Number(refund.amount || 0), 0)
+      ), 0);
     const purchasesOutOfBank = purchases
       .filter(p => p.paymentMethodId === b.id)
       .reduce((sum, p) => sum + Number(p.totalPrice || 0), 0);
@@ -259,11 +266,11 @@ export function buildAllDataWorkbook(
       return sum + initialMovement + repaymentMovement;
     }, 0);
     
-    const netBalance = b.initialBalance + advancesForBank + completedRemainingForBank - purchasesOutOfBank + loanCashMovement;
+    const netBalance = b.initialBalance + customerPaymentsForBank - purchasesOutOfBank + loanCashMovement;
 
     return [
       b.id, b.name, b.accountNumber || 'None', b.initialBalance,
-      advancesForBank, completedRemainingForBank, purchasesOutOfBank, loanCashMovement, netBalance
+      customerPaymentsForBank, purchasesOutOfBank, loanCashMovement, netBalance
     ];
   });
   

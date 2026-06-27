@@ -1,4 +1,5 @@
 import type { Customer, PaperStock } from './types';
+import { getCustomerEffectiveQuantity } from './utils/customerFinance';
 
 export type CustomerStockField =
   | 'paperType1'
@@ -62,7 +63,7 @@ export function computeStockConsumed(
   paperStocks: PaperStock[]
 ): number {
   return customers.reduce((consumed, customer) => {
-    const orderQty = Number(customer.quantity || 0);
+    const orderQty = getCustomerEffectiveQuantity(customer);
     let next = consumed;
 
     if (getCustomerStockId(customer, 'paperType1', paperStocks) === stock.id) {
@@ -75,10 +76,10 @@ export function computeStockConsumed(
       next += Math.ceil(Number(customer.amount3 || 0) * orderQty);
     }
     if (getCustomerStockId(customer, 'entrancePaper', paperStocks) === stock.id) {
-      next += Math.ceil(Number(customer.amount16 || 0) / 16);
+      next += Math.ceil((Number(customer.amount16 || 0) * orderQty) / 16);
     }
     if (getCustomerStockId(customer, 'ajabiPaper', paperStocks) === stock.id) {
-      next += Math.ceil(Number(customer.amount9 || 0) / 9);
+      next += Math.ceil((Number(customer.amount9 || 0) * orderQty) / 9);
     }
 
     return next;

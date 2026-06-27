@@ -33,6 +33,7 @@ import {
 import { exportAllDataToExcel, parseAppDataImportFile, AppDataImportBundle } from './utils/excelExport';
 import { sendDailyTelegramBackup } from './utils/telegramBackup';
 import { resolveStockId } from './utils';
+import { isCustomerPaymentComplete } from './utils/customerFinance';
 import SearchableSelect from './components/SearchableSelect';
 import { 
   Customer, 
@@ -114,31 +115,6 @@ const repairCustomerPayments = (customer: Customer): Customer => {
         amount: legacyAdvanceAmount,
         date: advanceDate,
         paymentMethodId: advanceBankId,
-        recordedBy: repaired.orderTakenBy
-      });
-    }
-  }
-
-  if (repaired.deliveryDate) {
-    const base = Number(repaired.quantity || 0) * Number(repaired.unitPrice || 0);
-    const adjustments = (repaired.orderAdjustments || []).reduce(
-      (sum, adjustment) => sum + (Number(adjustment.additionalQuantity || 0) * Number(adjustment.unitPrice || 0)),
-      0
-    );
-    const subtotal = base + adjustments;
-    const totalInvoice = subtotal + (repaired.isVatAdded ? subtotal * 0.15 : 0);
-    const alreadyPaid = (repaired.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-    const legacyRemainingAmount = Math.max(0, totalInvoice - legacyAdvanceAmount);
-    const missingAmount = Math.min(legacyRemainingAmount, Math.max(0, totalInvoice - alreadyPaid));
-    const remainingBankId = repaired.bankRemainingId || repaired.paymentMethodId || 'b1';
-    const remainingId = `mig_rem_${repaired.id}`;
-
-    if (missingAmount > 0.01 && !hasPaymentLike(missingAmount, repaired.deliveryDate, remainingBankId, remainingId)) {
-      repaired.payments.push({
-        id: remainingId,
-        amount: missingAmount,
-        date: repaired.deliveryDate,
-        paymentMethodId: remainingBankId,
         recordedBy: repaired.orderTakenBy
       });
     }
@@ -1120,7 +1096,9 @@ export default function App() {
     }
   };
 
-  const isOrderCompleted = (customer?: Customer | null) => Boolean(customer?.deliveryDate);
+  const isOrderCompleted = (customer?: Customer | null) => Boolean(
+    customer && (customer.deliveryDate || isCustomerPaymentComplete(customer))
+  );
   const commandItems: GlobalSearchItem[] = currentUser ? [
     { id: 'command-search', title: 'Focus search', source: 'Command', detail: 'Focus the search field inside the current tab', hint: '/', action: () => focusCurrentTabSearch() },
     { id: 'command-new', title: 'New record in current tab', source: 'Command', detail: 'Open the create form for the active section', hint: 'Ctrl N', action: () => dispatchShortcut('new-record') },
@@ -2879,6 +2857,9 @@ CREATE TABLE IF NOT EXISTS public.customers (
   "incompletionReason" text,
   "isVatAdded" boolean DEFAULT false,
   "baseUnitPrice" numeric DEFAULT 0,
+  payments jsonb DEFAULT '[]'::jsonb,
+  refunds jsonb DEFAULT '[]'::jsonb,
+  "orderAdjustments" jsonb DEFAULT '[]'::jsonb,
   "isDeleted" boolean DEFAULT false,
   "deletedBy" text
 );
@@ -2949,6 +2930,9 @@ ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "paperType3Id" t
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "entrancePaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "ajabiPaperId" text REFERENCES public.paper_stocks(id);
 ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "payments" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "refunds" jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS "orderAdjustments" jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE IF EXISTS public.purchases ADD COLUMN IF NOT EXISTS "currency" text DEFAULT 'ETB';
 
 INSERT INTO public.lead_channels (id, name)

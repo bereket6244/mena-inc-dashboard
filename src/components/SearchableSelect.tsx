@@ -14,6 +14,7 @@ interface SearchableSelectProps {
   onCreateOption?: (searchTerm: string) => void;
   createOptionLabel?: string;
   createOptionBadge?: string;
+  truncateValue?: boolean;
 }
 
 export default function SearchableSelect({
@@ -27,7 +28,8 @@ export default function SearchableSelect({
   disabled = false,
   onCreateOption,
   createOptionLabel = "Add item",
-  createOptionBadge
+  createOptionBadge,
+  truncateValue = true
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,7 +198,7 @@ export default function SearchableSelect({
           ref={inputRef}
           type="text"
           disabled={disabled}
-          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left truncate ${disabled ? 'cursor-not-allowed' : 'cursor-text'} ${!selectedOption && !isOpen ? 'text-gray-500' : ''} ${inputClassName}`}
+          className={`w-full h-full bg-transparent outline-none pl-2 pr-7 py-1 text-xs text-left ${truncateValue ? 'truncate' : ''} ${disabled ? 'cursor-not-allowed' : 'cursor-text'} ${!selectedOption && !isOpen ? 'text-gray-500' : ''} ${inputClassName}`}
           style={inputClassName.includes('text-center') ? { textAlign: 'center' } : undefined}
           placeholder={placeholder}
           value={isOpen ? searchTerm : (selectedOption ? selectedOption.label : "")}
