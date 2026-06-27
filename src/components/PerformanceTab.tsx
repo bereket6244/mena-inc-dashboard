@@ -1721,6 +1721,16 @@ export default function PerformanceTab({
             </div>
           </div>
         </div>
+
+        <div className="space-y-3 pt-2">
+          {newAccountCurrencies
+            .filter(curr => showAllCurrencies || curr === selectedCurrency)
+            .map(curr => (
+              <React.Fragment key={`mobile-product-leaderboard-${curr}`}>
+                <ProductOrderLeaderboard curr={curr} compact />
+              </React.Fragment>
+            ))}
+        </div>
       </div>
 
       {/* ========================================== */}
