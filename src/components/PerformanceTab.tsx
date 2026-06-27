@@ -895,7 +895,7 @@ export default function PerformanceTab({
         {items.length > 0 ? items.map((item, index) => (
           <div key={`${item.name}-${index}`} className={`flex items-center justify-between gap-2 border-b border-[#E5D8C5]/70 last:border-b-0 ${rowClass}`}>
             <div className="min-w-0 flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#111111] text-[10px] font-bold text-white">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#E5D8C5] bg-[#111111] text-[10px] font-bold !text-white">
                 {index + 1}
               </span>
               <span className="truncate text-xs font-bold text-[#111111]" title={item.name}>{item.name}</span>
@@ -1357,8 +1357,6 @@ export default function PerformanceTab({
                         </p>
                         <p className="mt-1 text-[11px] text-[#6B6258]">All order value for this currency.</p>
                       </button>
-
-                      <ProductOrderLeaderboard curr={curr} compact />
 
                       <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
                         <DollarSign className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
@@ -2028,8 +2026,6 @@ export default function PerformanceTab({
                     <p className="mt-2 text-xs text-[#6B6258]">All order value recorded for this currency.</p>
                   </button>
 
-                  <ProductOrderLeaderboard curr={curr} />
-
                   <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
                     <DollarSign className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
                     <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Income</span>
@@ -2546,6 +2542,16 @@ export default function PerformanceTab({
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        {newAccountCurrencies
+          .filter(curr => showAllCurrencies || curr === selectedCurrency)
+          .map(curr => (
+            <React.Fragment key={`bottom-product-leaderboard-${curr}`}>
+              <ProductOrderLeaderboard curr={curr} />
+            </React.Fragment>
+          ))}
       </div>
       </div>
 
