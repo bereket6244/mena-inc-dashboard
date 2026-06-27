@@ -6,16 +6,37 @@
     <title>Mena Inc. Advanced Database & Inventory System v2</title>
     
     <!-- 📦 PROGRESSIVE WEB APP (PWA) ENHANCEMENTS FOR SYSTEM ACCESSIBILITY -->
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="%BASE_URL%manifest.json" />
     <meta name="theme-color" content="#0A0A0A" />
-    <link id="app-favicon-shortcut" rel="shortcut icon" type="image/png" href="/mena-favicon-dark.png" />
-    <link id="app-favicon" rel="icon" type="image/png" href="/mena-favicon-dark.png" />
+    <link id="app-favicon-shortcut" rel="shortcut icon" type="image/png" href="%BASE_URL%mena-favicon-dark.png" />
+    <link id="app-favicon" rel="icon" type="image/png" href="%BASE_URL%mena-favicon-dark.png" />
+    <script>
+      // Clear old service workers before module loading; stale workers can serve HTML for JS chunks.
+      (function() {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.getRegistrations()
+          .then(function(registrations) {
+            return Promise.all(registrations.map(function(registration) {
+              return registration.unregister();
+            }));
+          })
+          .then(function(results) {
+            if (navigator.serviceWorker.controller && results.some(Boolean) && !sessionStorage.getItem('mena_sw_cleanup_reloaded')) {
+              sessionStorage.setItem('mena_sw_cleanup_reloaded', '1');
+              window.location.reload();
+            }
+          })
+          .catch(function() {});
+      })();
+    </script>
     <script>
       (function() {
         try {
+          var manifestHref = document.querySelector('link[rel="manifest"]')?.getAttribute('href') || '/';
+          var baseUrl = manifestHref.replace(/manifest\.json(?:\?.*)?$/, '');
           var savedTheme = 'dark';
           document.documentElement.classList.toggle('light-theme', savedTheme === 'light');
-          var faviconHref = savedTheme === 'light' ? '/mena-favicon-light.png' : '/mena-favicon-dark.png';
+          var faviconHref = baseUrl + (savedTheme === 'light' ? 'mena-favicon-light.png' : 'mena-favicon-dark.png');
           var shortcutIcon = document.getElementById('app-favicon-shortcut');
           var icon = document.getElementById('app-favicon');
           if (shortcutIcon) shortcutIcon.setAttribute('href', faviconHref);
@@ -33,11 +54,12 @@
     </style>
 
     <!-- iOS Native Integration Features -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mena CRM" />
-    <link rel="apple-touch-icon" href="/mena-favicon-light.png" />
-    <link rel="apple-touch-startup-image" href="/mena-favicon-light.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%mena-favicon-light.png" />
+    <link rel="apple-touch-startup-image" href="%BASE_URL%mena-favicon-light.png" />
 
     <script>
       // Global safety script to defend against read-only/getter-only fetch crashes in sandbox environments
@@ -107,14 +129,7 @@
 
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
+    <script>
       if ('caches' in window) {
         caches.keys().then(function(keys) {
           keys.forEach(function(key) {
