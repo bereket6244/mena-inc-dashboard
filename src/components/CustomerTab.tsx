@@ -1340,6 +1340,15 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false);
   const [bulkCompleteDate, setBulkCompleteDate] = useState<string>('');
   const [bulkCompleteBankId, setBulkCompleteBankId] = useState<string>('b1');
+  const [bulkPaymentAmount, setBulkPaymentAmount] = useState<string>('');
+  const [bulkPaymentResult, setBulkPaymentResult] = useState<Array<{
+    customerId: string;
+    clientName: string;
+    paidAmount: number;
+    beforeRemaining: number;
+    afterRemaining: number;
+    currency: string;
+  }> | null>(null);
   const [singleMarkPaidId, setSingleMarkPaidId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1933,7 +1942,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     if ((customer.deliveryDate && customer.bankRemainingId) || isCustomerPaymentComplete(customer)) return;
     setSingleMarkPaidId(customer.id);
     setBulkCompleteDate(new Date().toISOString().split('T')[0]);
-    setBulkCompleteBankId('b1');
+    setBulkCompleteBankId(customer.bankRemainingId || customer.paymentMethodId || 'b1');
+    setBulkPaymentAmount(Math.max(0, computeCustomerTotalInvoice(customer) - computeCustomerTotalPaid(customer)).toString());
+    setBulkPaymentResult(null);
     setShowBulkCompleteModal(true);
   };
 
@@ -2194,7 +2205,100 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
   const handleBulkComplete = () => {
     setBulkCompleteDate(new Date().toISOString().split('T')[0]);
     setBulkCompleteBankId('b1');
+    setBulkPaymentAmount('');
+    setBulkPaymentResult(null);
     setShowBulkCompleteModal(true);
+  };
+
+  const getBulkPaymentTargets = (targetIds: string[]) => customers
+    .filter(c => targetIds.includes(c.id))
+    .map(c => {
+      const totalInvoice = computeCustomerTotalInvoice(c);
+      const totalPaid = computeCustomerTotalPaid(c);
+      const remaining = Math.max(0, totalInvoice - totalPaid);
+      return { customer: c, remaining };
+    })
+    .filter(item => item.remaining > 0.01)
+    .sort((a, b) => a.remaining - b.remaining);
+
+  const buildBulkPaymentAllocations = (targetIds: string[], amount: number) => {
+    let remainingPayment = amount;
+    return getBulkPaymentTargets(targetIds).map(({ customer, remaining }) => {
+      const paidAmount = Math.min(remaining, Math.max(0, remainingPayment));
+      remainingPayment -= paidAmount;
+      return {
+        customerId: customer.id,
+        clientName: customer.clientName,
+        paidAmount,
+        beforeRemaining: remaining,
+        afterRemaining: Math.max(0, remaining - paidAmount),
+        currency: customer.currency || 'ETB'
+      };
+    });
+  };
+
+  const executeBulkPaymentConfirmed = () => {
+    const targetIds = singleMarkPaidId ? [singleMarkPaidId] : selectedCustomerIds;
+    const paymentAmount = parseFractionOrExpression(bulkPaymentAmount);
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      showToast('Enter a payment amount greater than zero.', 'error');
+      return;
+    }
+    if (!bulkCompleteDate || !bulkCompleteBankId) {
+      showToast('Select payment date and deposit account.', 'error');
+      return;
+    }
+
+    const paymentTargets = getBulkPaymentTargets(targetIds);
+    if (paymentTargets.length === 0) {
+      showToast('Selected orders have no outstanding balance.', 'error');
+      return;
+    }
+
+    const selectedCompletionBankCurrency = getBankCurrency(bulkCompleteBankId);
+    const incompatibleCustomer = paymentTargets.find(({ customer: c }) =>
+      !isCustomerPaymentCurrencyCompatible(c, selectedCompletionBankCurrency)
+    )?.customer;
+    if (incompatibleCustomer) {
+      showToast(
+        `Selected account currency (${selectedCompletionBankCurrency || 'ETB'}) does not match ${incompatibleCustomer.clientName}'s order currency (${incompatibleCustomer.currency || 'ETB'}).`,
+        'error'
+      );
+      return;
+    }
+
+    const allocations = buildBulkPaymentAllocations(targetIds, paymentAmount);
+    const allocationByCustomerId = new Map(allocations.map(item => [item.customerId, item]));
+    const batchId = `bulk_pay_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+    const updatedList = customers.map(c => {
+      const allocation = allocationByCustomerId.get(c.id);
+      if (allocation && allocation.paidAmount > 0.01) {
+        const payments = [
+          ...(c.payments || []),
+          {
+            id: `${batchId}_${c.id}`,
+            amount: allocation.paidAmount,
+            date: bulkCompleteDate,
+            paymentMethodId: bulkCompleteBankId,
+            currency: selectedCompletionBankCurrency || c.currency || 'ETB',
+            originalCurrency: c.currency || 'ETB',
+            recordedBy: currentUser?.username || c.orderTakenBy || 'Unknown'
+          }
+        ];
+
+        return {
+          ...c,
+          bankRemainingId: c.bankRemainingId || bulkCompleteBankId,
+          payments
+        };
+      }
+      return c;
+    });
+    onBulkUpdateCustomers(updatedList);
+    setBulkPaymentResult(allocations);
+    setBulkPaymentAmount('');
+    showToast('Payment allocated across selected orders.', 'success');
   };
 
   const executeBulkCompleteConfirmed = () => {
@@ -2324,6 +2428,9 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         } else if (showBulkCompleteModal) {
           event.preventDefault();
           setShowBulkCompleteModal(false);
+          setSingleMarkPaidId(null);
+          setBulkPaymentAmount('');
+          setBulkPaymentResult(null);
         } else if (deletingCustomerId) {
           event.preventDefault();
           setDeletingCustomerId(null);
@@ -2339,7 +2446,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
           executeBulkDeleteConfirmed();
         } else if (showBulkCompleteModal) {
           event.preventDefault();
-          executeBulkCompleteConfirmed();
+          executeBulkPaymentConfirmed();
         } else if (deletingCustomerId) {
           event.preventDefault();
           onDeleteCustomer(deletingCustomerId);
@@ -3257,7 +3364,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                   onClick={handleBulkComplete}
                   className="px-3 py-1 bg-[#112918] hover:bg-[#1b4325] border border-green-800 text-[#71b536] font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
                 >
-                  ✓ Complete
+                  <Banknote className="w-3.5 h-3.5" />
+                  Manage Payments
                 </button>
                 <button
                   type="button"
@@ -5070,15 +5178,26 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
         })()}
       </AnimatePresence>
       <AnimatePresence>
-        {showBulkCompleteModal && (
+        {showBulkCompleteModal && (() => {
+          const targetIds = singleMarkPaidId ? [singleMarkPaidId] : selectedCustomerIds;
+          const selectedCount = targetIds.length;
+          const previewAmount = Math.max(0, parseFractionOrExpression(bulkPaymentAmount || '0'));
+          const previewAllocations = previewAmount > 0 ? buildBulkPaymentAllocations(targetIds, previewAmount) : buildBulkPaymentAllocations(targetIds, 0);
+          const totalOutstanding = getBulkPaymentTargets(targetIds).reduce((sum, item) => sum + item.remaining, 0);
+          const unappliedAmount = Math.max(0, previewAmount - totalOutstanding);
+          const closeBulkPaymentModal = () => {
+            setShowBulkCompleteModal(false);
+            setSingleMarkPaidId(null);
+            setBulkPaymentAmount('');
+            setBulkPaymentResult(null);
+          };
+
+          return (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => {
-              setShowBulkCompleteModal(false);
-              setSingleMarkPaidId(null);
-            }}
+            onClick={closeBulkPaymentModal}
             className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-sans"
           >
             <motion.div 
@@ -5086,21 +5205,33 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#121212] border border-[#71b536]/60 max-w-md w-full p-6 text-left space-y-5 rounded-md"
+              className="bg-[#121212] border border-[#71b536]/60 max-w-2xl w-full p-6 text-left space-y-5 rounded-md max-h-[90vh] overflow-y-auto custom-scrollbar"
             >
               <div className="flex items-start gap-3.5">
-                <div className="text-[#71b536] text-3xl">✓</div>
+                <div className="text-[#71b536] text-2xl"><Banknote className="w-7 h-7" /></div>
                 <div className="space-y-1.5 font-semibold text-white w-full">
-                  <h3 className="text-white text-sm font-bold uppercase tracking-wider">
-                    {singleMarkPaidId || selectedCustomerIds.length === 1 ? 'Confirm Completion' : 'Confirm Bulk Completion'}
-                  </h3>
+                  <h3 className="text-white text-sm font-bold uppercase tracking-wider">Manage Selected Payments</h3>
                   <p className="text-xs text-gray-400 font-sans font-normal leading-relaxed">
-                    You are marking <span className="text-white font-bold font-sans">{singleMarkPaidId ? 1 : selectedCustomerIds.length}</span> {singleMarkPaidId || selectedCustomerIds.length === 1 ? 'order' : 'orders'} as Paid/Completed.
+                    Record one payment across <span className="text-white font-bold font-sans">{selectedCount}</span> selected {selectedCount === 1 ? 'order' : 'orders'}. The amount fills the smallest remaining balance first, then trickles down to larger balances.
                   </p>
-                  
-                  <div className="mt-4 space-y-3">
+
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Completion Date</label>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Amount</label>
+                      <input
+                        type="text"
+                        value={bulkPaymentAmount}
+                        onChange={(e) => {
+                          setBulkPaymentAmount(e.target.value);
+                          setBulkPaymentResult(null);
+                        }}
+                        onBlur={() => setBulkPaymentAmount(parseFractionOrExpression(bulkPaymentAmount || '0').toString())}
+                        className="w-full bg-[#161616] text-[#71b536] border border-[#262626] focus:border-[#71b536] font-sans px-3 py-2 rounded-md outline-none text-xs"
+                        placeholder="e.g. 5000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Date</label>
                       <input
                         type="date"
                         value={bulkCompleteDate}
@@ -5125,26 +5256,59 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 </div>
               </div>
 
+              <div className="rounded-md border border-[#262626] bg-[#161616] p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                  <span>{bulkPaymentResult ? 'Payment Result' : 'Allocation Preview'}</span>
+                  <span>Total debt: {formatMoney(totalOutstanding, getBankCurrency(bulkCompleteBankId) || 'ETB')}</span>
+                </div>
+                {(bulkPaymentResult || previewAllocations).length === 0 ? (
+                  <div className="text-xs text-gray-400">Selected orders have no outstanding balance.</div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                    {(bulkPaymentResult || previewAllocations).map(item => {
+                      const isFullyPaid = item.afterRemaining <= 0.01;
+                      const getsPayment = item.paidAmount > 0.01;
+                      return (
+                        <div key={item.customerId} className={`rounded border px-3 py-2 text-xs ${isFullyPaid ? 'border-[#71b536]/30 bg-[#112918]/40' : getsPayment ? 'border-[#FACC15]/30 bg-[#2D210F]/35' : 'border-[#333] bg-[#111]'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-bold text-white truncate">{item.clientName}</div>
+                              <div className="mt-0.5 text-[10px] text-gray-500">
+                                Owed {formatMoney(item.beforeRemaining, item.currency)} | receives {formatMoney(item.paidAmount, item.currency)}
+                              </div>
+                            </div>
+                            <div className={`shrink-0 text-right font-bold ${isFullyPaid ? 'text-[#71b536]' : 'text-[#FACC15]'}`}>
+                              {isFullyPaid ? 'Fully paid' : `${formatMoney(item.afterRemaining, item.currency)} left`}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {unappliedAmount > 0.01 && !bulkPaymentResult && (
+                  <div className="text-[11px] text-[#FACC15]">{formatMoney(unappliedAmount, getBankCurrency(bulkCompleteBankId) || 'ETB')} is more than the selected outstanding debt and will not be applied.</div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
                 <button
-                  onClick={() => {
-                    setShowBulkCompleteModal(false);
-                    setSingleMarkPaidId(null);
-                  }}
+                  onClick={closeBulkPaymentModal}
                   className="px-3.5 py-1.5 text-xs text-gray-400 hover:text-white border border-[#262626] bg-[#181818] uppercase tracking-wider cursor-pointer font-sans rounded-md"
                 >
-                  Cancel
+                  Close
                 </button>
                 <button
-                  onClick={executeBulkCompleteConfirmed}
+                  onClick={executeBulkPaymentConfirmed}
                   className="px-4 py-1.5 text-xs bg-[#112918] hover:bg-[#1b4325] border border-green-800 text-[#71b536] font-bold uppercase tracking-widest cursor-pointer font-sans rounded-md"
                 >
-                  Confirm Paid
+                  Save Payment
                 </button>
               </div>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -6488,8 +6652,8 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 onClick={handleBulkComplete}
                 className="bg-[#112918] border border-[#71b536]/30 text-[#71b536] py-2.5 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-1"
               >
-                <CheckSquare className="w-3.5 h-3.5" />
-                Paid
+                <Banknote className="w-3.5 h-3.5" />
+                Payments
               </button>
               <button
                 type="button"
