@@ -84,21 +84,45 @@ const normalizeRawRow = (row: Record<string, any>) => {
 
 const appendRawSheet = <T extends Record<string, any>>(wb: XLSX.WorkBook, sheetName: string, rows: T[]) => {
   const safeRows = rows.map(row => Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [
-      key,
-      Array.isArray(value) || (value && typeof value === 'object') ? JSON.stringify(value) : value
-    ])
+    Object.entries(row).map(([key, value]) => {
+      let cellVal = Array.isArray(value) || (value && typeof value === 'object') ? JSON.stringify(value) : value;
+      if (typeof cellVal === 'string' && cellVal.length > 32760) {
+        cellVal = cellVal.slice(0, 32760);
+      }
+      return [key, cellVal];
+    })
   ));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(safeRows), sheetName);
 };
 
 const appendJsonBackupSheet = (wb: XLSX.WorkBook, bundle: AppDataImportBundle) => {
-  const rows = (Object.keys(COLLECTION_LABELS) as Array<keyof AppDataImportBundle>)
-    .map(key => ({
-      collection: key,
-      label: COLLECTION_LABELS[key],
-      dataJson: JSON.stringify(bundle[key] || [])
-    }));
+  const rows: Array<{ collection: string; label: string; chunkIndex: number; dataJson: string }> = [];
+
+  (Object.keys(COLLECTION_LABELS) as Array<keyof AppDataImportBundle>).forEach(key => {
+    const fullJson = JSON.stringify(bundle[key] || []);
+    const chunkSize = 30000;
+    const label = COLLECTION_LABELS[key];
+    
+    if (fullJson.length <= chunkSize) {
+      rows.push({
+        collection: key,
+        label,
+        chunkIndex: 0,
+        dataJson: fullJson
+      });
+    } else {
+      let index = 0;
+      for (let offset = 0; offset < fullJson.length; offset += chunkSize) {
+        rows.push({
+          collection: key,
+          label,
+          chunkIndex: index++,
+          dataJson: fullJson.slice(offset, offset + chunkSize)
+        });
+      }
+    }
+  });
+
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'App Data JSON');
 };
 
@@ -441,15 +465,41 @@ const mergeBundle = (target: AppDataImportBundle, source: AppDataImportBundle) =
 
 const parseJsonBackupRows = (rows: Record<string, any>[]): AppDataImportBundle => {
   const bundle: AppDataImportBundle = {};
+  const collectionChunks = new Map<keyof AppDataImportBundle, Array<{ chunkIndex: number; dataJson: string }>>();
+
   rows.forEach(row => {
     const collection = String(row.collection || row.Collection || '').trim() as keyof AppDataImportBundle;
     const dataJson = row.dataJson || row['Data JSON'] || row.data || row.Data;
     if (!collection || !(collection in COLLECTION_LABELS) || typeof dataJson !== 'string') return;
-    try {
-      const parsed = JSON.parse(dataJson);
-      if (Array.isArray(parsed)) (bundle as Record<string, any>)[collection] = parsed;
-    } catch (_) {}
+
+    let chunkIndex = 0;
+    if (typeof row.chunkIndex === 'number') {
+      chunkIndex = row.chunkIndex;
+    } else if (typeof row['Chunk Index'] === 'number') {
+      chunkIndex = row['Chunk Index'];
+    } else if (row.chunkIndex !== undefined && row.chunkIndex !== null) {
+      chunkIndex = parseInt(row.chunkIndex, 10) || 0;
+    } else if (row['Chunk Index'] !== undefined && row['Chunk Index'] !== null) {
+      chunkIndex = parseInt(row['Chunk Index'], 10) || 0;
+    }
+
+    if (!collectionChunks.has(collection)) {
+      collectionChunks.set(collection, []);
+    }
+    collectionChunks.get(collection)!.push({ chunkIndex, dataJson });
   });
+
+  collectionChunks.forEach((chunks, collection) => {
+    chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+    const fullJson = chunks.map(c => c.dataJson).join('');
+    try {
+      const parsed = JSON.parse(fullJson);
+      if (Array.isArray(parsed)) (bundle as Record<string, any>)[collection] = parsed;
+    } catch (_) {
+      console.error(`Failed to parse collection ${collection} JSON backup`);
+    }
+  });
+
   return bundle;
 };
 
