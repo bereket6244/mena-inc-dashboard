@@ -5215,6 +5215,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     Record one payment across <span className="text-white font-bold font-sans">{selectedCount}</span> selected {selectedCount === 1 ? 'order' : 'orders'}. The amount fills the smallest remaining balance first, then trickles down to larger balances.
                   </p>
 
+                  <div className="mt-4 flex flex-col gap-2 rounded-md border border-[#262626] bg-[#161616] p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-500">Selected Remaining Balance</span>
+                      <span className="text-base font-extrabold text-[#FACC15]">{formatMoney(totalOutstanding, getBankCurrency(bulkCompleteBankId) || 'ETB')}</span>
+                    </div>
+                    {totalOutstanding > 0.01 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkPaymentAmount(totalOutstanding.toString());
+                          setBulkPaymentResult(null);
+                        }}
+                        className="rounded border border-[#FACC15]/40 bg-[#2D210F]/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#FACC15] transition-colors hover:bg-[#3b2c14]"
+                      >
+                        Write remaining balance
+                      </button>
+                    )}
+                  </div>
+
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Amount</label>
@@ -5259,7 +5278,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               <div className="rounded-md border border-[#262626] bg-[#161616] p-3 space-y-2">
                 <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                   <span>{bulkPaymentResult ? 'Payment Result' : 'Allocation Preview'}</span>
-                  <span>Total debt: {formatMoney(totalOutstanding, getBankCurrency(bulkCompleteBankId) || 'ETB')}</span>
+                  <span>Total selected remaining: {formatMoney(totalOutstanding, getBankCurrency(bulkCompleteBankId) || 'ETB')}</span>
                 </div>
                 {(bulkPaymentResult || previewAllocations).length === 0 ? (
                   <div className="text-xs text-gray-400">Selected orders have no outstanding balance.</div>
@@ -6711,6 +6730,17 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             {/* PAYMENTS MODAL */}
       <AnimatePresence>
         {managingPaymentsFor && (() => {
+          const closePaymentModal = () => {
+            setManagingPaymentsFor(null);
+            setEditingPaymentId(null);
+            setNewPaymentAmount('');
+            setNewPaymentMethodId('');
+            setNewPaymentCurrency('');
+            setRefundAmount('');
+            setRefundMethodId('');
+            setRefundCurrency('');
+            setRefundNotes('');
+          };
           const totalPaid = computeCustomerTotalPaid(managingPaymentsFor);
           const grossPaid = getCustomerGrossPaid(managingPaymentsFor);
           const totalRefunded = getCustomerTotalRefunded(managingPaymentsFor);
@@ -6751,12 +6781,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={closePaymentModal}
             className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
               className="customer-payment-modal bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="customer-payment-modal-header p-4 border-b border-gray-200 dark:border-[#333] flex flex-col gap-3 bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">
@@ -6765,17 +6797,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                     <Banknote className="w-4 h-4 text-[#71b536]" />
                     Manage Payments
                   </h3>
-                  <button onClick={() => {
-                    setManagingPaymentsFor(null);
-                    setEditingPaymentId(null);
-                    setNewPaymentAmount('');
-                    setNewPaymentMethodId('');
-                    setNewPaymentCurrency('');
-                    setRefundAmount('');
-                    setRefundMethodId('');
-                    setRefundCurrency('');
-                    setRefundNotes('');
-                  }} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
+                  <button onClick={closePaymentModal} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -7164,17 +7186,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
               </div>
               <div className="customer-payment-modal-footer p-4 border-t border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#0a0a0a] flex justify-end gap-3">
                 <button
-                  onClick={() => {
-                    setManagingPaymentsFor(null);
-                    setEditingPaymentId(null);
-                    setNewPaymentAmount('');
-                    setNewPaymentMethodId('');
-                    setNewPaymentCurrency('');
-                    setRefundAmount('');
-                    setRefundMethodId('');
-                    setRefundCurrency('');
-                    setRefundNotes('');
-                  }}
+                  onClick={closePaymentModal}
                   className="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
                 >
                   Cancel
@@ -7257,12 +7269,14 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={() => setManagingAdjustmentsFor(null)}
             className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
               className="customer-adjustment-modal bg-white dark:bg-[#111] border border-gray-200 dark:border-[#333] rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="customer-adjustment-modal-header p-4 border-b border-gray-200 dark:border-[#333] flex flex-col gap-3 bg-gradient-to-r from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#111]">

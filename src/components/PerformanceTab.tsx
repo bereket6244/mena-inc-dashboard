@@ -5,6 +5,7 @@ import { Customer, BankAccount, Purchase, ExpenseCategory, PaperStock, EmployeeU
 import { parseFractionOrExpression, cleanLeadingZeros } from '../utils';
 import {
   CustomerPaymentEntry,
+  getCustomerEffectiveQuantity,
   getCustomerInvoiceTotal,
   getCustomerPaymentEntries,
   getCustomerRefundEntries,
@@ -850,6 +851,95 @@ export default function PerformanceTab({
     grossByCurrency[curr] = (grossByCurrency[curr] || 0) + val;
   });
 
+  const productOrdersByCurrency: Record<string, Record<string, { orderCount: number; totalQuantity: number; totalValue: number }>> = {};
+  filteredCustomersForInterval.forEach(c => {
+    const curr = getBankCurrency(c.paymentMethodId || c.bankRemainingId);
+    const productName = (c.productType || 'Unknown item').trim() || 'Unknown item';
+    if (!productOrdersByCurrency[curr]) productOrdersByCurrency[curr] = {};
+    if (!productOrdersByCurrency[curr][productName]) {
+      productOrdersByCurrency[curr][productName] = { orderCount: 0, totalQuantity: 0, totalValue: 0 };
+    }
+    productOrdersByCurrency[curr][productName].orderCount += 1;
+    productOrdersByCurrency[curr][productName].totalQuantity += getCustomerEffectiveQuantity(c);
+    productOrdersByCurrency[curr][productName].totalValue += getCustomerInvoiceTotal(c);
+  });
+
+  const getProductOrderLeaders = (curr: string) => {
+    const items = Object.entries(productOrdersByCurrency[curr] || {}).map(([name, data]) => ({
+      name,
+      ...data
+    }));
+    const byMostOrdered = (a: typeof items[number], b: typeof items[number]) =>
+      b.totalQuantity - a.totalQuantity ||
+      b.orderCount - a.orderCount ||
+      b.totalValue - a.totalValue ||
+      a.name.localeCompare(b.name);
+    const byLeastOrdered = (a: typeof items[number], b: typeof items[number]) =>
+      a.totalQuantity - b.totalQuantity ||
+      a.orderCount - b.orderCount ||
+      a.totalValue - b.totalValue ||
+      a.name.localeCompare(b.name);
+
+    return {
+      most: [...items].sort(byMostOrdered).slice(0, 5),
+      least: [...items].sort(byLeastOrdered).slice(0, 5)
+    };
+  };
+
+  const ProductOrderLeaderboard = ({ curr, compact = false }: { curr: string; compact?: boolean }) => {
+    const { most, least } = getProductOrderLeaders(curr);
+    const hasItems = most.length > 0;
+    const rowClass = compact ? 'py-1.5' : 'py-2';
+    const renderRows = (items: typeof most, emptyText: string) => (
+      <div className="space-y-1">
+        {items.length > 0 ? items.map((item, index) => (
+          <div key={`${item.name}-${index}`} className={`flex items-center justify-between gap-2 border-b border-[#E5D8C5]/70 last:border-b-0 ${rowClass}`}>
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#111111] text-[10px] font-bold text-white">
+                {index + 1}
+              </span>
+              <span className="truncate text-xs font-bold text-[#111111]" title={item.name}>{item.name}</span>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-xs font-extrabold text-[#166534]">{item.totalQuantity.toLocaleString()} pcs</div>
+              <div className="text-[10px] text-[#6B6258]">{item.orderCount.toLocaleString()} orders</div>
+            </div>
+          </div>
+        )) : (
+          <div className="py-3 text-xs text-[#6B6258]">{emptyText}</div>
+        )}
+      </div>
+    );
+
+    return (
+      <div className={`bg-[#FFFCF7] border border-[#E5D8C5] rounded-md text-left shadow-sm ${compact ? 'p-4' : 'p-5'} ${compact ? '' : 'lg:col-span-3'}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="text-[10px] font-sans tracking-wider uppercase font-bold text-[#6B6258]">Ordered Items Leaderboard</span>
+            <p className="mt-1 text-xs text-[#6B6258]">Ranked by total quantity ordered in {curr} records.</p>
+          </div>
+          <ShoppingBag className="w-5 h-5 shrink-0 text-[#166534]" />
+        </div>
+        {hasItems ? (
+          <div className={`mt-4 grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+            <div>
+              <h5 className="text-[10px] font-bold uppercase tracking-wider text-[#166534]">Most Ordered</h5>
+              {renderRows(most, 'No ordered items yet.')}
+            </div>
+            <div>
+              <h5 className="text-[10px] font-bold uppercase tracking-wider text-[#A16207]">Least Ordered</h5>
+              {renderRows(least, 'No ordered items yet.')}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded border border-dashed border-[#E5D8C5] p-4 text-xs text-[#6B6258]">
+            No ordered items match the current summary filters.
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // 2. Outgoing supplier material expenses & purchases grouped by payment account currency
   const spentByCurrency: Record<string, number> = {};
   filteredPurchasesForInterval.forEach(p => {
@@ -1267,6 +1357,8 @@ export default function PerformanceTab({
                         </p>
                         <p className="mt-1 text-[11px] text-[#6B6258]">All order value for this currency.</p>
                       </button>
+
+                      <ProductOrderLeaderboard curr={curr} compact />
 
                       <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-[10px] p-4 text-left cursor-pointer hover:border-[#166534] transition-colors">
                         <DollarSign className="absolute -right-2 top-3 w-16 h-16 text-[#166534] opacity-10" />
@@ -1935,6 +2027,8 @@ export default function PerformanceTab({
                     </p>
                     <p className="mt-2 text-xs text-[#6B6258]">All order value recorded for this currency.</p>
                   </button>
+
+                  <ProductOrderLeaderboard curr={curr} />
 
                   <button type="button" onClick={() => onNavigateFromSummary?.('customers')} className="relative min-h-[154px] overflow-hidden bg-[#EEF8EF] border border-[#A7C8AE] rounded-md p-5 text-left cursor-pointer hover:border-[#166534] transition-colors shadow-sm">
                     <DollarSign className="absolute -right-4 top-5 w-24 h-24 text-[#166534] opacity-10" />
