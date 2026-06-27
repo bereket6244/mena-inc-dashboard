@@ -319,6 +319,7 @@ export default function CustomerTab({
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [lastSelectedCustomerId, setLastSelectedCustomerId] = useState<string | null>(null);
   const [showSelectedShareOptions, setShowSelectedShareOptions] = useState(false);
+  const [selectedShareMenuPosition, setSelectedShareMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const rowLongPressTimerRef = useRef<number | null>(null);
 
   const clearRowLongPressTimer = () => {
@@ -394,6 +395,7 @@ export default function CustomerTab({
   useEffect(() => {
     if (selectedCustomerIds.length === 0) {
       setShowSelectedShareOptions(false);
+      setSelectedShareMenuPosition(null);
     }
   }, [selectedCustomerIds.length]);
   const [copiedOrderMessageIds, setCopiedOrderMessageIds] = useState<string[]>([]);
@@ -620,8 +622,25 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
     }
   };
 
-  const selectedShareOptions = (
-    <div className="absolute right-0 bottom-full mb-2 w-44 bg-[#181818] border border-[#262626] rounded-md shadow-2xl p-1 z-50">
+  const handleSelectedShareButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 176;
+    const menuHeight = 128;
+    const top = rect.top - menuHeight - 8 > 8 ? rect.top - menuHeight - 8 : rect.bottom + 8;
+    setSelectedShareMenuPosition({
+      top,
+      left: Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8))
+    });
+    setShowSelectedShareOptions(prev => !prev);
+  };
+
+  const selectedShareOptions = selectedShareMenuPosition && typeof document !== 'undefined' ? createPortal(
+    <>
+      <div className="fixed inset-0 z-[998]" onClick={() => setShowSelectedShareOptions(false)} />
+      <div
+        className="fixed w-44 bg-[#181818] border border-[#262626] rounded-md shadow-2xl p-1 z-[999]"
+        style={{ top: selectedShareMenuPosition.top, left: selectedShareMenuPosition.left }}
+      >
       <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500">Share copied message</div>
       <button type="button" onClick={() => handleShareSelectedOrdersMessage('whatsapp')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]">
         <Send className="w-3.5 h-3.5 text-gray-400" /> WhatsApp
@@ -632,8 +651,10 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
       <button type="button" onClick={() => handleShareSelectedOrdersMessage('sms')} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-300 hover:bg-[#242424]">
         <MessageCircle className="w-3.5 h-3.5 text-gray-400" /> SMS
       </button>
-    </div>
-  );
+      </div>
+    </>,
+    document.body
+  ) : null;
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showMobileSortPopover, setShowMobileSortPopover] = useState(false);
@@ -3399,7 +3420,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowSelectedShareOptions(prev => !prev)}
+                    onClick={handleSelectedShareButtonClick}
                     className="px-3 py-1 bg-[#181818] hover:bg-[#202020] border border-[#262626] text-white font-bold rounded cursor-pointer transition-colors flex items-center gap-1 uppercase tracking-wider"
                   >
                     <Share2 className="w-3.5 h-3.5" />
@@ -6715,7 +6736,7 @@ The remaining balance to be paid is ${remainingBalance.toLocaleString()} birr.`;
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowSelectedShareOptions(prev => !prev)}
+                onClick={handleSelectedShareButtonClick}
                 className="w-full bg-[#181818] border border-[#262626] text-white py-3 rounded font-bold text-xs cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider"
               >
                 <Share2 className="w-4 h-4" />
